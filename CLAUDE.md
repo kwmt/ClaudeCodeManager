@@ -28,7 +28,8 @@ npm run test:ui          # インタラクティブテストランナー
 npm run test:coverage    # カバレッジレポート付き
 
 # Rustテスト実行
-npm run cargo:test
+npm run cargo:test       # 標準テスト実行
+npm run cargo:test:fast  # キャッシュ最適化された高速テスト実行
 ```
 
 ### コード品質

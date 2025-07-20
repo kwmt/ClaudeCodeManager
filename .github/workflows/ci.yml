@@ -47,7 +47,14 @@ jobs:
         workspaces: src-tauri
         cache-targets: true
         cache-on-failure: true
-        shared-key: tauri-build-${{ matrix.os }}
+        shared-key: tauri-test-${{ matrix.os }}
+        # Cache test artifacts for faster test runs
+        cache-directories: |
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          src-tauri/target/debug/deps/
+          src-tauri/target/debug/build/
 
     - name: Install Node.js dependencies
       run: |
@@ -62,6 +69,10 @@ jobs:
         npm run test:coverage
 
     - name: Run Rust tests
+      env:
+        # Optimize test compilation
+        CARGO_INCREMENTAL: 0
+        RUSTFLAGS: "-C debug-assertions=off"
       run: |
         npm run cargo:test
 
