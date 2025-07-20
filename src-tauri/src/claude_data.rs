@@ -335,18 +335,30 @@ impl ClaudeDataManager {
                 let _timestamp_str = &line[start + 1..end];
 
                 if let Some(colon_pos) = line[end..].find(':') {
-                    let user_part = &line[end + 2..end + colon_pos];
-                    let command = &line[end + colon_pos + 2..];
+                    let absolute_colon_pos = end + colon_pos;
+                    
+                    // Skip "] " after the timestamp
+                    let user_start = if line.len() > end + 2 { end + 2 } else { return None };
+                    
+                    if absolute_colon_pos > user_start {
+                        let user_part = &line[user_start..absolute_colon_pos];
+                        let command_start = if line.len() > absolute_colon_pos + 2 { 
+                            absolute_colon_pos + 2 
+                        } else { 
+                            return None 
+                        };
+                        let command = &line[command_start..];
 
-                    // Try to parse timestamp (simplified)
-                    let timestamp = Utc::now(); // For now, use current time
+                        // Try to parse timestamp (simplified)
+                        let timestamp = Utc::now(); // For now, use current time
 
-                    return Some(CommandLogEntry {
-                        timestamp,
-                        user: user_part.to_string(),
-                        command: command.to_string(),
-                        cwd: None,
-                    });
+                        return Some(CommandLogEntry {
+                            timestamp,
+                            user: user_part.to_string(),
+                            command: command.to_string(),
+                            cwd: None,
+                        });
+                    }
                 }
             }
         }
