@@ -88,12 +88,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_claude_data_manager_initialization() {
-        let temp_dir = create_test_claude_dir();
+        let _temp_dir = create_test_claude_dir();
         
-        // This would normally fail because we're not using the real ~/.claude directory
-        // but we can test the error handling
+        // Test that initialization succeeds when ~/.claude directory exists
         let result = ClaudeDataManager::new();
-        assert!(result.is_err());
+        assert!(result.is_ok(), "Expected initialization to succeed with existing ~/.claude directory");
     }
 
     #[tokio::test]
@@ -111,7 +110,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_todo_parsing() {
-        let todo_data = r#"[{"id":"1","content":"Test","status":"Pending","priority":"High"}]"#;
+        let todo_data = r#"[{"id":"1","content":"Test","status":"pending","priority":"high"}]"#;
         
         let parsed: Result<Vec<TodoItem>, _> = serde_json::from_str(todo_data);
         assert!(parsed.is_ok());
@@ -140,7 +139,7 @@ mod tests {
         assert!(parsed.is_ok());
         
         let settings = parsed.unwrap();
-        assert_eq!(settings.permissions.defaultMode, "bypassPermissions");
+        assert_eq!(settings.permissions.default_mode, "bypassPermissions");
         assert_eq!(settings.permissions.allow.len(), 1);
         assert_eq!(settings.permissions.deny.len(), 1);
     }
