@@ -17,7 +17,7 @@ impl ClaudeDataManager {
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
         let home = home_dir().ok_or("Could not find home directory")?;
         let claude_dir = home.join(".claude");
-        
+
         if !claude_dir.exists() {
             return Err("~/.claude directory not found".into());
         }
@@ -40,7 +40,7 @@ impl ClaudeDataManager {
         for entry in fs::read_dir(&projects_dir)? {
             let entry = entry?;
             let project_path = entry.path();
-            
+
             if project_path.is_dir() {
                 let project_name = project_path
                     .file_name()
@@ -54,7 +54,7 @@ impl ClaudeDataManager {
                 for session_file in fs::read_dir(&project_path)? {
                     let session_file = session_file?;
                     let file_path = session_file.path();
-                    
+
                     if file_path.extension().and_then(|e| e.to_str()) == Some("jsonl") {
                         let session_id = file_path
                             .file_stem()
@@ -62,7 +62,9 @@ impl ClaudeDataManager {
                             .unwrap_or("")
                             .to_string();
 
-                        let session = self.parse_session_file(&file_path, &session_id, &decoded_path).await?;
+                        let session = self
+                            .parse_session_file(&file_path, &session_id, &decoded_path)
+                            .await?;
                         sessions.push(session);
                     }
                 }
@@ -81,7 +83,7 @@ impl ClaudeDataManager {
     ) -> Result<ClaudeSession, Box<dyn std::error::Error>> {
         let file = fs::File::open(file_path)?;
         let reader = BufReader::new(file);
-        
+
         let mut message_count = 0;
         let mut created_at: Option<DateTime<Utc>> = None;
         let mut updated_at: Option<DateTime<Utc>> = None;
@@ -91,7 +93,7 @@ impl ClaudeDataManager {
             let line = line?;
             if let Ok(message) = serde_json::from_str::<serde_json::Value>(&line) {
                 message_count += 1;
-                
+
                 if let Some(timestamp_str) = message.get("timestamp").and_then(|t| t.as_str()) {
                     if let Ok(timestamp) = timestamp_str.parse::<DateTime<Utc>>() {
                         if created_at.is_none() || timestamp < created_at.unwrap() {
@@ -123,7 +125,10 @@ impl ClaudeDataManager {
         })
     }
 
-    pub async fn get_session_messages(&self, session_id: &str) -> Result<Vec<ClaudeMessage>, Box<dyn std::error::Error>> {
+    pub async fn get_session_messages(
+        &self,
+        session_id: &str,
+    ) -> Result<Vec<ClaudeMessage>, Box<dyn std::error::Error>> {
         // Check cache first
         {
             let cache = self.messages_cache.read().await;
@@ -147,11 +152,11 @@ impl ClaudeDataManager {
 
     fn find_session_file(&self, session_id: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
         let projects_dir = self.claude_dir.join("projects");
-        
+
         for entry in fs::read_dir(&projects_dir)? {
             let entry = entry?;
             let project_path = entry.path();
-            
+
             if project_path.is_dir() {
                 let session_file = project_path.join(format!("{session_id}.jsonl"));
                 if session_file.exists() {
@@ -159,7 +164,7 @@ impl ClaudeDataManager {
                 }
             }
         }
-        
+
         Err(format!("Session file not found for ID: {session_id}").into())
     }
 
@@ -189,20 +194,21 @@ impl ClaudeDataManager {
         raw: &serde_json::Value,
         session_id: &str,
     ) -> Result<Option<ClaudeMessage>, Box<dyn std::error::Error>> {
-        let uuid = raw.get("uuid")
+        let uuid = raw
+            .get("uuid")
             .and_then(|u| u.as_str())
             .unwrap_or("")
             .to_string();
 
-        let parent_uuid = raw.get("parentUuid")
+        let parent_uuid = raw
+            .get("parentUuid")
             .and_then(|u| u.as_str())
             .map(|s| s.to_string());
 
-        let timestamp_str = raw.get("timestamp")
-            .and_then(|t| t.as_str())
-            .unwrap_or("");
-        
-        let timestamp = timestamp_str.parse::<DateTime<Utc>>()
+        let timestamp_str = raw.get("timestamp").and_then(|t| t.as_str()).unwrap_or("");
+
+        let timestamp = timestamp_str
+            .parse::<DateTime<Utc>>()
             .unwrap_or_else(|_| Utc::now());
 
         let message_type = match raw.get("type").and_then(|t| t.as_str()) {
@@ -211,34 +217,39 @@ impl ClaudeDataManager {
             _ => return Ok(None),
         };
 
-        let cwd = raw.get("cwd")
+        let cwd = raw
+            .get("cwd")
             .and_then(|c| c.as_str())
             .unwrap_or("")
             .to_string();
 
-        let git_branch = raw.get("gitBranch")
+        let git_branch = raw
+            .get("gitBranch")
             .and_then(|b| b.as_str())
             .map(|s| s.to_string());
 
         let content = match message_type {
             MessageType::User => {
-                let content_text = raw.get("message")
+                let content_text = raw
+                    .get("message")
                     .and_then(|m| m.get("content"))
                     .and_then(|c| c.as_str())
                     .unwrap_or("")
                     .to_string();
-                
+
                 MessageContent::User {
                     role: "user".to_string(),
                     content: content_text,
                 }
             }
             MessageType::Assistant => {
-                let content_blocks = raw.get("message")
+                let content_blocks = raw
+                    .get("message")
                     .and_then(|m| m.get("content"))
                     .and_then(|c| c.as_array())
                     .map(|blocks| {
-                        blocks.iter()
+                        blocks
+                            .iter()
                             .filter_map(|block| self.parse_content_block(block))
                             .collect()
                     })
@@ -266,34 +277,40 @@ impl ClaudeDataManager {
     fn parse_content_block(&self, block: &serde_json::Value) -> Option<ContentBlock> {
         match block.get("type").and_then(|t| t.as_str()) {
             Some("text") => {
-                let text = block.get("text")
+                let text = block
+                    .get("text")
                     .and_then(|t| t.as_str())
                     .unwrap_or("")
                     .to_string();
                 Some(ContentBlock::Text { text })
             }
             Some("tool_use") => {
-                let id = block.get("id")
+                let id = block
+                    .get("id")
                     .and_then(|i| i.as_str())
                     .unwrap_or("")
                     .to_string();
-                let name = block.get("name")
+                let name = block
+                    .get("name")
                     .and_then(|n| n.as_str())
                     .unwrap_or("")
                     .to_string();
-                let input = block.get("input")
+                let input = block
+                    .get("input")
                     .cloned()
                     .unwrap_or(serde_json::Value::Null);
-                
+
                 Some(ContentBlock::ToolUse { id, name, input })
             }
             _ => None,
         }
     }
 
-    pub async fn get_command_history(&self) -> Result<Vec<CommandLogEntry>, Box<dyn std::error::Error>> {
+    pub async fn get_command_history(
+        &self,
+    ) -> Result<Vec<CommandLogEntry>, Box<dyn std::error::Error>> {
         let log_file = self.claude_dir.join("command_history.log");
-        
+
         if !log_file.exists() {
             return Ok(Vec::new());
         }
@@ -316,14 +333,14 @@ impl ClaudeDataManager {
         if let Some(start) = line.find('[') {
             if let Some(end) = line.find(']') {
                 let _timestamp_str = &line[start + 1..end];
-                
+
                 if let Some(colon_pos) = line[end..].find(':') {
                     let user_part = &line[end + 2..end + colon_pos];
                     let command = &line[end + colon_pos + 2..];
-                    
+
                     // Try to parse timestamp (simplified)
                     let timestamp = Utc::now(); // For now, use current time
-                    
+
                     return Some(CommandLogEntry {
                         timestamp,
                         user: user_part.to_string(),
@@ -347,7 +364,7 @@ impl ClaudeDataManager {
         for entry in fs::read_dir(&todos_dir)? {
             let entry = entry?;
             let file_path = entry.path();
-            
+
             if file_path.extension().and_then(|e| e.to_str()) == Some("json") {
                 if let Ok(content) = fs::read_to_string(&file_path) {
                     if let Ok(todos) = serde_json::from_str::<Vec<TodoItem>>(&content) {
@@ -362,7 +379,7 @@ impl ClaudeDataManager {
 
     pub async fn get_settings(&self) -> Result<ClaudeSettings, Box<dyn std::error::Error>> {
         let settings_file = self.claude_dir.join("settings.json");
-        
+
         if !settings_file.exists() {
             return Err("Settings file not found".into());
         }
@@ -372,20 +389,22 @@ impl ClaudeDataManager {
         Ok(settings)
     }
 
-    pub async fn get_project_summary(&self) -> Result<Vec<ProjectSummary>, Box<dyn std::error::Error>> {
+    pub async fn get_project_summary(
+        &self,
+    ) -> Result<Vec<ProjectSummary>, Box<dyn std::error::Error>> {
         let sessions = self.get_all_sessions().await?;
         let mut project_map: HashMap<String, ProjectSummary> = HashMap::new();
 
         for session in sessions {
-            let entry = project_map.entry(session.project_path.clone()).or_insert_with(|| {
-                ProjectSummary {
+            let entry = project_map
+                .entry(session.project_path.clone())
+                .or_insert_with(|| ProjectSummary {
                     project_path: session.project_path.clone(),
                     session_count: 0,
                     last_activity: session.updated_at,
                     total_messages: 0,
                     active_todos: 0,
-                }
-            });
+                });
 
             entry.session_count += 1;
             entry.total_messages += session.message_count;
@@ -403,11 +422,13 @@ impl ClaudeDataManager {
         let todos = self.get_todos().await?;
 
         let total_messages = sessions.iter().map(|s| s.message_count).sum();
-        let active_projects = sessions.iter()
+        let active_projects = sessions
+            .iter()
             .map(|s| &s.project_path)
             .collect::<std::collections::HashSet<_>>()
             .len();
-        let pending_todos = todos.iter()
+        let pending_todos = todos
+            .iter()
             .filter(|t| matches!(t.status, TodoStatus::Pending | TodoStatus::InProgress))
             .count();
 

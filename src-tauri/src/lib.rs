@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-mod models;
 mod claude_data;
 mod commands;
+mod models;
 #[cfg(test)]
 mod tests;
 
@@ -11,9 +11,8 @@ use commands::*;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let data_manager = Arc::new(
-        ClaudeDataManager::new().expect("Failed to initialize Claude data manager")
-    );
+    let data_manager =
+        Arc::new(ClaudeDataManager::new().expect("Failed to initialize Claude data manager"));
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())

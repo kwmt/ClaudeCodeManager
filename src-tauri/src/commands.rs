@@ -38,20 +38,14 @@ pub async fn get_command_history(
 pub async fn get_todos(
     data_manager: State<'_, Arc<ClaudeDataManager>>,
 ) -> Result<Vec<TodoItem>, String> {
-    data_manager
-        .get_todos()
-        .await
-        .map_err(|e| e.to_string())
+    data_manager.get_todos().await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub async fn get_settings(
     data_manager: State<'_, Arc<ClaudeDataManager>>,
 ) -> Result<ClaudeSettings, String> {
-    data_manager
-        .get_settings()
-        .await
-        .map_err(|e| e.to_string())
+    data_manager.get_settings().await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]

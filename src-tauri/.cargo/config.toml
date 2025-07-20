@@ -1,0 +1,35 @@
+[build]
+# Use faster linker for tests
+target-dir = "target"
+
+[target.x86_64-apple-darwin]
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+[target.aarch64-apple-darwin]
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "link-arg=/DEBUG:NONE"]
+
+# Test optimization settings
+[profile.test]
+# Faster builds for tests
+opt-level = 0
+debug = 1
+debug-assertions = false
+overflow-checks = false
+lto = false
+panic = 'unwind'
+incremental = false
+codegen-units = 256
+
+# Fast development profile
+[profile.dev]
+opt-level = 0
+debug = 1
+debug-assertions = true
+overflow-checks = true
+lto = false
+panic = 'unwind'
+incremental = true
+codegen-units = 256

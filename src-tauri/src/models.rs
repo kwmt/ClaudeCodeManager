@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClaudeSession {
@@ -33,8 +33,14 @@ pub enum MessageType {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum MessageContent {
-    User { role: String, content: String },
-    Assistant { role: String, content: Vec<ContentBlock> },
+    User {
+        role: String,
+        content: String,
+    },
+    Assistant {
+        role: String,
+        content: Vec<ContentBlock>,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
