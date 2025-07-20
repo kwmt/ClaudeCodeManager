@@ -12,9 +12,9 @@ afterEach(() => {
 });
 
 // Global setup for test environment
-if (typeof global !== 'undefined') {
+if (typeof globalThis !== 'undefined') {
   // @ts-expect-error - global setup for testing
-  global.IS_REACT_ACT_ENVIRONMENT = true;
+  globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 }
 
 // Mock window.matchMedia

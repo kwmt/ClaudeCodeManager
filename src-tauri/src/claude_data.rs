@@ -10,7 +10,7 @@ use tokio::sync::RwLock;
 
 pub struct ClaudeDataManager {
     claude_dir: PathBuf,
-    sessions_cache: RwLock<HashMap<String, ClaudeSession>>,
+    _sessions_cache: RwLock<HashMap<String, ClaudeSession>>,
     messages_cache: RwLock<HashMap<String, Vec<ClaudeMessage>>>,
 }
 
@@ -25,7 +25,7 @@ impl ClaudeDataManager {
 
         Ok(Self {
             claude_dir,
-            sessions_cache: RwLock::new(HashMap::new()),
+            _sessions_cache: RwLock::new(HashMap::new()),
             messages_cache: RwLock::new(HashMap::new()),
         })
     }
@@ -316,7 +316,7 @@ impl ClaudeDataManager {
         // Parse format: [Thu Jul 17 15:18:23 JST 2025] user: command
         if let Some(start) = line.find('[') {
             if let Some(end) = line.find(']') {
-                let timestamp_str = &line[start + 1..end];
+                let _timestamp_str = &line[start + 1..end];
                 
                 if let Some(colon_pos) = line[end..].find(':') {
                     let user_part = &line[end + 2..end + colon_pos];

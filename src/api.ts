@@ -9,19 +9,33 @@ import type {
 } from "./types";
 
 // Check if we're running in Tauri environment
-const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
-
+// Tauri 2.0 では __TAURI__ の代わりに直接 API のインポートを試行
+let isTauri = false;
 let tauriApi: any = null;
 let mockApi: any = null;
 
-if (isTauri) {
-  // Dynamically import Tauri API only when needed
+try {
+  // Try to import Tauri API first
   tauriApi = await import("@tauri-apps/api/core");
-} else {
+  // Test if invoke function is available
+  await tauriApi.invoke('get_session_stats');
+  isTauri = true;
+  console.log('Running in Tauri: true (detected via API test)');
+} catch (error) {
+  // If Tauri API fails, we're in browser environment
+  isTauri = false;
+  console.log('Running in Tauri: false (detected via API test failure)');
+  console.log('Tauri API error:', error);
+  
   // Use mock API for development/screenshots
   const mockModule = await import("./api-mock");
   mockApi = mockModule.mockApi;
 }
+
+// Also check window.__TAURI__ for compatibility
+const hasWindowTauri = typeof window !== 'undefined' && '__TAURI__' in window;
+console.log('window.__TAURI__ available:', hasWindowTauri);
+console.log('Final isTauri value:', isTauri);
 
 export const api = {
   // Session management
