@@ -1,0 +1,24 @@
+[build]
+# Use incremental compilation for development builds
+incremental = true
+
+[target.x86_64-apple-darwin]
+# Cache compiled dependencies to speed up builds
+rustflags = ["-C", "target-cpu=native"]
+
+[target.aarch64-apple-darwin]
+rustflags = ["-C", "target-cpu=native"]
+
+[profile.dev]
+# Optimize dev builds for faster compile time
+opt-level = 0
+debug = true
+incremental = true
+codegen-units = 16
+
+[profile.test]
+# Optimize test builds for speed
+opt-level = 0
+debug = 1
+incremental = true
+codegen-units = 16
