@@ -104,6 +104,121 @@ describe('SessionBrowser', () => {
     });
   });
 
+  it('displays user message content correctly', async () => {
+    const mockMessages = [
+      {
+        uuid: 'msg1',
+        session_id: 'session1',
+        timestamp: '2025-07-20T10:00:00Z',
+        message_type: 'User',
+        content: { User: { role: 'user', content: 'Hello, can you help me with TypeScript?' } },
+        cwd: '/test',
+        git_branch: 'main'
+      }
+    ];
+
+    mockApi.getAllSessions.mockResolvedValue(mockSessions);
+    mockApi.getSessionMessages.mockResolvedValue(mockMessages);
+
+    render(<SessionBrowser />);
+
+    await waitFor(() => {
+      expect(screen.getByText('project1')).toBeInTheDocument();
+    });
+
+    const sessionItem = screen.getByText('project1').closest('.session-item');
+    fireEvent.click(sessionItem!);
+
+    await waitFor(() => {
+      expect(screen.getByText('Hello, can you help me with TypeScript?')).toBeInTheDocument();
+    });
+  });
+
+  it('displays assistant message with text blocks correctly', async () => {
+    const mockMessages = [
+      {
+        uuid: 'msg2',
+        session_id: 'session1',
+        timestamp: '2025-07-20T10:01:00Z',
+        message_type: 'Assistant',
+        content: {
+          Assistant: {
+            role: 'assistant',
+            content: [
+              { Text: { text: 'Of course! I\'d be happy to help you with TypeScript.' } },
+              { Text: { text: 'What specific aspect would you like to know about?' } }
+            ]
+          }
+        },
+        cwd: '/test',
+        git_branch: 'main'
+      }
+    ];
+
+    mockApi.getAllSessions.mockResolvedValue(mockSessions);
+    mockApi.getSessionMessages.mockResolvedValue(mockMessages);
+
+    render(<SessionBrowser />);
+
+    await waitFor(() => {
+      expect(screen.getByText('project1')).toBeInTheDocument();
+    });
+
+    const sessionItem = screen.getByText('project1').closest('.session-item');
+    fireEvent.click(sessionItem!);
+
+    await waitFor(() => {
+      expect(screen.getByText('Of course! I\'d be happy to help you with TypeScript.')).toBeInTheDocument();
+      expect(screen.getByText('What specific aspect would you like to know about?')).toBeInTheDocument();
+    });
+  });
+
+  it('displays assistant message with tool use correctly', async () => {
+    const mockMessages = [
+      {
+        uuid: 'msg3',
+        session_id: 'session1',
+        timestamp: '2025-07-20T10:02:00Z',
+        message_type: 'Assistant',
+        content: {
+          Assistant: {
+            role: 'assistant',
+            content: [
+              { Text: { text: 'Let me check your TypeScript configuration.' } },
+              { 
+                ToolUse: { 
+                  id: 'tool1',
+                  name: 'Read',
+                  input: { file_path: '/test/tsconfig.json' }
+                }
+              }
+            ]
+          }
+        },
+        cwd: '/test',
+        git_branch: 'main'
+      }
+    ];
+
+    mockApi.getAllSessions.mockResolvedValue(mockSessions);
+    mockApi.getSessionMessages.mockResolvedValue(mockMessages);
+
+    render(<SessionBrowser />);
+
+    await waitFor(() => {
+      expect(screen.getByText('project1')).toBeInTheDocument();
+    });
+
+    const sessionItem = screen.getByText('project1').closest('.session-item');
+    fireEvent.click(sessionItem!);
+
+    await waitFor(() => {
+      expect(screen.getByText('Let me check your TypeScript configuration.')).toBeInTheDocument();
+      expect(screen.getByText('Tool: Read')).toBeInTheDocument();
+      expect(screen.getByText('"file_path": "/test/tsconfig.json"', { exact: false })).toBeInTheDocument();
+    });
+  });
+
   it('handles export functionality', async () => {
     mockApi.getAllSessions.mockResolvedValue(mockSessions);
     mockApi.exportSessionData.mockResolvedValue('{"test": "data"}');
