@@ -83,20 +83,20 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
 
   const renderMessageContent = (message: ClaudeMessage) => {
     if (message.message_type === 'User') {
-      const content = (message.content as any).User?.content || '';
+      const content = typeof message.content.content === 'string' ? message.content.content : '';
       return <div className="message-content user-content">{content}</div>;
     } else {
-      const content = (message.content as any).Assistant?.content || [];
+      const content = Array.isArray(message.content.content) ? message.content.content : [];
       return (
         <div className="message-content assistant-content">
-          {content.map((block: any, index: number) => {
-            if (block.Text) {
-              return <div key={index} className="text-block">{block.Text.text}</div>;
-            } else if (block.ToolUse) {
+          {content.map((block, index) => {
+            if (block.type === 'text') {
+              return <div key={index} className="text-block">{block.text}</div>;
+            } else if (block.type === 'tool_use') {
               return (
                 <div key={index} className="tool-use-block">
-                  <strong>Tool: {block.ToolUse.name}</strong>
-                  <pre>{JSON.stringify(block.ToolUse.input, null, 2)}</pre>
+                  <strong>Tool: {block.name}</strong>
+                  <pre>{JSON.stringify(block.input, null, 2)}</pre>
                 </div>
               );
             }

@@ -13,18 +13,18 @@ export interface ClaudeMessage {
   session_id: string;
   timestamp: string;
   message_type: 'User' | 'Assistant';
-  content: MessageContent;
+  content: {
+    role: string;
+    content: string | ContentBlock[];
+  };
   cwd: string;
   git_branch?: string;
 }
 
-export type MessageContent = 
-  | { User: { role: string; content: string } }
-  | { Assistant: { role: string; content: ContentBlock[] } };
 
 export type ContentBlock = 
-  | { Text: { text: string } }
-  | { ToolUse: { id: string; name: string; input: any } };
+  | { type: "text"; text: string }
+  | { type: "tool_use"; id: string; name: string; input: any };
 
 export interface TodoItem {
   id: string;
