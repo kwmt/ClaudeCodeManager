@@ -56,10 +56,14 @@ jobs:
     - name: Setup pkg-config path (Ubuntu)
       if: matrix.os == 'ubuntu-latest'
       run: |
-        echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig" >> $GITHUB_ENV
-        # Verify glib installation
-        pkg-config --modversion glib-2.0 || echo "glib-2.0 not found"
-        find /usr -name "glib-2.0.pc" 2>/dev/null || echo "glib-2.0.pc not found"
+        echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig:/usr/lib/pkgconfig" >> $GITHUB_ENV
+        # Debug: List all installed glib packages
+        dpkg -l | grep glib || echo "No glib packages found"
+        # Find all .pc files that might be glib-related
+        find /usr -name "*glib*.pc" 2>/dev/null || echo "No glib .pc files found"
+        # Check pkg-config paths
+        ls -la /usr/lib/x86_64-linux-gnu/pkgconfig/ | grep glib || echo "No glib in x86_64 pkgconfig"
+        ls -la /usr/share/pkgconfig/ | grep glib || echo "No glib in share pkgconfig"
 
     - name: Run TypeScript type check
       run: |
@@ -135,6 +139,7 @@ jobs:
           librsvg2-dev \
           patchelf \
           libglib2.0-dev \
+          libglib2.0-dev-bin \
           libgdk-pixbuf2.0-dev \
           libcairo-gobject2
 
@@ -243,6 +248,7 @@ jobs:
           librsvg2-dev \
           patchelf \
           libglib2.0-dev \
+          libglib2.0-dev-bin \
           libgdk-pixbuf2.0-dev \
           libcairo-gobject2
 
