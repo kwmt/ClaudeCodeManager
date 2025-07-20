@@ -133,9 +133,13 @@ describe('SessionBrowser', () => {
       expect(screen.getByText('Messages for project1')).toBeInTheDocument();
     });
 
-    // Check that user message content exists
+    // Wait for messages to load
+    await waitFor(() => {
+      expect(document.querySelector('.user-content')).toBeInTheDocument();
+    });
+
+    // Check that user message content exists and has correct content
     const userContent = document.querySelector('.user-content');
-    expect(userContent).toBeInTheDocument();
     expect(userContent).toHaveTextContent('Hello, can you help me with TypeScript?');
   });
 
@@ -176,12 +180,17 @@ describe('SessionBrowser', () => {
       expect(screen.getByText('Messages for project1')).toBeInTheDocument();
     });
 
-    // Check that assistant content exists and has text blocks
-    const assistantContent = document.querySelector('.assistant-content');
-    expect(assistantContent).toBeInTheDocument();
+    // Wait for assistant content to load
+    await waitFor(() => {
+      expect(document.querySelector('.assistant-content')).toBeInTheDocument();
+    });
+
+    // Wait for text blocks to be rendered
+    await waitFor(() => {
+      expect(document.querySelectorAll('.text-block')).toHaveLength(2);
+    });
     
     const textBlocks = document.querySelectorAll('.text-block');
-    expect(textBlocks).toHaveLength(2);
     expect(textBlocks[0]).toHaveTextContent('Of course! I\'d be happy to help you with TypeScript.');
     expect(textBlocks[1]).toHaveTextContent('What specific aspect would you like to know about?');
   });
@@ -229,11 +238,22 @@ describe('SessionBrowser', () => {
       expect(screen.getByText('Messages for project1')).toBeInTheDocument();
     });
 
-    // Check that message content exists first
-    const assistantContent = document.querySelector('.assistant-content');
-    expect(assistantContent).toBeInTheDocument();
+    // Wait for assistant content to load
+    await waitFor(() => {
+      expect(document.querySelector('.assistant-content')).toBeInTheDocument();
+    });
+
+    // Wait for content blocks to be rendered
+    await waitFor(() => {
+      expect(document.querySelector('.text-block')).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(document.querySelector('.tool-use-block')).toBeInTheDocument();
+    });
     
-    // Check for text content using a more flexible approach
+    // Check for text content
+    const assistantContent = document.querySelector('.assistant-content');
     expect(assistantContent).toHaveTextContent('Let me check your TypeScript configuration.');
     expect(assistantContent).toHaveTextContent('Tool: Read');
   });
