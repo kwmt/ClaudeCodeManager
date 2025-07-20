@@ -15,9 +15,11 @@
     "test:coverage": "vitest --coverage",
     "cargo:test": "cd src-tauri && cargo test",
     "cargo:check": "cd src-tauri && cargo check",
+    "cargo:check:fast": "./scripts/fast-check.sh",
     "cargo:clippy": "cd src-tauri && cargo clippy",
     "lint": "npm run cargo:clippy",
-    "check": "npm run cargo:check && tsc --noEmit"
+    "check": "npm run cargo:check && tsc --noEmit",
+    "check:fast": "npm run cargo:check:fast && tsc --noEmit"
   },
   "dependencies": {
     "react": "^18.3.1",

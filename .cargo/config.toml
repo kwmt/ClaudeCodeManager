@@ -1,22 +1,49 @@
 [build]
 # Use incremental compilation for development builds
 incremental = true
+# Keep more intermediate artifacts
+pipelining = true
 
 [target.x86_64-apple-darwin]
 # Cache compiled dependencies to speed up builds
-rustflags = ["-C", "target-cpu=native"]
+rustflags = ["-C", "target-cpu=native", "-C", "codegen-units=4"]
 
 [target.aarch64-apple-darwin]
-rustflags = ["-C", "target-cpu=native"]
+rustflags = ["-C", "target-cpu=native", "-C", "codegen-units=4"]
+
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "codegen-units=4"]
+
+# Environment variables for faster builds
+[env]
+# Enable incremental compilation by default
+CARGO_INCREMENTAL = "1"
+# Use faster linker on macOS
+CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER = { value = "clang", condition = { any-of = [{ platform = "x86_64-apple-darwin" }] } }
+CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER = { value = "clang", condition = { any-of = [{ platform = "aarch64-apple-darwin" }] } }
+# Enable sccache if available (install with: cargo install sccache)
+# RUSTC_WRAPPER = { value = "sccache", condition = { program = "sccache" } }
 
 [profile.dev]
 # Optimize dev builds for faster compile time
 opt-level = 0
-debug = true
+debug = 2
 incremental = true
+# Reduce debug info for faster compilation
+debug-assertions = true
+# Keep more codegen units for parallel compilation
+codegen-units = 16
 
 [profile.test]
-# Optimize test builds
+# Optimize test builds for speed
 opt-level = 0
-debug = true
+debug = 1  # Reduced debug info for faster test compilation
 incremental = true
+codegen-units = 16
+
+[profile.check]
+# Special profile for cargo check - minimal work
+opt-level = 0
+debug = false  # No debug info for check
+incremental = true
+codegen-units = 256  # Maximum parallelism
