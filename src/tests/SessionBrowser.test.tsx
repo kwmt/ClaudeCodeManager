@@ -105,8 +105,8 @@ describe('SessionBrowser', () => {
     mockApi.exportSessionData.mockResolvedValue('{"test": "data"}');
 
     // Mock URL.createObjectURL and document methods
-    global.URL.createObjectURL = vi.fn(() => 'blob:test');
-    global.URL.revokeObjectURL = vi.fn();
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:test');
+    globalThis.URL.revokeObjectURL = vi.fn();
     
     const mockClick = vi.fn();
     const mockAppendChild = vi.fn();
