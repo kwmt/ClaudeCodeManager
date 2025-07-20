@@ -21,7 +21,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [windows-latest, macos-latest]
         node-version: [18, 20]
 
     steps:
@@ -52,18 +52,6 @@ jobs:
     - name: Install Node.js dependencies
       run: |
         npm ci
-
-    - name: Setup pkg-config path (Ubuntu)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig:/usr/lib/pkgconfig" >> $GITHUB_ENV
-        # Debug: List all installed glib packages
-        dpkg -l | grep glib || echo "No glib packages found"
-        # Find all .pc files that might be glib-related
-        find /usr -name "*glib*.pc" 2>/dev/null || echo "No glib .pc files found"
-        # Check pkg-config paths
-        ls -la /usr/lib/x86_64-linux-gnu/pkgconfig/ | grep glib || echo "No glib in x86_64 pkgconfig"
-        ls -la /usr/share/pkgconfig/ | grep glib || echo "No glib in share pkgconfig"
 
     - name: Run TypeScript type check
       run: |
@@ -99,7 +87,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [windows-latest, macos-latest]
 
     steps:
     - name: Checkout repository
@@ -123,34 +111,9 @@ jobs:
         cache-on-failure: true
         shared-key: tauri-build-${{ matrix.os }}
 
-    - name: Install system dependencies (Ubuntu)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          build-essential \
-          curl \
-          wget \
-          file \
-          pkg-config \
-          libgtk-3-dev \
-          libwebkit2gtk-4.1-dev \
-          libayatana-appindicator3-dev \
-          librsvg2-dev \
-          patchelf \
-          libglib2.0-dev \
-          libglib2.0-dev-bin \
-          libgdk-pixbuf2.0-dev \
-          libcairo-gobject2
-
     - name: Install Node.js dependencies
       run: |
         npm ci
-
-    - name: Setup pkg-config path (Ubuntu)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig" >> $GITHUB_ENV
 
     - name: Build frontend
       run: |
@@ -208,7 +171,7 @@ jobs:
     needs: [test, build, security]
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [windows-latest, macos-latest]
 
     steps:
     - name: Checkout repository
@@ -232,34 +195,9 @@ jobs:
         cache-on-failure: true
         shared-key: tauri-build-${{ matrix.os }}
 
-    - name: Install system dependencies (Ubuntu)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          build-essential \
-          curl \
-          wget \
-          file \
-          pkg-config \
-          libgtk-3-dev \
-          libwebkit2gtk-4.1-dev \
-          libayatana-appindicator3-dev \
-          librsvg2-dev \
-          patchelf \
-          libglib2.0-dev \
-          libglib2.0-dev-bin \
-          libgdk-pixbuf2.0-dev \
-          libcairo-gobject2
-
     - name: Install Node.js dependencies
       run: |
         npm ci
-
-    - name: Setup pkg-config path (Ubuntu)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig" >> $GITHUB_ENV
 
     - name: Build Tauri app (Release)
       env:
