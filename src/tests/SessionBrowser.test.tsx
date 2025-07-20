@@ -133,12 +133,10 @@ describe('SessionBrowser', () => {
       expect(screen.getByText('Messages for project1')).toBeInTheDocument();
     });
 
-    // Debug: Check what's actually rendered
-    const messageContent = screen.getByText((_, element) => {
-      return element?.className?.includes('user-content') ?? false;
-    });
-    
-    expect(messageContent).toHaveTextContent('Hello, can you help me with TypeScript?');
+    // Check that user message content exists
+    const userContent = document.querySelector('.user-content');
+    expect(userContent).toBeInTheDocument();
+    expect(userContent).toHaveTextContent('Hello, can you help me with TypeScript?');
   });
 
   it('displays assistant message with text blocks correctly', async () => {
@@ -178,11 +176,11 @@ describe('SessionBrowser', () => {
       expect(screen.getByText('Messages for project1')).toBeInTheDocument();
     });
 
-    // Check for text blocks using className
-    const textBlocks = screen.getAllByText((_, element) => {
-      return element?.className?.includes('text-block') ?? false;
-    });
+    // Check that assistant content exists and has text blocks
+    const assistantContent = document.querySelector('.assistant-content');
+    expect(assistantContent).toBeInTheDocument();
     
+    const textBlocks = document.querySelectorAll('.text-block');
     expect(textBlocks).toHaveLength(2);
     expect(textBlocks[0]).toHaveTextContent('Of course! I\'d be happy to help you with TypeScript.');
     expect(textBlocks[1]).toHaveTextContent('What specific aspect would you like to know about?');
