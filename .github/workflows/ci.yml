@@ -123,13 +123,12 @@ jobs:
           pkg-config \
           libgtk-3-dev \
           libwebkit2gtk-4.1-dev \
-          libappindicator3-dev \
+          libayatana-appindicator3-dev \
           librsvg2-dev \
           patchelf \
           libglib2.0-dev \
           libgdk-pixbuf2.0-dev \
-          libcairo-gobject2 \
-          libayatana-appindicator3-dev
+          libcairo-gobject2
 
     - name: Install Node.js dependencies
       run: |
@@ -227,13 +226,12 @@ jobs:
           pkg-config \
           libgtk-3-dev \
           libwebkit2gtk-4.1-dev \
-          libappindicator3-dev \
+          libayatana-appindicator3-dev \
           librsvg2-dev \
           patchelf \
           libglib2.0-dev \
           libgdk-pixbuf2.0-dev \
-          libcairo-gobject2 \
-          libayatana-appindicator3-dev
+          libcairo-gobject2
 
     - name: Install Node.js dependencies
       run: |
