@@ -134,7 +134,7 @@ describe('SessionBrowser', () => {
     });
 
     // Debug: Check what's actually rendered
-    const messageContent = screen.getByText((content, element) => {
+    const messageContent = screen.getByText((_, element) => {
       return element?.className?.includes('user-content') ?? false;
     });
     
@@ -179,7 +179,7 @@ describe('SessionBrowser', () => {
     });
 
     // Check for text blocks using className
-    const textBlocks = screen.getAllByText((content, element) => {
+    const textBlocks = screen.getAllByText((_, element) => {
       return element?.className?.includes('text-block') ?? false;
     });
     
@@ -232,14 +232,14 @@ describe('SessionBrowser', () => {
     });
 
     // Check for text block
-    const textBlock = screen.getByText((content, element) => {
+    const textBlock = screen.getByText((_, element) => {
       return (element?.className?.includes('text-block') && 
              element?.textContent?.includes('Let me check your TypeScript configuration.')) ?? false;
     });
     expect(textBlock).toBeInTheDocument();
 
     // Check for tool use block
-    const toolBlock = screen.getByText((content, element) => {
+    const toolBlock = screen.getByText((_, element) => {
       return element?.className?.includes('tool-use-block') ?? false;
     });
     expect(toolBlock).toBeInTheDocument();
