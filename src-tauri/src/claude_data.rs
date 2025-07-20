@@ -1,7 +1,6 @@
 use crate::models::*;
 use chrono::{DateTime, Utc};
 use dirs::home_dir;
-use serde_json;
 use std::collections::HashMap;
 use std::fs;
 use std::io::{BufRead, BufReader};
@@ -154,14 +153,14 @@ impl ClaudeDataManager {
             let project_path = entry.path();
             
             if project_path.is_dir() {
-                let session_file = project_path.join(format!("{}.jsonl", session_id));
+                let session_file = project_path.join(format!("{session_id}.jsonl"));
                 if session_file.exists() {
                     return Ok(session_file);
                 }
             }
         }
         
-        Err(format!("Session file not found for ID: {}", session_id).into())
+        Err(format!("Session file not found for ID: {session_id}").into())
     }
 
     async fn parse_messages_file(
