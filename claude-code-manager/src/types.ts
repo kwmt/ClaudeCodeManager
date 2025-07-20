@@ -1,0 +1,82 @@
+export interface ClaudeSession {
+  session_id: string;
+  project_path: string;
+  created_at: string;
+  updated_at: string;
+  message_count: number;
+  git_branch?: string;
+}
+
+export interface ClaudeMessage {
+  uuid: string;
+  parent_uuid?: string;
+  session_id: string;
+  timestamp: string;
+  message_type: 'User' | 'Assistant';
+  content: MessageContent;
+  cwd: string;
+  git_branch?: string;
+}
+
+export type MessageContent = 
+  | { User: { role: string; content: string } }
+  | { Assistant: { role: string; content: ContentBlock[] } };
+
+export type ContentBlock = 
+  | { Text: { text: string } }
+  | { ToolUse: { id: string; name: string; input: any } };
+
+export interface TodoItem {
+  id: string;
+  content: string;
+  status: 'Pending' | 'InProgress' | 'Completed';
+  priority: 'Low' | 'Medium' | 'High';
+}
+
+export interface CommandLogEntry {
+  timestamp: string;
+  user: string;
+  command: string;
+  cwd?: string;
+}
+
+export interface ClaudeSettings {
+  permissions: PermissionSettings;
+  hooks: HookSettings;
+}
+
+export interface PermissionSettings {
+  defaultMode: string;
+  allow: string[];
+  deny: string[];
+}
+
+export interface HookSettings {
+  PreToolUse: HookMatcher[];
+}
+
+export interface HookMatcher {
+  matcher: string;
+  hooks: Hook[];
+}
+
+export interface Hook {
+  type: string;
+  command: string;
+}
+
+export interface ProjectSummary {
+  project_path: string;
+  session_count: number;
+  last_activity: string;
+  total_messages: number;
+  active_todos: number;
+}
+
+export interface SessionStats {
+  total_sessions: number;
+  total_messages: number;
+  total_commands: number;
+  active_projects: number;
+  pending_todos: number;
+}
