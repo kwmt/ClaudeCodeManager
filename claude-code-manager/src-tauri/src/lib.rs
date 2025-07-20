@@ -3,6 +3,8 @@ use std::sync::Arc;
 mod models;
 mod claude_data;
 mod commands;
+#[cfg(test)]
+mod tests;
 
 use claude_data::ClaudeDataManager;
 use commands::*;
