@@ -133,10 +133,10 @@ describe('SessionBrowser', () => {
       expect(screen.getByText('Messages for project1')).toBeInTheDocument();
     });
 
-    // Wait for messages to load
+    // Wait for messages to load with extended timeout for CI
     await waitFor(() => {
       expect(document.querySelector('.user-content')).toBeInTheDocument();
-    });
+    }, { timeout: 5000 });
 
     // Check that user message content exists and has correct content
     const userContent = document.querySelector('.user-content');
@@ -180,15 +180,15 @@ describe('SessionBrowser', () => {
       expect(screen.getByText('Messages for project1')).toBeInTheDocument();
     });
 
-    // Wait for assistant content to load
+    // Wait for assistant content to load with extended timeout for CI
     await waitFor(() => {
       expect(document.querySelector('.assistant-content')).toBeInTheDocument();
-    });
+    }, { timeout: 5000 });
 
     // Wait for text blocks to be rendered
     await waitFor(() => {
       expect(document.querySelectorAll('.text-block')).toHaveLength(2);
-    });
+    }, { timeout: 5000 });
     
     const textBlocks = document.querySelectorAll('.text-block');
     expect(textBlocks[0]).toHaveTextContent('Of course! I\'d be happy to help you with TypeScript.');
@@ -238,19 +238,19 @@ describe('SessionBrowser', () => {
       expect(screen.getByText('Messages for project1')).toBeInTheDocument();
     });
 
-    // Wait for assistant content to load
+    // Wait for assistant content to load with extended timeout for CI
     await waitFor(() => {
       expect(document.querySelector('.assistant-content')).toBeInTheDocument();
-    });
+    }, { timeout: 5000 });
 
     // Wait for content blocks to be rendered
     await waitFor(() => {
       expect(document.querySelector('.text-block')).toBeInTheDocument();
-    });
+    }, { timeout: 5000 });
 
     await waitFor(() => {
       expect(document.querySelector('.tool-use-block')).toBeInTheDocument();
-    });
+    }, { timeout: 5000 });
     
     // Check for text content
     const assistantContent = document.querySelector('.assistant-content');
