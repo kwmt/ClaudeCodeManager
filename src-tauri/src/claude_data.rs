@@ -336,20 +336,20 @@ impl ClaudeDataManager {
 
                 if let Some(colon_pos) = line[end..].find(':') {
                     let absolute_colon_pos = end + colon_pos;
-                    
+
                     // Skip "] " after the timestamp
-                    let user_start = if line.len() > end + 2 { 
-                        end + 2 
-                    } else { 
-                        return None 
+                    let user_start = if line.len() > end + 2 {
+                        end + 2
+                    } else {
+                        return None;
                     };
-                    
+
                     if absolute_colon_pos > user_start {
                         let user_part = &line[user_start..absolute_colon_pos];
-                        let command_start = if line.len() > absolute_colon_pos + 2 { 
-                            absolute_colon_pos + 2 
-                        } else { 
-                            return None 
+                        let command_start = if line.len() > absolute_colon_pos + 2 {
+                            absolute_colon_pos + 2
+                        } else {
+                            return None;
                         };
                         let command = &line[command_start..];
 
