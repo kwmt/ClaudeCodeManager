@@ -3,10 +3,12 @@
 target-dir = "target"
 
 [target.x86_64-apple-darwin]
-rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+# Use system linker on macOS (lld not available)
+rustflags = ["-C", "target-cpu=native"]
 
 [target.aarch64-apple-darwin]
-rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+# Use system linker on macOS (lld not available)
+rustflags = ["-C", "target-cpu=native"]
 
 [target.x86_64-pc-windows-msvc]
 rustflags = ["-C", "link-arg=/DEBUG:NONE"]
