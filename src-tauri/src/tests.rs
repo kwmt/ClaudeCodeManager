@@ -90,9 +90,19 @@ mod tests {
     async fn test_claude_data_manager_initialization() {
         let _temp_dir = create_test_claude_dir();
         
-        // Test that initialization succeeds when ~/.claude directory exists
+        // Test initialization behavior regardless of ~/.claude directory existence
+        // In CI environments, ~/.claude may not exist, which is expected behavior
         let result = ClaudeDataManager::new();
-        assert!(result.is_ok(), "Expected initialization to succeed with existing ~/.claude directory");
+        
+        // Check if ~/.claude exists in the current environment
+        let home = dirs::home_dir().unwrap();
+        let claude_dir = home.join(".claude");
+        
+        if claude_dir.exists() {
+            assert!(result.is_ok(), "Expected initialization to succeed with existing ~/.claude directory");
+        } else {
+            assert!(result.is_err(), "Expected initialization to fail without ~/.claude directory");
+        }
     }
 
     #[tokio::test]
