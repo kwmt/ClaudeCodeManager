@@ -29,7 +29,7 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-        cache-dependency-path: claude-code-manager/package-lock.json
+        cache-dependency-path: package-lock.json
 
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@stable
@@ -39,43 +39,38 @@ jobs:
     - name: Rust Cache
       uses: Swatinem/rust-cache@v2
       with:
-        workspaces: claude-code-manager/src-tauri
+        workspaces: src-tauri
 
     - name: Install Node.js dependencies
       run: |
-        cd claude-code-manager
         npm ci
 
     - name: Run TypeScript type check
       run: |
-        cd claude-code-manager
         npm run check
 
     - name: Run frontend tests
       run: |
-        cd claude-code-manager
         npm run test:coverage
 
     - name: Run Rust tests
       run: |
-        cd claude-code-manager
         npm run cargo:test
 
     - name: Run Rust linting
       run: |
-        cd claude-code-manager
         npm run cargo:clippy -- -- -D warnings
 
     - name: Check Rust formatting
       run: |
-        cd claude-code-manager/src-tauri
+        cd src-tauri
         cargo fmt -- --check
 
     - name: Upload coverage reports
       if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20'
       uses: codecov/codecov-action@v3
       with:
-        file: claude-code-manager/coverage/coverage-final.json
+        file: coverage/coverage-final.json
         flags: frontend
         name: frontend-coverage
 
@@ -95,7 +90,7 @@ jobs:
       with:
         node-version: '20'
         cache: 'npm'
-        cache-dependency-path: claude-code-manager/package-lock.json
+        cache-dependency-path: package-lock.json
 
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@stable
@@ -103,7 +98,7 @@ jobs:
     - name: Rust Cache
       uses: Swatinem/rust-cache@v2
       with:
-        workspaces: claude-code-manager/src-tauri
+        workspaces: src-tauri
 
     - name: Install system dependencies (Ubuntu)
       if: matrix.os == 'ubuntu-latest'
@@ -113,17 +108,14 @@ jobs:
 
     - name: Install Node.js dependencies
       run: |
-        cd claude-code-manager
         npm ci
 
     - name: Build frontend
       run: |
-        cd claude-code-manager
         npm run build
 
     - name: Build Tauri app (Debug)
       run: |
-        cd claude-code-manager
         npm run tauri build -- --debug
 
     - name: Upload build artifacts
@@ -131,7 +123,7 @@ jobs:
       with:
         name: tauri-app-${{ matrix.os }}
         path: |
-          claude-code-manager/src-tauri/target/debug/bundle/
+          src-tauri/target/debug/bundle/
         retention-days: 30
 
   security:
@@ -152,17 +144,15 @@ jobs:
 
     - name: Install Node.js dependencies
       run: |
-        cd claude-code-manager
         npm ci
 
     - name: Run npm audit
       run: |
-        cd claude-code-manager
         npm audit --audit-level=moderate
 
     - name: Run Rust security audit
       run: |
-        cd claude-code-manager/src-tauri
+        cd src-tauri
         cargo install cargo-audit
         cargo audit
 
@@ -184,15 +174,15 @@ jobs:
       with:
         node-version: '20'
         cache: 'npm'
-        cache-dependency-path: claude-code-manager/package-lock.json
+        cache-dependency-path: package-lock.json
 
     - name: Setup Rust
-      uses: dtolnay/rust-toolboy@stable
+      uses: dtolnay/rust-toolchain@stable
 
     - name: Rust Cache
       uses: Swatinem/rust-cache@v2
       with:
-        workspaces: claude-code-manager/src-tauri
+        workspaces: src-tauri
 
     - name: Install system dependencies (Ubuntu)
       if: matrix.os == 'ubuntu-latest'
@@ -202,12 +192,10 @@ jobs:
 
     - name: Install Node.js dependencies
       run: |
-        cd claude-code-manager
         npm ci
 
     - name: Build Tauri app (Release)
       run: |
-        cd claude-code-manager
         npm run tauri:build
 
     - name: Upload release artifacts
@@ -215,5 +203,5 @@ jobs:
       with:
         name: claude-code-manager-${{ matrix.os }}-release
         path: |
-          claude-code-manager/src-tauri/target/release/bundle/
+          src-tauri/target/release/bundle/
         retention-days: 90
