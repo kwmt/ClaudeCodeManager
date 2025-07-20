@@ -19,6 +19,10 @@ describe('SessionBrowser', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
+  
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
   const mockSessions = [
     {
@@ -105,23 +109,22 @@ describe('SessionBrowser', () => {
     mockApi.exportSessionData.mockResolvedValue('{"test": "data"}');
 
     // Mock URL.createObjectURL and document methods
+    const originalCreateObjectURL = globalThis.URL.createObjectURL;
+    const originalRevokeObjectURL = globalThis.URL.revokeObjectURL;
     globalThis.URL.createObjectURL = vi.fn(() => 'blob:test');
     globalThis.URL.revokeObjectURL = vi.fn();
     
     const mockClick = vi.fn();
-    const mockAppendChild = vi.fn();
-    const mockRemoveChild = vi.fn();
+    const originalCreateElement = document.createElement.bind(document);
     
-    Object.defineProperty(document, 'createElement', {
-      value: vi.fn(() => ({
-        href: '',
-        download: '',
-        click: mockClick,
-      })),
+    vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
+      if (tagName === 'a') {
+        const element = originalCreateElement(tagName) as HTMLAnchorElement;
+        element.click = mockClick;
+        return element;
+      }
+      return originalCreateElement(tagName);
     });
-    
-    Object.defineProperty(document.body, 'appendChild', { value: mockAppendChild });
-    Object.defineProperty(document.body, 'removeChild', { value: mockRemoveChild });
 
     render(<SessionBrowser />);
 
@@ -135,6 +138,10 @@ describe('SessionBrowser', () => {
     await waitFor(() => {
       expect(mockApi.exportSessionData).toHaveBeenCalledWith('session1');
     });
+    
+    // Restore URL methods
+    globalThis.URL.createObjectURL = originalCreateObjectURL;
+    globalThis.URL.revokeObjectURL = originalRevokeObjectURL;
   });
 
   it('shows empty state when no sessions found', async () => {

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { Dashboard } from '../components/Dashboard';
 import * as api from '../api';
@@ -98,7 +98,10 @@ describe('Dashboard', () => {
     });
 
     const retryButton = screen.getByText('Retry');
-    retryButton.click();
+    
+    await act(async () => {
+      retryButton.click();
+    });
 
     await waitFor(() => {
       expect(screen.getByText('Claude Code Manager Dashboard')).toBeInTheDocument();
