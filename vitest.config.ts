@@ -7,6 +7,12 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/test-setup.ts',
+    environmentOptions: {
+      jsdom: {
+        html: '<!DOCTYPE html><html><head></head><body><div id="root"></div></body></html>',
+        url: 'http://localhost:3000',
+      },
+    },
     coverage: {
       reporter: ['text', 'json', 'html'],
       exclude: [
