@@ -42,7 +42,7 @@ const mockMessages: ClaudeMessage[] = [
     uuid: "msg-1",
     session_id: "session-1",
     timestamp: "2025-07-20T10:00:00Z",
-    message_type: "User",
+    message_type: "user",
     content: { role: "user", content: "Help me implement a React component for user authentication" },
     cwd: "/Users/developer/projects/web-app",
     git_branch: "main"
@@ -51,7 +51,7 @@ const mockMessages: ClaudeMessage[] = [
     uuid: "msg-2",
     session_id: "session-1", 
     timestamp: "2025-07-20T10:01:00Z",
-    message_type: "Assistant",
+    message_type: "assistant",
     content: { role: "assistant", content: [{ type: "text", text: "I'll help you create a React authentication component. Let's start by setting up the basic structure..." }] },
     cwd: "/Users/developer/projects/web-app",
     git_branch: "main"

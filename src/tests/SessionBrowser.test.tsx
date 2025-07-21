@@ -1,5 +1,5 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { SessionBrowser } from '../components/SessionBrowser';
 import * as api from '../api';
 
@@ -79,8 +79,8 @@ describe('SessionBrowser', () => {
         uuid: 'msg1',
         session_id: 'session1',
         timestamp: '2025-07-20T10:00:00Z',
-        message_type: 'User',
-        content: { User: { role: 'user', content: 'Hello' } },
+        message_type: 'user',
+        content: { role: 'user', content: 'Hello' },
         cwd: '/test',
         git_branch: 'main'
       }
@@ -110,8 +110,8 @@ describe('SessionBrowser', () => {
         uuid: 'msg1',
         session_id: 'session1',
         timestamp: '2025-07-20T10:00:00Z',
-        message_type: 'User',
-        content: { User: { role: 'user', content: 'Hello, can you help me with TypeScript?' } },
+        message_type: 'user',
+        content: { role: 'user', content: 'Hello, can you help me with TypeScript?' },
         cwd: '/test',
         git_branch: 'main'
       }
@@ -135,11 +135,11 @@ describe('SessionBrowser', () => {
 
     // Simply check that the message is rendered - let's be more flexible
     await waitFor(() => {
-      expect(screen.getByText('User')).toBeInTheDocument();
+      expect(screen.getByText('user')).toBeInTheDocument();
     });
 
     // Check that we have a message with user type
-    expect(screen.getByText('User')).toBeInTheDocument();
+    expect(screen.getByText('user')).toBeInTheDocument();
   });
 
   it('displays assistant message with text blocks correctly', async () => {
@@ -148,15 +148,13 @@ describe('SessionBrowser', () => {
         uuid: 'msg2',
         session_id: 'session1',
         timestamp: '2025-07-20T10:01:00Z',
-        message_type: 'Assistant',
+        message_type: 'assistant',
         content: {
-          Assistant: {
-            role: 'assistant',
-            content: [
-              { Text: { text: 'Of course! I\'d be happy to help you with TypeScript.' } },
-              { Text: { text: 'What specific aspect would you like to know about?' } }
-            ]
-          }
+          role: 'assistant',
+          content: [
+            { Text: { text: 'Of course! I\'d be happy to help you with TypeScript.' } },
+            { Text: { text: 'What specific aspect would you like to know about?' } }
+          ]
         },
         cwd: '/test',
         git_branch: 'main'
@@ -181,11 +179,11 @@ describe('SessionBrowser', () => {
 
     // Simply check that the assistant message is rendered
     await waitFor(() => {
-      expect(screen.getByText('Assistant')).toBeInTheDocument();
+      expect(screen.getByText('assistant')).toBeInTheDocument();
     });
 
     // Check that we have a message with assistant type
-    expect(screen.getByText('Assistant')).toBeInTheDocument();
+    expect(screen.getByText('assistant')).toBeInTheDocument();
   });
 
   it('displays assistant message with tool use correctly', async () => {
@@ -194,21 +192,19 @@ describe('SessionBrowser', () => {
         uuid: 'msg3',
         session_id: 'session1',
         timestamp: '2025-07-20T10:02:00Z',
-        message_type: 'Assistant',
+        message_type: 'assistant',
         content: {
-          Assistant: {
-            role: 'assistant',
-            content: [
-              { Text: { text: 'Let me check your TypeScript configuration.' } },
-              { 
-                ToolUse: { 
-                  id: 'tool1',
-                  name: 'Read',
-                  input: { file_path: '/test/tsconfig.json' }
-                }
+          role: 'assistant',
+          content: [
+            { Text: { text: 'Let me check your TypeScript configuration.' } },
+            { 
+              ToolUse: { 
+                id: 'tool1',
+                name: 'Read',
+                input: { file_path: '/test/tsconfig.json' }
               }
-            ]
-          }
+            }
+          ]
         },
         cwd: '/test',
         git_branch: 'main'
@@ -233,11 +229,11 @@ describe('SessionBrowser', () => {
 
     // Simply check that the assistant message is rendered
     await waitFor(() => {
-      expect(screen.getByText('Assistant')).toBeInTheDocument();
+      expect(screen.getByText('assistant')).toBeInTheDocument();
     });
 
     // Check that we have a message with assistant type
-    expect(screen.getByText('Assistant')).toBeInTheDocument();
+    expect(screen.getByText('assistant')).toBeInTheDocument();
   });
 
   it('handles export functionality', async () => {
