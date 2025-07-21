@@ -573,7 +573,7 @@ impl ClaudeDataManager {
                         let current_time = self.get_file_modified_time(&file_path).await?;
                         let last_known_time = timestamps.get(&file_path);
 
-                        if last_known_time.map_or(true, |&t| current_time > t) {
+                        if last_known_time.is_none_or(|&t| current_time > t) {
                             let session_id = file_path
                                 .file_stem()
                                 .and_then(|n| n.to_str())
