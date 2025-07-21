@@ -21,8 +21,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-latest, macos-latest]
-        node-version: [18, 20]
+        # For non-main branches, only test on macOS with Node.js 20 to reduce CI time
+        # For main branch, test on all OS/Node.js combinations for comprehensive coverage
+        os: ${{ github.ref == 'refs/heads/main' && fromJSON('["windows-latest", "macos-latest"]') || fromJSON('["macos-latest"]') }}
+        node-version: ${{ github.ref == 'refs/heads/main' && fromJSON('[18, 20]') || fromJSON('[20]') }}
 
     steps:
     - name: Checkout repository
@@ -98,7 +100,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-latest, macos-latest]
+        # For non-main branches, only build on macOS to reduce CI time
+        # For main branch, build on all OS for comprehensive coverage
+        os: ${{ github.ref == 'refs/heads/main' && fromJSON('["windows-latest", "macos-latest"]') || fromJSON('["macos-latest"]') }}
 
     steps:
     - name: Checkout repository
