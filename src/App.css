@@ -254,7 +254,7 @@ body {
 
 .session-browser-content {
   display: grid;
-  grid-template-columns: 1fr 2fr;
+  grid-template-columns: minmax(250px, 1fr) minmax(400px, 2fr);
   gap: 2rem;
   height: calc(100vh - 200px);
   overflow: hidden;
@@ -396,6 +396,9 @@ body {
 .content-text {
   white-space: pre-wrap;
   word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
     "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
