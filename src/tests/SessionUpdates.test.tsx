@@ -84,7 +84,17 @@ describe("Session Updates Optimization", () => {
     });
 
     // Resolve the promise to complete the update
-    resolvePromise!(mockApi.getAllSessions());
+    const mockSessionsData = [
+      {
+        session_id: "session-1",
+        project_path: "/Users/developer/projects/web-app",
+        created_at: "2025-07-20T10:00:00Z",
+        updated_at: "2025-07-20T11:30:00Z",
+        message_count: 15,
+        git_branch: "main",
+      },
+    ];
+    resolvePromise!(mockSessionsData);
 
     // Wait for refreshing to complete
     await waitFor(() => {
@@ -109,9 +119,17 @@ describe("Session Updates Optimization", () => {
     expect(screen.getByText(/Session Browser/)).toBeInTheDocument();
 
     // Mock getAllSessions to return some data
-    vi.mocked(api.getAllSessions).mockResolvedValueOnce(
-      mockApi.getAllSessions(),
-    );
+    const mockSessions = [
+      {
+        session_id: "session-1",
+        project_path: "/Users/developer/projects/web-app",
+        created_at: "2025-07-20T10:00:00Z",
+        updated_at: "2025-07-20T11:30:00Z",
+        message_count: 15,
+        git_branch: "main",
+      },
+    ];
+    vi.mocked(api.getAllSessions).mockResolvedValueOnce(mockSessions);
 
     // リフレッシュボタンをクリック
     const refreshButtons = screen.getAllByTitle("Refresh this project");
