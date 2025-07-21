@@ -152,10 +152,6 @@ impl ClaudeDataManager {
 
         // Find session file
         let session_file = self.find_session_file(session_id)?;
-        println!(
-            "get_session_messages: Found session file: {:?}",
-            session_file
-        );
         let messages = self.parse_messages_file(&session_file, session_id).await?;
 
         // Cache the result
