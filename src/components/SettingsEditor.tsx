@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { api } from '../api';
-import type { ClaudeSettings } from '../types';
+import React, { useEffect, useState } from "react";
+import { api } from "../api";
+import type { ClaudeSettings } from "../types";
 
 interface SettingsEditorProps {}
 
@@ -20,7 +20,7 @@ export const SettingsEditor: React.FC<SettingsEditorProps> = () => {
       const data = await api.getSettings();
       setSettings(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load settings');
+      setError(err instanceof Error ? err.message : "Failed to load settings");
     } finally {
       setLoading(false);
     }
@@ -28,20 +28,22 @@ export const SettingsEditor: React.FC<SettingsEditorProps> = () => {
 
   const exportSettings = async () => {
     if (!settings) return;
-    
+
     try {
       const data = JSON.stringify(settings, null, 2);
-      const blob = new Blob([data], { type: 'application/json' });
+      const blob = new Blob([data], { type: "application/json" });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = 'claude_settings.json';
+      a.download = "claude_settings.json";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to export settings');
+      setError(
+        err instanceof Error ? err.message : "Failed to export settings",
+      );
     }
   };
 
@@ -76,9 +78,11 @@ export const SettingsEditor: React.FC<SettingsEditorProps> = () => {
             <h3>Permissions</h3>
             <div className="permission-item">
               <label>Default Mode:</label>
-              <span className="permission-value">{settings.permissions.defaultMode}</span>
+              <span className="permission-value">
+                {settings.permissions.defaultMode}
+              </span>
             </div>
-            
+
             <div className="permission-group">
               <h4>Allowed Commands</h4>
               {settings.permissions.allow.length === 0 ? (
@@ -120,7 +124,9 @@ export const SettingsEditor: React.FC<SettingsEditorProps> = () => {
                 <div className="hooks-list">
                   {settings.hooks.PreToolUse.map((matcher, index) => (
                     <div key={index} className="hook-matcher">
-                      <h5>Matcher: <code>{matcher.matcher}</code></h5>
+                      <h5>
+                        Matcher: <code>{matcher.matcher}</code>
+                      </h5>
                       <div className="hook-commands">
                         {matcher.hooks.map((hook, hookIndex) => (
                           <div key={hookIndex} className="hook-command">

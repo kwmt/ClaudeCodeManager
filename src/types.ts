@@ -7,36 +7,36 @@ export interface ClaudeSession {
   git_branch?: string;
 }
 
-export type ClaudeMessage = 
+export type ClaudeMessage =
   | {
       uuid: string;
       parent_uuid?: string;
       session_id: string;
       timestamp: string;
-      message_type: 'user' | 'assistant';
+      message_type: "user" | "assistant";
       content: MessageContent;
       cwd: string;
       git_branch?: string;
     }
   | {
-      message_type: 'summary';
+      message_type: "summary";
       summary: string;
       leafUuid: string;
     };
 
-export type MessageContent = 
+export type MessageContent =
   | { role: string; content: string }
   | { role: string; content: ContentBlock[] };
 
-export type ContentBlock = 
+export type ContentBlock =
   | { type: "text"; text: string }
   | { type: "tool_use"; id: string; name: string; input: any };
 
 export interface TodoItem {
   id: string;
   content: string;
-  status: 'Pending' | 'InProgress' | 'Completed';
-  priority: 'Low' | 'Medium' | 'High';
+  status: "Pending" | "InProgress" | "Completed";
+  priority: "Low" | "Medium" | "High";
 }
 
 export interface CommandLogEntry {

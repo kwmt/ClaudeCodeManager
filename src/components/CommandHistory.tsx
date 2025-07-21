@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { api } from '../api';
-import type { CommandLogEntry } from '../types';
+import React, { useEffect, useState } from "react";
+import { api } from "../api";
+import type { CommandLogEntry } from "../types";
 
 interface CommandHistoryProps {}
 
 export const CommandHistory: React.FC<CommandHistoryProps> = () => {
   const [commands, setCommands] = useState<CommandLogEntry[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,7 +29,9 @@ export const CommandHistory: React.FC<CommandHistoryProps> = () => {
       const data = await api.getCommandHistory();
       setCommands(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load command history');
+      setError(
+        err instanceof Error ? err.message : "Failed to load command history",
+      );
     } finally {
       setLoading(false);
     }
@@ -42,7 +44,9 @@ export const CommandHistory: React.FC<CommandHistoryProps> = () => {
       const data = await api.searchCommands(searchQuery);
       setCommands(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to search commands');
+      setError(
+        err instanceof Error ? err.message : "Failed to search commands",
+      );
     } finally {
       setLoading(false);
     }
@@ -53,24 +57,26 @@ export const CommandHistory: React.FC<CommandHistoryProps> = () => {
       await navigator.clipboard.writeText(command);
       // You might want to show a toast notification here
     } catch (err) {
-      console.error('Failed to copy command:', err);
+      console.error("Failed to copy command:", err);
     }
   };
 
   const exportCommands = async () => {
     try {
       const data = JSON.stringify(commands, null, 2);
-      const blob = new Blob([data], { type: 'application/json' });
+      const blob = new Blob([data], { type: "application/json" });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = 'command_history.json';
+      a.download = "command_history.json";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to export commands');
+      setError(
+        err instanceof Error ? err.message : "Failed to export commands",
+      );
     }
   };
 

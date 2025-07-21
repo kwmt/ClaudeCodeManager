@@ -1,14 +1,16 @@
-import React, { useEffect, useState } from 'react';
-import { api } from '../api';
-import type { ClaudeSession, ClaudeMessage, ContentBlock } from '../types';
+import React, { useEffect, useState } from "react";
+import { api } from "../api";
+import type { ClaudeSession, ClaudeMessage, ContentBlock } from "../types";
 
 interface SessionBrowserProps {}
 
 export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
   const [sessions, setSessions] = useState<ClaudeSession[]>([]);
-  const [selectedSession, setSelectedSession] = useState<ClaudeSession | null>(null);
+  const [selectedSession, setSelectedSession] = useState<ClaudeSession | null>(
+    null,
+  );
   const [messages, setMessages] = useState<ClaudeMessage[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +34,7 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
       const data = await api.getAllSessions();
       setSessions(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load sessions');
+      setError(err instanceof Error ? err.message : "Failed to load sessions");
     } finally {
       setLoading(false);
     }
@@ -45,7 +47,9 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
       const data = await api.searchSessions(searchQuery);
       setSessions(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to search sessions');
+      setError(
+        err instanceof Error ? err.message : "Failed to search sessions",
+      );
     } finally {
       setLoading(false);
     }
@@ -58,7 +62,7 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
       const data = await api.getSessionMessages(session.session_id);
       setMessages(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load messages');
+      setError(err instanceof Error ? err.message : "Failed to load messages");
     } finally {
       setLoadingMessages(false);
     }
@@ -67,9 +71,9 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
   const exportSession = async (sessionId: string) => {
     try {
       const data = await api.exportSessionData(sessionId);
-      const blob = new Blob([data], { type: 'application/json' });
+      const blob = new Blob([data], { type: "application/json" });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
       a.download = `session_${sessionId}.json`;
       document.body.appendChild(a);
@@ -77,20 +81,20 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to export session');
+      setError(err instanceof Error ? err.message : "Failed to export session");
     }
   };
 
   const renderContentBlock = (block: ContentBlock, index: number) => {
-    if (block.type === 'text') {
+    if (block.type === "text") {
       return (
         <div key={index} className="text-block">
           <pre className="content-text">{block.text}</pre>
         </div>
       );
     }
-    
-    if (block.type === 'tool_use') {
+
+    if (block.type === "tool_use") {
       return (
         <div key={index} className="tool-use-block">
           <div className="tool-header">
@@ -103,27 +107,35 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
         </div>
       );
     }
-    
-    
+
     return null;
   };
 
   const renderMessageContent = (message: ClaudeMessage) => {
-    
-    if (message.message_type === 'user') {
+    if (message.message_type === "user") {
       const userContent = message.content.content;
-      
-      if (typeof userContent === 'string') {
+
+      if (typeof userContent === "string") {
         // コマンドメッセージの場合の特別な処理
-        if (userContent.includes('<command-name>') && userContent.includes('</command-name>')) {
-          const commandMatch = userContent.match(/<command-name>([^<]+)<\/command-name>/);
-          const messageMatch = userContent.match(/<command-message>([^<]*)<\/command-message>/);
-          const argsMatch = userContent.match(/<command-args>([^<]*)<\/command-args>/);
-          
+        if (
+          userContent.includes("<command-name>") &&
+          userContent.includes("</command-name>")
+        ) {
+          const commandMatch = userContent.match(
+            /<command-name>([^<]+)<\/command-name>/,
+          );
+          const messageMatch = userContent.match(
+            /<command-message>([^<]*)<\/command-message>/,
+          );
+          const argsMatch = userContent.match(
+            /<command-args>([^<]*)<\/command-args>/,
+          );
+
           return (
             <div className="message-content user-content command-content">
               <div className="command-info">
-                <span className="command-label">Command:</span> {commandMatch?.[1] || 'Unknown'}
+                <span className="command-label">Command:</span>{" "}
+                {commandMatch?.[1] || "Unknown"}
               </div>
               {messageMatch?.[1] && (
                 <div className="command-message">{messageMatch[1]}</div>
@@ -136,7 +148,7 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
             </div>
           );
         }
-        
+
         // 通常のテキストメッセージ（contentがstringの場合はそのまま表示）
         return (
           <div className="message-content user-content">
@@ -147,25 +159,29 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
         // ContentBlock[]の場合
         return (
           <div className="message-content user-content">
-            {userContent.map((block: any, index: number) => renderContentBlock(block, index))}
+            {userContent.map((block: any, index: number) =>
+              renderContentBlock(block, index),
+            )}
           </div>
         );
       }
     }
-    
-    if (message.message_type === 'assistant') {
+
+    if (message.message_type === "assistant") {
       const assistantContent = message.content.content;
-      
+
       if (Array.isArray(assistantContent)) {
         return (
           <div className="message-content assistant-content">
-            {assistantContent.map((block: any, index: number) => renderContentBlock(block, index))}
+            {assistantContent.map((block: any, index: number) =>
+              renderContentBlock(block, index),
+            )}
           </div>
         );
       }
     }
-    
-    if (message.message_type === 'summary') {
+
+    if (message.message_type === "summary") {
       // Summaryメッセージの特別な処理 - summaryフィールドを使用
       return (
         <div className="message-content summary-message-content">
@@ -177,7 +193,7 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
         </div>
       );
     }
-    
+
     return (
       <div className="message-content">
         <pre className="content-text">{JSON.stringify(message, null, 2)}</pre>
@@ -220,11 +236,14 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
             sessions.map((session) => (
               <div
                 key={session.session_id}
-                className={`session-item ${selectedSession?.session_id === session.session_id ? 'selected' : ''}`}
+                className={`session-item ${selectedSession?.session_id === session.session_id ? "selected" : ""}`}
                 onClick={() => loadSessionMessages(session)}
               >
                 <div className="session-header">
-                  <h4>{session.project_path.split('/').pop() || session.project_path}</h4>
+                  <h4>
+                    {session.project_path.split("/").pop() ||
+                      session.project_path}
+                  </h4>
                   <button
                     className="export-button"
                     onClick={(e) => {
@@ -238,8 +257,12 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
                 <p className="session-path">{session.project_path}</p>
                 <div className="session-meta">
                   <span>{session.message_count} messages</span>
-                  {session.git_branch && <span>Branch: {session.git_branch}</span>}
-                  <span>Updated: {new Date(session.updated_at).toLocaleDateString()}</span>
+                  {session.git_branch && (
+                    <span>Branch: {session.git_branch}</span>
+                  )}
+                  <span>
+                    Updated: {new Date(session.updated_at).toLocaleDateString()}
+                  </span>
                 </div>
               </div>
             ))
@@ -250,10 +273,12 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
           {selectedSession ? (
             <>
               <div className="messages-header">
-                <h3>Messages for {selectedSession.project_path.split('/').pop()}</h3>
+                <h3>
+                  Messages for {selectedSession.project_path.split("/").pop()}
+                </h3>
                 <p>Session ID: {selectedSession.session_id}</p>
               </div>
-              
+
               {loadingMessages ? (
                 <div className="loading">Loading messages...</div>
               ) : messages.length === 0 ? (
@@ -262,17 +287,25 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
                 <div className="messages-list">
                   {messages.map((message, index) => (
                     <div
-                      key={message.message_type === 'summary' ? `summary-${index}` : message.uuid}
+                      key={
+                        message.message_type === "summary"
+                          ? `summary-${index}`
+                          : message.uuid
+                      }
                       className={`message ${message.message_type.toLowerCase()}`}
                     >
                       <div className="message-header">
-                        <span className="message-type">{message.message_type}</span>
+                        <span className="message-type">
+                          {message.message_type}
+                        </span>
                         <span className="message-time">
-                          {message.message_type === 'summary' ? '' : new Date(message.timestamp).toLocaleString()}
+                          {message.message_type === "summary"
+                            ? ""
+                            : new Date(message.timestamp).toLocaleString()}
                         </span>
                       </div>
                       {renderMessageContent(message)}
-                      {message.message_type !== 'summary' && message.cwd && (
+                      {message.message_type !== "summary" && message.cwd && (
                         <div className="message-meta">CWD: {message.cwd}</div>
                       )}
                     </div>

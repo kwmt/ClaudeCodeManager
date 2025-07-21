@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { api } from '../api';
-import type { SessionStats, ProjectSummary } from '../types';
+import React, { useEffect, useState } from "react";
+import { api } from "../api";
+import type { SessionStats, ProjectSummary } from "../types";
 
 interface DashboardProps {}
 
@@ -18,16 +18,18 @@ export const Dashboard: React.FC<DashboardProps> = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const [statsData, projectsData] = await Promise.all([
         api.getSessionStats(),
         api.getProjectSummary(),
       ]);
-      
+
       setStats(statsData);
       setProjects(projectsData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
+      setError(
+        err instanceof Error ? err.message : "Failed to load dashboard data",
+      );
     } finally {
       setLoading(false);
     }
@@ -50,7 +52,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
   return (
     <div className="dashboard">
       <h2>Claude Code Manager Dashboard</h2>
-      
+
       {stats && (
         <div className="stats-grid">
           <div className="stat-card">
@@ -84,7 +86,10 @@ export const Dashboard: React.FC<DashboardProps> = () => {
           <div className="projects-list">
             {projects.slice(0, 10).map((project) => (
               <div key={project.project_path} className="project-card">
-                <h4>{project.project_path.split('/').pop() || project.project_path}</h4>
+                <h4>
+                  {project.project_path.split("/").pop() ||
+                    project.project_path}
+                </h4>
                 <p className="project-path">{project.project_path}</p>
                 <div className="project-stats">
                   <span>{project.session_count} sessions</span>
@@ -92,7 +97,8 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                   <span>{project.active_todos} TODOs</span>
                 </div>
                 <p className="last-activity">
-                  Last activity: {new Date(project.last_activity).toLocaleDateString()}
+                  Last activity:{" "}
+                  {new Date(project.last_activity).toLocaleDateString()}
                 </p>
               </div>
             ))}

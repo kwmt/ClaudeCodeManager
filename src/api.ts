@@ -18,17 +18,16 @@ try {
   // Try to import Tauri API first
   tauriApi = await import("@tauri-apps/api/core");
   // Test if invoke function is available
-  await tauriApi.invoke('get_session_stats');
+  await tauriApi.invoke("get_session_stats");
   isTauri = true;
 } catch (error) {
   // If Tauri API fails, we're in browser environment
   isTauri = false;
-  
+
   // Use mock API for development/screenshots
   const mockModule = await import("./api-mock");
   mockApi = mockModule.mockApi;
 }
-
 
 export const api = {
   // Session management

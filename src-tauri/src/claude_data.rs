@@ -293,17 +293,14 @@ impl ClaudeDataManager {
                     .and_then(|s| s.as_str())
                     .unwrap_or("")
                     .to_string();
-                
+
                 let leaf_uuid = raw
                     .get("leafUuid")
                     .and_then(|u| u.as_str())
                     .unwrap_or("")
                     .to_string();
 
-                ClaudeMessage::Summary {
-                    summary,
-                    leaf_uuid,
-                }
+                ClaudeMessage::Summary { summary, leaf_uuid }
             }
             _ => return Ok(None),
         };
@@ -375,26 +372,26 @@ impl ClaudeDataManager {
                 let pattern = "] ";
                 if let Some(pattern_pos) = line[end..].find(pattern) {
                     let start_pos = end + pattern_pos + pattern.len();
-                    
+
                     // Make sure we don't go beyond string boundaries
                     if start_pos >= line.len() {
                         return None;
                     }
-                    
+
                     // Use safe character boundary slice
                     let remaining = &line[start_pos..];
-                    
+
                     // Find the first colon in the remaining part
                     if let Some(colon_pos) = remaining.find(':') {
                         let user_part = &remaining[..colon_pos];
-                        
+
                         // Find command after ': ' using safe slicing
                         let command_pattern = ": ";
                         if let Some(cmd_start) = remaining[colon_pos..].find(command_pattern) {
                             let cmd_pos = colon_pos + cmd_start + command_pattern.len();
                             if cmd_pos < remaining.len() {
                                 let command = &remaining[cmd_pos..];
-                                
+
                                 // Try to parse timestamp (simplified)
                                 let timestamp = Utc::now(); // For now, use current time
 

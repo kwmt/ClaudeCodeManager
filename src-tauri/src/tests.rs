@@ -19,7 +19,6 @@ mod tests {
         temp_dir
     }
 
-
     #[tokio::test]
     async fn test_claude_data_manager_initialization() {
         let _temp_dir = create_test_claude_dir();
@@ -251,7 +250,11 @@ mod tests {
         // Test user message with simple string content
         let user_msg = &messages[0];
         if let ClaudeMessage::User { content, .. } = user_msg {
-            if let MessageContent::User { content: user_content, .. } = content {
+            if let MessageContent::User {
+                content: user_content,
+                ..
+            } = content
+            {
                 assert_eq!(user_content, "Hello, how are you?");
             } else {
                 panic!("Expected User message content");
@@ -263,7 +266,11 @@ mod tests {
         // Test assistant message with text content
         let assistant_msg = &messages[1];
         if let ClaudeMessage::Assistant { content, .. } = assistant_msg {
-            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+            if let MessageContent::Assistant {
+                content: assistant_content,
+                ..
+            } = content
+            {
                 assert_eq!(assistant_content.len(), 1);
                 if let ContentBlock::Text { text } = &assistant_content[0] {
                     assert_eq!(
@@ -283,7 +290,11 @@ mod tests {
         // Test user command message
         let user_cmd = &messages[2];
         if let ClaudeMessage::User { content, .. } = user_cmd {
-            if let MessageContent::User { content: user_content, .. } = content {
+            if let MessageContent::User {
+                content: user_content,
+                ..
+            } = content
+            {
                 assert!(user_content.contains("<command-name>ls</command-name>"));
                 assert!(user_content.contains("<command-message>list files</command-message>"));
                 assert!(user_content.contains("<command-args>-la</command-args>"));
@@ -297,7 +308,11 @@ mod tests {
         // Test assistant message with text and tool_use
         let assistant_tool = &messages[3];
         if let ClaudeMessage::Assistant { content, .. } = assistant_tool {
-            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+            if let MessageContent::Assistant {
+                content: assistant_content,
+                ..
+            } = content
+            {
                 assert_eq!(assistant_content.len(), 2);
 
                 // First block should be text
@@ -324,7 +339,14 @@ mod tests {
         }
 
         // Test metadata fields
-        if let ClaudeMessage::User { cwd, git_branch, session_id, uuid, .. } = user_msg {
+        if let ClaudeMessage::User {
+            cwd,
+            git_branch,
+            session_id,
+            uuid,
+            ..
+        } = user_msg
+        {
             assert_eq!(cwd, "/test/project");
             assert_eq!(git_branch, &Some("main".to_string()));
             assert_eq!(session_id, "test-session");
@@ -445,7 +467,11 @@ mod tests {
         let user_text_msg = &messages[0];
         if let ClaudeMessage::User { uuid, content, .. } = user_text_msg {
             assert_eq!(uuid, "user-text-1");
-            if let MessageContent::User { content: user_content, .. } = content {
+            if let MessageContent::User {
+                content: user_content,
+                ..
+            } = content
+            {
                 assert_eq!(user_content, "Hello, how are you?");
             } else {
                 panic!("Expected User message content");
@@ -458,7 +484,11 @@ mod tests {
         let assistant_text_msg = &messages[1];
         if let ClaudeMessage::Assistant { uuid, content, .. } = assistant_text_msg {
             assert_eq!(uuid, "assistant-text-1");
-            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+            if let MessageContent::Assistant {
+                content: assistant_content,
+                ..
+            } = content
+            {
                 assert_eq!(assistant_content.len(), 1);
                 if let ContentBlock::Text { text } = &assistant_content[0] {
                     assert_eq!(
@@ -479,7 +509,11 @@ mod tests {
         let user_command_msg = &messages[2];
         if let ClaudeMessage::User { uuid, content, .. } = user_command_msg {
             assert_eq!(uuid, "user-command-1");
-            if let MessageContent::User { content: user_content, .. } = content {
+            if let MessageContent::User {
+                content: user_content,
+                ..
+            } = content
+            {
                 assert!(user_content.contains("<command-name>ls</command-name>"));
                 assert!(user_content.contains("<command-message>list files</command-message>"));
                 assert!(user_content.contains("<command-args>-la</command-args>"));
@@ -494,7 +528,11 @@ mod tests {
         let assistant_tool_msg = &messages[3];
         if let ClaudeMessage::Assistant { uuid, content, .. } = assistant_tool_msg {
             assert_eq!(uuid, "assistant-tool-1");
-            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+            if let MessageContent::Assistant {
+                content: assistant_content,
+                ..
+            } = content
+            {
                 assert_eq!(assistant_content.len(), 2);
 
                 // First block: text
@@ -524,7 +562,11 @@ mod tests {
         let user_tool_result_msg = &messages[4];
         if let ClaudeMessage::User { uuid, content, .. } = user_tool_result_msg {
             assert_eq!(uuid, "user-tool-result-1");
-            if let MessageContent::User { content: user_content, .. } = content {
+            if let MessageContent::User {
+                content: user_content,
+                ..
+            } = content
+            {
                 // 現在の実装では配列contentは文字列として抽出できないため空文字列になる
                 assert_eq!(user_content, "");
             } else {
@@ -541,10 +583,13 @@ mod tests {
         let user_stdout_msg = &messages[5];
         if let ClaudeMessage::User { uuid, content, .. } = user_stdout_msg {
             assert_eq!(uuid, "user-stdout-1");
-            if let MessageContent::User { content: user_content, .. } = content {
-                assert!(
-                    user_content.contains("<local-command-stdout>File content here</local-command-stdout>")
-                );
+            if let MessageContent::User {
+                content: user_content,
+                ..
+            } = content
+            {
+                assert!(user_content
+                    .contains("<local-command-stdout>File content here</local-command-stdout>"));
             } else {
                 panic!("Expected User stdout content");
             }
@@ -556,7 +601,11 @@ mod tests {
         let assistant_multi_msg = &messages[6];
         if let ClaudeMessage::Assistant { uuid, content, .. } = assistant_multi_msg {
             assert_eq!(uuid, "assistant-multi-text-1");
-            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+            if let MessageContent::Assistant {
+                content: assistant_content,
+                ..
+            } = content
+            {
                 assert_eq!(assistant_content.len(), 2);
 
                 if let ContentBlock::Text { text } = &assistant_content[0] {
@@ -580,13 +629,25 @@ mod tests {
         // Verify metadata for all messages
         for message in &messages {
             match message {
-                ClaudeMessage::User { session_id, cwd, git_branch, uuid, .. } |
-                ClaudeMessage::Assistant { session_id, cwd, git_branch, uuid, .. } => {
+                ClaudeMessage::User {
+                    session_id,
+                    cwd,
+                    git_branch,
+                    uuid,
+                    ..
+                }
+                | ClaudeMessage::Assistant {
+                    session_id,
+                    cwd,
+                    git_branch,
+                    uuid,
+                    ..
+                } => {
                     assert_eq!(session_id, "test-session");
                     assert_eq!(cwd, "/test/project");
                     assert_eq!(git_branch, &Some("main".to_string()));
                     assert!(!uuid.is_empty());
-                },
+                }
                 ClaudeMessage::Summary { .. } => {
                     // Summary messages don't have the same metadata fields
                 }
@@ -618,21 +679,33 @@ mod tests {
 
         // Simple text
         if let ClaudeMessage::User { content, .. } = &messages[0] {
-            if let MessageContent::User { content: user_content, .. } = content {
+            if let MessageContent::User {
+                content: user_content,
+                ..
+            } = content
+            {
                 assert_eq!(user_content, "Simple text message");
             }
         }
 
         // Multiline text
         if let ClaudeMessage::User { content, .. } = &messages[1] {
-            if let MessageContent::User { content: user_content, .. } = content {
+            if let MessageContent::User {
+                content: user_content,
+                ..
+            } = content
+            {
                 assert_eq!(user_content, "Message with\nmultiple\nlines");
             }
         }
 
         // Command with XML
         if let ClaudeMessage::User { content, .. } = &messages[2] {
-            if let MessageContent::User { content: user_content, .. } = content {
+            if let MessageContent::User {
+                content: user_content,
+                ..
+            } = content
+            {
                 assert!(user_content.contains("git"));
                 assert!(user_content.contains("check status"));
                 assert!(user_content.contains("status --porcelain"));
@@ -641,7 +714,11 @@ mod tests {
 
         // Local command output
         if let ClaudeMessage::User { content, .. } = &messages[3] {
-            if let MessageContent::User { content: user_content, .. } = content {
+            if let MessageContent::User {
+                content: user_content,
+                ..
+            } = content
+            {
                 assert!(user_content.contains("new_file.txt"));
                 assert!(user_content.contains("modified_file.txt"));
             }
@@ -675,7 +752,11 @@ mod tests {
 
         // Single text block
         if let ClaudeMessage::Assistant { content, .. } = &messages[0] {
-            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+            if let MessageContent::Assistant {
+                content: assistant_content,
+                ..
+            } = content
+            {
                 assert_eq!(assistant_content.len(), 1);
                 if let ContentBlock::Text { text } = &assistant_content[0] {
                     assert_eq!(text, "Simple assistant response");
@@ -685,7 +766,11 @@ mod tests {
 
         // Multiple text blocks
         if let ClaudeMessage::Assistant { content, .. } = &messages[1] {
-            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+            if let MessageContent::Assistant {
+                content: assistant_content,
+                ..
+            } = content
+            {
                 assert_eq!(assistant_content.len(), 2);
                 if let ContentBlock::Text { text } = &assistant_content[0] {
                     assert_eq!(text, "Response with ");
@@ -698,7 +783,11 @@ mod tests {
 
         // Single tool use
         if let ClaudeMessage::Assistant { content, .. } = &messages[2] {
-            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+            if let MessageContent::Assistant {
+                content: assistant_content,
+                ..
+            } = content
+            {
                 assert_eq!(assistant_content.len(), 1);
                 if let ContentBlock::ToolUse { id, name, input } = &assistant_content[0] {
                     assert_eq!(id, "tool123");
@@ -710,7 +799,11 @@ mod tests {
 
         // Text + tool use combination
         if let ClaudeMessage::Assistant { content, .. } = &messages[3] {
-            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+            if let MessageContent::Assistant {
+                content: assistant_content,
+                ..
+            } = content
+            {
                 assert_eq!(assistant_content.len(), 2);
                 if let ContentBlock::Text { text } = &assistant_content[0] {
                     assert_eq!(text, "I'll read the file.");
@@ -784,28 +877,44 @@ mod tests {
 
         // Empty user content
         if let ClaudeMessage::User { content, .. } = &messages[0] {
-            if let MessageContent::User { content: user_content, .. } = content {
+            if let MessageContent::User {
+                content: user_content,
+                ..
+            } = content
+            {
                 assert_eq!(user_content, "");
             }
         }
 
         // Empty assistant content array
         if let ClaudeMessage::Assistant { content, .. } = &messages[1] {
-            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+            if let MessageContent::Assistant {
+                content: assistant_content,
+                ..
+            } = content
+            {
                 assert_eq!(assistant_content.len(), 0);
             }
         }
 
         // Valid user message
         if let ClaudeMessage::User { content, .. } = &messages[2] {
-            if let MessageContent::User { content: user_content, .. } = content {
+            if let MessageContent::User {
+                content: user_content,
+                ..
+            } = content
+            {
                 assert_eq!(user_content, "Valid message");
             }
         }
 
         // Assistant with empty text and tool_use blocks
         if let ClaudeMessage::Assistant { content, .. } = &messages[3] {
-            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+            if let MessageContent::Assistant {
+                content: assistant_content,
+                ..
+            } = content
+            {
                 assert_eq!(assistant_content.len(), 2);
 
                 if let ContentBlock::Text { text } = &assistant_content[0] {
@@ -843,7 +952,11 @@ mod tests {
 
         // Unicode characters
         if let ClaudeMessage::User { content, .. } = &messages[0] {
-            if let MessageContent::User { content: user_content, .. } = content {
+            if let MessageContent::User {
+                content: user_content,
+                ..
+            } = content
+            {
                 assert!(user_content.contains("日本語"));
                 assert!(user_content.contains("émojis"));
                 assert!(user_content.contains("🚀"));
@@ -852,7 +965,11 @@ mod tests {
 
         // Escaped characters
         if let ClaudeMessage::User { content, .. } = &messages[1] {
-            if let MessageContent::User { content: user_content, .. } = content {
+            if let MessageContent::User {
+                content: user_content,
+                ..
+            } = content
+            {
                 assert!(user_content.contains("\"quotes\""));
                 assert!(user_content.contains("\\backslashes\\"));
             }
@@ -860,7 +977,11 @@ mod tests {
 
         // Newlines and tabs
         if let ClaudeMessage::Assistant { content, .. } = &messages[2] {
-            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+            if let MessageContent::Assistant {
+                content: assistant_content,
+                ..
+            } = content
+            {
                 if let ContentBlock::Text { text } = &assistant_content[0] {
                     assert!(text.contains("\n"));
                     assert!(text.contains("\t"));
@@ -894,7 +1015,11 @@ mod tests {
         // User message with object message field
         if let ClaudeMessage::User { uuid, content, .. } = &messages[0] {
             assert_eq!(uuid, "user-msg-object");
-            if let MessageContent::User { content: user_content, .. } = content {
+            if let MessageContent::User {
+                content: user_content,
+                ..
+            } = content
+            {
                 assert_eq!(user_content, "Message with object");
             }
         } else {
@@ -904,7 +1029,11 @@ mod tests {
         // Assistant message with object message field
         if let ClaudeMessage::Assistant { uuid, content, .. } = &messages[1] {
             assert_eq!(uuid, "assistant-msg-object");
-            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+            if let MessageContent::Assistant {
+                content: assistant_content,
+                ..
+            } = content
+            {
                 assert_eq!(assistant_content.len(), 1);
                 if let ContentBlock::Text { text } = &assistant_content[0] {
                     assert_eq!(text, "Assistant with object message");
@@ -940,7 +1069,11 @@ mod tests {
         // Pattern 1: User message with string content
         if let ClaudeMessage::User { uuid, content, .. } = &messages[0] {
             assert_eq!(uuid, "user-string-content");
-            if let MessageContent::User { content: user_content, .. } = content {
+            if let MessageContent::User {
+                content: user_content,
+                ..
+            } = content
+            {
                 assert_eq!(user_content, "String content for user");
             }
         } else {
@@ -950,7 +1083,11 @@ mod tests {
         // Pattern 2: User message with array content (現在の実装では空文字列)
         if let ClaudeMessage::User { uuid, content, .. } = &messages[1] {
             assert_eq!(uuid, "user-array-content");
-            if let MessageContent::User { content: user_content, .. } = content {
+            if let MessageContent::User {
+                content: user_content,
+                ..
+            } = content
+            {
                 // 現在の実装では配列contentは文字列として抽出できない
                 assert_eq!(user_content, "");
             }
@@ -961,7 +1098,11 @@ mod tests {
         // Pattern 3: Assistant message with single array content
         if let ClaudeMessage::Assistant { uuid, content, .. } = &messages[2] {
             assert_eq!(uuid, "assistant-array-content");
-            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+            if let MessageContent::Assistant {
+                content: assistant_content,
+                ..
+            } = content
+            {
                 assert_eq!(assistant_content.len(), 1);
                 if let ContentBlock::Text { text } = &assistant_content[0] {
                     assert_eq!(text, "Assistant array content");
@@ -974,7 +1115,11 @@ mod tests {
         // Pattern 4: Assistant message with multiple array content
         if let ClaudeMessage::Assistant { uuid, content, .. } = &messages[3] {
             assert_eq!(uuid, "assistant-multi-array");
-            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+            if let MessageContent::Assistant {
+                content: assistant_content,
+                ..
+            } = content
+            {
                 assert_eq!(assistant_content.len(), 2);
                 if let ContentBlock::Text { text } = &assistant_content[0] {
                     assert_eq!(text, "First part");
@@ -1019,7 +1164,11 @@ mod tests {
         // Good user message
         if let ClaudeMessage::User { uuid, content, .. } = &messages[0] {
             assert_eq!(uuid, "user-good");
-            if let MessageContent::User { content: user_content, .. } = content {
+            if let MessageContent::User {
+                content: user_content,
+                ..
+            } = content
+            {
                 assert_eq!(user_content, "Good message");
             }
         } else {
@@ -1029,7 +1178,11 @@ mod tests {
         // User with no message field - content becomes empty
         if let ClaudeMessage::User { uuid, content, .. } = &messages[1] {
             assert_eq!(uuid, "user-no-message");
-            if let MessageContent::User { content: user_content, .. } = content {
+            if let MessageContent::User {
+                content: user_content,
+                ..
+            } = content
+            {
                 assert_eq!(user_content, "");
             }
         } else {
@@ -1039,7 +1192,11 @@ mod tests {
         // User with no content field - content becomes empty
         if let ClaudeMessage::User { uuid, content, .. } = &messages[2] {
             assert_eq!(uuid, "user-no-content");
-            if let MessageContent::User { content: user_content, .. } = content {
+            if let MessageContent::User {
+                content: user_content,
+                ..
+            } = content
+            {
                 assert_eq!(user_content, "");
             }
         } else {
@@ -1049,7 +1206,11 @@ mod tests {
         // Good assistant message
         if let ClaudeMessage::Assistant { uuid, content, .. } = &messages[3] {
             assert_eq!(uuid, "assistant-good");
-            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+            if let MessageContent::Assistant {
+                content: assistant_content,
+                ..
+            } = content
+            {
                 assert_eq!(assistant_content.len(), 1);
             }
         } else {
@@ -1083,7 +1244,11 @@ mod tests {
         // Complex user tool result (現在の実装では配列contentは空文字列)
         if let ClaudeMessage::User { uuid, content, .. } = &messages[0] {
             assert_eq!(uuid, "user-complex-tool-result");
-            if let MessageContent::User { content: user_content, .. } = content {
+            if let MessageContent::User {
+                content: user_content,
+                ..
+            } = content
+            {
                 // 配列形式のcontentは現在の実装では処理されない
                 assert_eq!(user_content, "");
             }
@@ -1094,7 +1259,11 @@ mod tests {
         // Complex assistant with mixed content
         if let ClaudeMessage::Assistant { uuid, content, .. } = &messages[1] {
             assert_eq!(uuid, "assistant-complex-mix");
-            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+            if let MessageContent::Assistant {
+                content: assistant_content,
+                ..
+            } = content
+            {
                 assert_eq!(assistant_content.len(), 3);
 
                 // First: text

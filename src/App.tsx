@@ -6,22 +6,22 @@ import { CommandHistory } from "./components/CommandHistory";
 import { TodoManager } from "./components/TodoManager";
 import { SettingsEditor } from "./components/SettingsEditor";
 
-type Tab = 'dashboard' | 'sessions' | 'commands' | 'todos' | 'settings';
+type Tab = "dashboard" | "sessions" | "commands" | "todos" | "settings";
 
 function App() {
-  const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const [activeTab, setActiveTab] = useState<Tab>("dashboard");
 
   const renderActiveTab = () => {
     switch (activeTab) {
-      case 'dashboard':
+      case "dashboard":
         return <Dashboard />;
-      case 'sessions':
+      case "sessions":
         return <SessionBrowser />;
-      case 'commands':
+      case "commands":
         return <CommandHistory />;
-      case 'todos':
+      case "todos":
         return <TodoManager />;
-      case 'settings':
+      case "settings":
         return <SettingsEditor />;
       default:
         return <Dashboard />;
@@ -34,40 +34,38 @@ function App() {
         <h1 className="nav-title">Claude Code Manager</h1>
         <div className="nav-tabs">
           <button
-            className={activeTab === 'dashboard' ? 'active' : ''}
-            onClick={() => setActiveTab('dashboard')}
+            className={activeTab === "dashboard" ? "active" : ""}
+            onClick={() => setActiveTab("dashboard")}
           >
             Dashboard
           </button>
           <button
-            className={activeTab === 'sessions' ? 'active' : ''}
-            onClick={() => setActiveTab('sessions')}
+            className={activeTab === "sessions" ? "active" : ""}
+            onClick={() => setActiveTab("sessions")}
           >
             Sessions
           </button>
           <button
-            className={activeTab === 'commands' ? 'active' : ''}
-            onClick={() => setActiveTab('commands')}
+            className={activeTab === "commands" ? "active" : ""}
+            onClick={() => setActiveTab("commands")}
           >
             Commands
           </button>
           <button
-            className={activeTab === 'todos' ? 'active' : ''}
-            onClick={() => setActiveTab('todos')}
+            className={activeTab === "todos" ? "active" : ""}
+            onClick={() => setActiveTab("todos")}
           >
             TODOs
           </button>
           <button
-            className={activeTab === 'settings' ? 'active' : ''}
-            onClick={() => setActiveTab('settings')}
+            className={activeTab === "settings" ? "active" : ""}
+            onClick={() => setActiveTab("settings")}
           >
             Settings
           </button>
         </div>
       </nav>
-      <main className="main">
-        {renderActiveTab()}
-      </main>
+      <main className="main">{renderActiveTab()}</main>
     </div>
   );
 }
