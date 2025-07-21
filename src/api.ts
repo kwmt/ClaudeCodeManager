@@ -38,6 +38,14 @@ export const api = {
     return mockApi.getAllSessions();
   },
 
+  async getChangedSessions(): Promise<ClaudeSession[]> {
+    if (isTauri && tauriApi) {
+      return tauriApi.invoke("get_changed_sessions");
+    }
+    // For mock API, return empty array since we don't track changes
+    return [];
+  },
+
   async getSessionMessages(sessionId: string): Promise<ClaudeMessage[]> {
     if (isTauri && tauriApi) {
       return tauriApi.invoke("get_session_messages", { sessionId });

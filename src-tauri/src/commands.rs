@@ -23,6 +23,16 @@ pub async fn get_all_sessions(
 }
 
 #[tauri::command]
+pub async fn get_changed_sessions(
+    data_manager: State<'_, Arc<ClaudeDataManager>>,
+) -> Result<Vec<ClaudeSession>, String> {
+    data_manager
+        .get_changed_sessions()
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn get_session_messages(
     session_id: String,
     data_manager: State<'_, Arc<ClaudeDataManager>>,
@@ -166,12 +176,24 @@ pub async fn start_file_watcher(
             .map_err(|e| e.to_string())?;
 
         // Process file change events
-        while let Ok(_event) = rx.recv() {
+        while let Ok(event) = rx.recv() {
             // Debounce: wait a bit to avoid rapid fire events
             tokio::time::sleep(Duration::from_millis(500)).await;
 
-            // Invalidate caches
-            data_manager_clone.invalidate_caches().await;
+            // Only invalidate specific session caches if we can identify the changed file
+            if let Some(path) = event.paths.first() {
+                if path.extension().and_then(|e| e.to_str()) == Some("jsonl") {
+                    if let Some(session_id) = path.file_stem().and_then(|n| n.to_str()) {
+                        data_manager_clone.invalidate_session_cache(session_id).await;
+                    }
+                } else {
+                    // For non-session files, invalidate all caches
+                    data_manager_clone.invalidate_caches().await;
+                }
+            } else {
+                // If we can't determine the specific file, invalidate all caches
+                data_manager_clone.invalidate_caches().await;
+            }
 
             // Emit event to frontend
             let file_change_event = FileChangeEvent {

@@ -19,6 +19,7 @@ pub fn run() {
         .manage(data_manager)
         .invoke_handler(tauri::generate_handler![
             get_all_sessions,
+            get_changed_sessions,
             get_session_messages,
             get_command_history,
             get_todos,

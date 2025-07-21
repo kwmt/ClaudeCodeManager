@@ -13,6 +13,7 @@ pub struct ClaudeDataManager {
     claude_dir: PathBuf,
     _sessions_cache: RwLock<HashMap<String, ClaudeSession>>,
     messages_cache: RwLock<HashMap<String, Vec<ClaudeMessage>>>,
+    file_timestamps: RwLock<HashMap<PathBuf, DateTime<Utc>>>,
     _watcher: Option<RecommendedWatcher>,
 }
 
@@ -47,6 +48,7 @@ impl ClaudeDataManager {
             claude_dir,
             _sessions_cache: RwLock::new(HashMap::new()),
             messages_cache: RwLock::new(HashMap::new()),
+            file_timestamps: RwLock::new(HashMap::new()),
             _watcher: Some(watcher),
         })
     }
@@ -61,6 +63,7 @@ impl ClaudeDataManager {
             claude_dir: claude_dir.to_path_buf(),
             _sessions_cache: RwLock::new(HashMap::new()),
             messages_cache: RwLock::new(HashMap::new()),
+            file_timestamps: RwLock::new(HashMap::new()),
             _watcher: None, // No watcher in test mode
         })
     }
@@ -526,5 +529,73 @@ impl ClaudeDataManager {
         let mut messages_cache = self.messages_cache.write().await;
         sessions_cache.clear();
         messages_cache.clear();
+    }
+
+    async fn get_file_modified_time(&self, path: &Path) -> Result<DateTime<Utc>, Box<dyn std::error::Error>> {
+        let metadata = fs::metadata(path)?;
+        let modified = metadata.modified()?;
+        let datetime = DateTime::<Utc>::from(modified);
+        Ok(datetime)
+    }
+
+    pub async fn get_changed_sessions(&self) -> Result<Vec<ClaudeSession>, Box<dyn std::error::Error>> {
+        let projects_dir = self.claude_dir.join("projects");
+        let mut changed_sessions = Vec::new();
+        let mut timestamps = self.file_timestamps.write().await;
+
+        if !projects_dir.exists() {
+            return Ok(changed_sessions);
+        }
+
+        for entry in fs::read_dir(&projects_dir)? {
+            let entry = entry?;
+            let project_path = entry.path();
+
+            if project_path.is_dir() {
+                let project_name = project_path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("")
+                    .to_string();
+
+                let decoded_path = project_name.replace("-", "/");
+
+                for session_file in fs::read_dir(&project_path)? {
+                    let session_file = session_file?;
+                    let file_path = session_file.path();
+
+                    if file_path.extension().and_then(|e| e.to_str()) == Some("jsonl") {
+                        let current_time = self.get_file_modified_time(&file_path).await?;
+                        let last_known_time = timestamps.get(&file_path);
+
+                        if last_known_time.map_or(true, |&t| current_time > t) {
+                            let session_id = file_path
+                                .file_stem()
+                                .and_then(|n| n.to_str())
+                                .unwrap_or("")
+                                .to_string();
+
+                            let session = self
+                                .parse_session_file(&file_path, &session_id, &decoded_path)
+                                .await?;
+                            changed_sessions.push(session);
+                            timestamps.insert(file_path.clone(), current_time);
+                        }
+                    }
+                }
+            }
+        }
+
+        changed_sessions.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+        Ok(changed_sessions)
+    }
+
+    pub async fn invalidate_session_cache(&self, session_id: &str) {
+        let mut sessions_cache = self._sessions_cache.write().await;
+        let mut messages_cache = self.messages_cache.write().await;
+        
+        // Remove specific session from caches
+        sessions_cache.retain(|_, session| session.session_id != session_id);
+        messages_cache.remove(session_id);
     }
 }
