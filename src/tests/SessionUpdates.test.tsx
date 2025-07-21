@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { SessionBrowser } from "../components/SessionBrowser";
 import { mockApi } from "../api-mock";
 
@@ -14,48 +14,41 @@ vi.mock("../api", () => ({
     exportSessionData: vi.fn((sessionId: string) =>
       mockApi.exportSessionData(sessionId),
     ),
-    startFileWatcher: vi.fn(() => Promise.resolve()),
   },
 }));
-
-// Mock the global event listener
-const mockAddEventListener = vi.fn();
-const mockRemoveEventListener = vi.fn();
-
-Object.defineProperty(window, "addEventListener", {
-  value: mockAddEventListener,
-});
-
-Object.defineProperty(window, "removeEventListener", {
-  value: mockRemoveEventListener,
-});
 
 describe("Session Updates Optimization", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("should register event listener for claude-data-changed events", async () => {
+  it("should render session browser correctly", async () => {
     render(<SessionBrowser />);
 
     await waitFor(() => {
-      expect(mockAddEventListener).toHaveBeenCalledWith(
-        "claude-data-changed",
-        expect.any(Function),
-      );
+      expect(screen.getByText(/Session Browser/)).toBeInTheDocument();
+    });
+
+    // セッションが表示されることを確認（h4要素を使って特定）
+    await waitFor(() => {
+      const webApp = screen.getByRole("heading", { name: "web-app", level: 4 });
+      const mobileApp = screen.getByRole("heading", {
+        name: "mobile-app",
+        level: 4,
+      });
+      const apiServer = screen.getByRole("heading", {
+        name: "api-server",
+        level: 4,
+      });
+
+      expect(webApp).toBeInTheDocument();
+      expect(mobileApp).toBeInTheDocument();
+      expect(apiServer).toBeInTheDocument();
     });
   });
 
-  it("should show refreshing indicator when updating sessions", async () => {
+  it("should show refreshing indicator when manually refreshing a project", async () => {
     const { api } = await import("../api");
-
-    // Create a slow promise to simulate network delay
-    let resolvePromise: (value: any) => void;
-    const slowPromise = new Promise((resolve) => {
-      resolvePromise = resolve;
-    });
-
-    vi.mocked(api.getChangedSessions).mockReturnValueOnce(slowPromise as any);
 
     render(<SessionBrowser />);
 
@@ -64,30 +57,39 @@ describe("Session Updates Optimization", () => {
       expect(screen.getByText(/Session Browser/)).toBeInTheDocument();
     });
 
-    // Trigger the data changed event
-    const eventHandler = mockAddEventListener.mock.calls.find(
-      (call) => call[0] === "claude-data-changed",
-    )?.[1];
+    // セッションが表示されるまで待つ
+    await waitFor(() => {
+      const webApp = screen.getByRole("heading", { name: "web-app", level: 4 });
+      expect(webApp).toBeInTheDocument();
+    });
 
-    if (eventHandler) {
-      eventHandler(new Event("claude-data-changed"));
+    // Create a slow promise to simulate network delay
+    let resolvePromise: (value: any) => void;
+    const slowPromise = new Promise((resolve) => {
+      resolvePromise = resolve;
+    });
 
-      // Check if refreshing indicator appears
-      await waitFor(
-        () => {
-          expect(screen.getByText(/🔄/)).toBeInTheDocument();
-        },
-        { timeout: 100 },
-      );
+    // refreshProjectはgetAllSessionsを呼び出すので、それをモック
+    vi.mocked(api.getAllSessions).mockReturnValueOnce(slowPromise as any);
 
-      // Resolve the promise to complete the update
-      resolvePromise!([]);
+    // リフレッシュボタンを見つけてクリック
+    const refreshButtons = screen.getAllByTitle("Refresh this project");
+    expect(refreshButtons.length).toBeGreaterThan(0);
 
-      // Wait for refreshing indicator to disappear
-      await waitFor(() => {
-        expect(screen.queryByText(/🔄/)).not.toBeInTheDocument();
-      });
-    }
+    fireEvent.click(refreshButtons[0]);
+
+    // リフレッシュボタンが無効になることを確認
+    await waitFor(() => {
+      expect(refreshButtons[0]).toBeDisabled();
+    });
+
+    // Resolve the promise to complete the update
+    resolvePromise!(mockApi.getAllSessions());
+
+    // Wait for refreshing to complete
+    await waitFor(() => {
+      expect(refreshButtons[0]).not.toBeDisabled();
+    });
   });
 
   it("should not show loading state during selective updates", async () => {
@@ -106,34 +108,63 @@ describe("Session Updates Optimization", () => {
     // Verify initial loading is complete
     expect(screen.getByText(/Session Browser/)).toBeInTheDocument();
 
-    // Mock getChangedSessions to return some data
-    vi.mocked(api.getChangedSessions).mockResolvedValueOnce([]);
+    // Mock getAllSessions to return some data
+    vi.mocked(api.getAllSessions).mockResolvedValueOnce(
+      mockApi.getAllSessions(),
+    );
 
-    // Trigger the data changed event
-    const eventHandler = mockAddEventListener.mock.calls.find(
-      (call) => call[0] === "claude-data-changed",
-    )?.[1];
-
-    if (eventHandler) {
-      eventHandler(new Event("claude-data-changed"));
+    // リフレッシュボタンをクリック
+    const refreshButtons = screen.getAllByTitle("Refresh this project");
+    if (refreshButtons.length > 0) {
+      fireEvent.click(refreshButtons[0]);
 
       // Should not show loading state during selective update
       expect(screen.queryByText(/Loading sessions/)).not.toBeInTheDocument();
 
       await waitFor(() => {
-        expect(api.getChangedSessions).toHaveBeenCalled();
+        expect(api.getAllSessions).toHaveBeenCalled();
       });
     }
   });
 
-  it("should clean up event listener on unmount", () => {
-    const { unmount } = render(<SessionBrowser />);
+  it("should filter sessions by project", async () => {
+    render(<SessionBrowser />);
 
-    unmount();
+    // Wait for sessions to load
+    await waitFor(() => {
+      const webApp = screen.getByRole("heading", { name: "web-app", level: 4 });
+      const mobileApp = screen.getByRole("heading", {
+        name: "mobile-app",
+        level: 4,
+      });
+      const apiServer = screen.getByRole("heading", {
+        name: "api-server",
+        level: 4,
+      });
 
-    expect(mockRemoveEventListener).toHaveBeenCalledWith(
-      "claude-data-changed",
-      expect.any(Function),
-    );
+      expect(webApp).toBeInTheDocument();
+      expect(mobileApp).toBeInTheDocument();
+      expect(apiServer).toBeInTheDocument();
+    });
+
+    // プロジェクトフィルターを見つけて変更
+    const projectSelect = screen.getByLabelText("Project:");
+    fireEvent.change(projectSelect, {
+      target: { value: "/Users/developer/projects/web-app" },
+    });
+
+    // web-appのみが表示されることを確認
+    await waitFor(() => {
+      const webApp = screen.getByRole("heading", { name: "web-app", level: 4 });
+      expect(webApp).toBeInTheDocument();
+
+      // mobile-appとapi-serverが存在しないことを確認
+      expect(
+        screen.queryByRole("heading", { name: "mobile-app", level: 4 }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: "api-server", level: 4 }),
+      ).not.toBeInTheDocument();
+    });
   });
 });
