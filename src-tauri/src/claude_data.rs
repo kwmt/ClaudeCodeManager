@@ -142,17 +142,13 @@ impl ClaudeDataManager {
         &self,
         session_id: &str,
     ) -> Result<Vec<ClaudeMessage>, Box<dyn std::error::Error>> {
-        println!(
-            "get_session_messages: Fetching messages for session: {}",
-            session_id
-        );
         // Check cache first
-        // {
-        //     let cache = self.messages_cache.read().await;
-        //     if let Some(messages) = cache.get(session_id) {
-        //         return Ok(messages.clone());
-        //     }
-        // }
+        {
+            let cache = self.messages_cache.read().await;
+            if let Some(messages) = cache.get(session_id) {
+                return Ok(messages.clone());
+            }
+        }
 
         // Find session file
         let session_file = self.find_session_file(session_id)?;
@@ -161,7 +157,6 @@ impl ClaudeDataManager {
             session_file
         );
         let messages = self.parse_messages_file(&session_file, session_id).await?;
-        println!("get_session_messages: Parsed {} messages", messages.len());
 
         // Cache the result
         {
