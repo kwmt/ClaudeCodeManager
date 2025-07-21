@@ -66,36 +66,6 @@ export const Dashboard: React.FC<DashboardProps> = () => {
   useEffect(() => {
     loadInitialData();
 
-    // Listen for file change events with selective updates
-    const handleDataChanged = (event: CustomEvent) => {
-      const changedPath = event.detail?.path;
-      console.log("Data changed:", changedPath);
-      
-
-      if (!changedPath) {
-        // If no specific path, update both
-        updateStats();
-        updateProjects();
-        return;
-      }
-
-      // Update stats for session changes
-      if (
-        changedPath.includes("/projects/") &&
-        changedPath.endsWith(".jsonl")
-      ) {
-        updateStats();
-      }
-
-      // Update projects for any project-related changes
-      if (
-        changedPath.includes("/projects/") ||
-        changedPath.includes("/todos/")
-      ) {
-        updateProjects();
-      }
-    };
-
     // File change events disabled - real-time updates removed
   }, [loadInitialData, updateStats, updateProjects]);
 

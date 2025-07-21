@@ -16,8 +16,9 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
   const [projects, setProjects] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [refreshingProjects, setRefreshingProjects] = useState<Set<string>>(new Set());
+  const [refreshingProjects, setRefreshingProjects] = useState<Set<string>>(
+    new Set(),
+  );
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -51,58 +52,6 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
       setError(err instanceof Error ? err.message : "Failed to load sessions");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadChangedSessions = async () => {
-    try {
-      setRefreshing(true);
-      setError(null);
-      const changedSessions = await api.getChangedSessions();
-
-      if (changedSessions.length > 0) {
-        // Update existing sessions or add new ones
-        setAllSessions((prevSessions) => {
-          const updatedSessions = [...prevSessions];
-          const sessionMap = new Map(
-            updatedSessions.map((s) => [s.session_id, s]),
-          );
-
-          changedSessions.forEach((changedSession) => {
-            sessionMap.set(changedSession.session_id, changedSession);
-          });
-
-          const finalSessions = Array.from(sessionMap.values()).sort((a, b) =>
-            b.updated_at.localeCompare(a.updated_at),
-          );
-
-          // Update projects list
-          const uniqueProjects = Array.from(
-            new Set(finalSessions.map((session) => session.project_path)),
-          ).sort();
-          setProjects(uniqueProjects);
-
-          // Apply current filters to the updated data
-          filterSessions(finalSessions, searchQuery, selectedProject);
-
-          return finalSessions;
-        });
-
-        // If the currently selected session was updated, refresh its messages
-        if (
-          selectedSession &&
-          changedSessions.some(
-            (s) => s.session_id === selectedSession.session_id,
-          )
-        ) {
-          loadSessionMessages(selectedSession);
-        }
-      }
-    } catch (err) {
-      // Don't show errors for background updates to avoid disrupting user experience
-      console.warn("Failed to load changed sessions:", err);
-    } finally {
-      setRefreshing(false);
     }
   };
 
@@ -147,24 +96,30 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
 
   const refreshProject = async (projectPath: string) => {
     try {
-      setRefreshingProjects(prev => new Set(prev.add(projectPath)));
-      
+      setRefreshingProjects((prev) => new Set(prev.add(projectPath)));
+
       const data = await api.getAllSessions();
-      const projectSessions = data.filter(session => session.project_path === projectPath);
-      
-      setAllSessions(prevSessions => {
-        const updatedSessions = prevSessions.filter(s => s.project_path !== projectPath);
-        const finalSessions = [...updatedSessions, ...projectSessions].sort((a, b) =>
-          b.updated_at.localeCompare(a.updated_at)
+      const projectSessions = data.filter(
+        (session) => session.project_path === projectPath,
+      );
+
+      setAllSessions((prevSessions) => {
+        const updatedSessions = prevSessions.filter(
+          (s) => s.project_path !== projectPath,
         );
-        
+        const finalSessions = [...updatedSessions, ...projectSessions].sort(
+          (a, b) => b.updated_at.localeCompare(a.updated_at),
+        );
+
         filterSessions(finalSessions, searchQuery, selectedProject);
         return finalSessions;
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to refresh project");
+      setError(
+        err instanceof Error ? err.message : "Failed to refresh project",
+      );
     } finally {
-      setRefreshingProjects(prev => {
+      setRefreshingProjects((prev) => {
         const newSet = new Set(prev);
         newSet.delete(projectPath);
         return newSet;
@@ -318,10 +273,7 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
   return (
     <div className="session-browser">
       <div className="session-browser-header">
-        <h2>
-          Session Browser
-          {refreshing && <span className="refreshing-indicator"> 🔄</span>}
-        </h2>
+        <h2>Session Browser</h2>
         <div className="header-controls">
           <div className="project-filter">
             <label htmlFor="project-select">Project:</label>
@@ -378,9 +330,9 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
                   <h4>
                     {session.project_path.split("/").pop() ||
                       session.project_path}
-                    {refreshingProjects.has(session.project_path) && 
+                    {refreshingProjects.has(session.project_path) && (
                       <span className="refreshing-indicator"> 🔄</span>
-                    }
+                    )}
                   </h4>
                   <div className="session-actions">
                     <button
