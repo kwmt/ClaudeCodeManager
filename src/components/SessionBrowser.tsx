@@ -17,6 +17,7 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
   const [loading, setLoading] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshingProjects, setRefreshingProjects] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -151,6 +152,33 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
       setError(err instanceof Error ? err.message : "Failed to load messages");
     } finally {
       setLoadingMessages(false);
+    }
+  };
+
+  const refreshProject = async (projectPath: string) => {
+    try {
+      setRefreshingProjects(prev => new Set(prev.add(projectPath)));
+      
+      const data = await api.getAllSessions();
+      const projectSessions = data.filter(session => session.project_path === projectPath);
+      
+      setAllSessions(prevSessions => {
+        const updatedSessions = prevSessions.filter(s => s.project_path !== projectPath);
+        const finalSessions = [...updatedSessions, ...projectSessions].sort((a, b) =>
+          b.updated_at.localeCompare(a.updated_at)
+        );
+        
+        filterSessions(finalSessions, searchQuery, selectedProject);
+        return finalSessions;
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to refresh project");
+    } finally {
+      setRefreshingProjects(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(projectPath);
+        return newSet;
+      });
     }
   };
 
@@ -360,16 +388,32 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
                   <h4>
                     {session.project_path.split("/").pop() ||
                       session.project_path}
+                    {refreshingProjects.has(session.project_path) && 
+                      <span className="refreshing-indicator"> 🔄</span>
+                    }
                   </h4>
-                  <button
-                    className="export-button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      exportSession(session.session_id);
-                    }}
-                  >
-                    Export
-                  </button>
+                  <div className="session-actions">
+                    <button
+                      className="refresh-button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        refreshProject(session.project_path);
+                      }}
+                      disabled={refreshingProjects.has(session.project_path)}
+                      title="Refresh this project"
+                    >
+                      🔄
+                    </button>
+                    <button
+                      className="export-button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        exportSession(session.session_id);
+                      }}
+                    >
+                      Export
+                    </button>
+                  </div>
                 </div>
                 <p className="session-path">{session.project_path}</p>
                 <div className="session-meta">

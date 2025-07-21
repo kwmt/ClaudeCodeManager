@@ -69,6 +69,8 @@ export const Dashboard: React.FC<DashboardProps> = () => {
     // Listen for file change events with selective updates
     const handleDataChanged = (event: CustomEvent) => {
       const changedPath = event.detail?.path;
+      console.log("Data changed:", changedPath);
+      
 
       if (!changedPath) {
         // If no specific path, update both
