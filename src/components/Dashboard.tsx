@@ -96,17 +96,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
       }
     };
 
-    window.addEventListener(
-      "claude-data-changed",
-      handleDataChanged as EventListener,
-    );
-
-    return () => {
-      window.removeEventListener(
-        "claude-data-changed",
-        handleDataChanged as EventListener,
-      );
-    };
+    // File change events disabled - real-time updates removed
   }, [loadInitialData, updateStats, updateProjects]);
 
   if (loading) {

@@ -23,17 +23,7 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
   useEffect(() => {
     loadSessions();
 
-    // Listen for file change events
-    const handleDataChanged = () => {
-      // Use non-blocking selective updates
-      loadChangedSessions();
-    };
-
-    window.addEventListener("claude-data-changed", handleDataChanged);
-
-    return () => {
-      window.removeEventListener("claude-data-changed", handleDataChanged);
-    };
+    // File change events disabled - real-time updates removed
   }, []);
 
   useEffect(() => {

@@ -146,66 +146,6 @@ pub async fn export_session_data(
     serde_json::to_string_pretty(&messages).map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub async fn start_file_watcher(
-    app: AppHandle,
-    data_manager: State<'_, Arc<ClaudeDataManager>>,
-) -> Result<(), String> {
-    let data_manager_clone = data_manager.inner().clone();
-    let app_clone = app.clone();
-
-    tokio::spawn(async move {
-        let claude_dir = dirs::home_dir()
-            .map(|home| home.join(".claude"))
-            .ok_or("Could not find home directory".to_string())?;
-
-        let (tx, rx) = mpsc::channel();
-
-        let mut watcher = RecommendedWatcher::new(
-            move |res: Result<Event, notify::Error>| {
-                if let Ok(event) = res {
-                    let _ = tx.send(event);
-                }
-            },
-            Config::default(),
-        )
-        .map_err(|e| e.to_string())?;
-
-        watcher
-            .watch(&claude_dir, RecursiveMode::Recursive)
-            .map_err(|e| e.to_string())?;
-
-        // Process file change events
-        while let Ok(event) = rx.recv() {
-            // Debounce: wait a bit to avoid rapid fire events
-            tokio::time::sleep(Duration::from_millis(500)).await;
-
-            // Only invalidate specific session caches if we can identify the changed file
-            if let Some(path) = event.paths.first() {
-                if path.extension().and_then(|e| e.to_str()) == Some("jsonl") {
-                    if let Some(session_id) = path.file_stem().and_then(|n| n.to_str()) {
-                        data_manager_clone
-                            .invalidate_session_cache(session_id)
-                            .await;
-                    }
-                } else {
-                    // For non-session files, invalidate all caches
-                    data_manager_clone.invalidate_caches().await;
-                }
-            } else {
-                // If we can't determine the specific file, invalidate all caches
-                data_manager_clone.invalidate_caches().await;
-            }
-
-            // Emit event to frontend
-            let file_change_event = FileChangeEvent {
-                message: "Claude directory changed".to_string(),
-            };
-            let _ = app_clone.emit("file-changed", file_change_event);
-        }
-
-        Ok::<(), String>(())
-    });
-
-    Ok(())
-}
+// File watcher functionality disabled - was causing real-time updates
+// #[tauri::command]
+// pub async fn start_file_watcher(...) -> Result<(), String> { ... }
