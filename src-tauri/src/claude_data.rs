@@ -127,6 +127,8 @@ impl ClaudeDataManager {
         let mut created_at: Option<DateTime<Utc>> = None;
         let mut updated_at: Option<DateTime<Utc>> = None;
         let mut git_branch: Option<String> = None;
+        let mut latest_content_preview: Option<String> = None;
+        let mut latest_timestamp: Option<DateTime<Utc>> = None;
 
         for line in reader.lines() {
             let line = line?;
@@ -140,6 +142,12 @@ impl ClaudeDataManager {
                         }
                         if updated_at.is_none() || timestamp > updated_at.unwrap() {
                             updated_at = Some(timestamp);
+                        }
+
+                        // Extract latest content for preview
+                        if latest_timestamp.is_none() || timestamp > latest_timestamp.unwrap() {
+                            latest_timestamp = Some(timestamp);
+                            latest_content_preview = self.extract_content_preview(&message);
                         }
                     }
                 }
@@ -161,6 +169,7 @@ impl ClaudeDataManager {
             updated_at: updated_at.unwrap_or_else(Utc::now),
             message_count,
             git_branch,
+            latest_content_preview,
         })
     }
 
@@ -363,6 +372,77 @@ impl ClaudeDataManager {
                 Some(ContentBlock::ToolUse { id, name, input })
             }
             _ => None,
+        }
+    }
+
+    fn extract_content_preview(&self, message: &serde_json::Value) -> Option<String> {
+        let msg_type = message.get("type").and_then(|t| t.as_str())?;
+
+        match msg_type {
+            "user" => {
+                // Extract text from user message
+                message
+                    .get("message")
+                    .and_then(|m| m.get("content"))
+                    .and_then(|c| c.as_str())
+                    .map(|content| self.truncate_content(content, 200))
+            }
+            "assistant" => {
+                // Extract text from assistant message blocks
+                let content_blocks = message
+                    .get("message")
+                    .and_then(|m| m.get("content"))
+                    .and_then(|c| c.as_array())?;
+
+                let mut text_parts = Vec::new();
+
+                for block in content_blocks {
+                    if block.get("type").and_then(|t| t.as_str()) == Some("text") {
+                        if let Some(text) = block.get("text").and_then(|t| t.as_str()) {
+                            text_parts.push(text.to_string());
+                        }
+                    } else if block.get("type").and_then(|t| t.as_str()) == Some("tool_use") {
+                        if let Some(name) = block.get("name").and_then(|n| n.as_str()) {
+                            text_parts.push(format!("[Using tool: {}]", name));
+                        }
+                    }
+                }
+
+                if !text_parts.is_empty() {
+                    Some(self.truncate_content(&text_parts.join(" "), 200))
+                } else {
+                    None
+                }
+            }
+            "summary" => {
+                // Extract summary text
+                message
+                    .get("summary")
+                    .and_then(|s| s.as_str())
+                    .map(|summary| self.truncate_content(summary, 200))
+            }
+            _ => None,
+        }
+    }
+
+    fn truncate_content(&self, content: &str, max_chars: usize) -> String {
+        let cleaned = content
+            .replace('\n', " ")
+            .replace('\r', "")
+            .chars()
+            .filter(|c| !c.is_control() || c.is_whitespace())
+            .collect::<String>();
+
+        let trimmed = cleaned.trim();
+
+        if trimmed.len() <= max_chars {
+            trimmed.to_string()
+        } else {
+            let mut truncated = trimmed.chars().take(max_chars).collect::<String>();
+            if let Some(last_space) = truncated.rfind(' ') {
+                truncated.truncate(last_space);
+            }
+            format!("{}...", truncated)
         }
     }
 

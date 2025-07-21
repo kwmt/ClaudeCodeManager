@@ -9,6 +9,7 @@ pub struct ClaudeSession {
     pub updated_at: DateTime<Utc>,
     pub message_count: usize,
     pub git_branch: Option<String>,
+    pub latest_content_preview: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

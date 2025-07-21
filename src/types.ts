@@ -5,6 +5,7 @@ export interface ClaudeSession {
   updated_at: string;
   message_count: number;
   git_branch?: string;
+  latest_content_preview?: string;
 }
 
 export type ClaudeMessage =
