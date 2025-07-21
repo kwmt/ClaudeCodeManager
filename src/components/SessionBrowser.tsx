@@ -52,13 +52,13 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
       setError(null);
       const data = await api.getAllSessions();
       setAllSessions(data);
-      
+
       // Extract unique projects
       const uniqueProjects = Array.from(
-        new Set(data.map(session => session.project_path))
+        new Set(data.map((session) => session.project_path)),
       ).sort();
       setProjects(uniqueProjects);
-      
+
       // Apply current filters
       filterSessions(data, searchQuery, selectedProject);
     } catch (err) {
@@ -71,22 +71,23 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
   const filterSessions = (
     sessionsToFilter: ClaudeSession[],
     query: string,
-    project: string
+    project: string,
   ) => {
     let filtered = sessionsToFilter;
 
     // Apply project filter
     if (project !== "all") {
-      filtered = filtered.filter(session => session.project_path === project);
+      filtered = filtered.filter((session) => session.project_path === project);
     }
 
     // Apply search query filter
     if (query.trim()) {
       const queryLower = query.toLowerCase();
-      filtered = filtered.filter(session =>
-        session.project_path.toLowerCase().includes(queryLower) ||
-        session.session_id.toLowerCase().includes(queryLower) ||
-        session.git_branch?.toLowerCase().includes(queryLower)
+      filtered = filtered.filter(
+        (session) =>
+          session.project_path.toLowerCase().includes(queryLower) ||
+          session.session_id.toLowerCase().includes(queryLower) ||
+          session.git_branch?.toLowerCase().includes(queryLower),
       );
     }
 
@@ -288,8 +289,9 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
         <div className="sessions-list">
           {!loading && (
             <div className="sessions-count">
-              {sessions.length} session{sessions.length !== 1 ? 's' : ''} 
-              {selectedProject !== "all" && ` in ${selectedProject.split("/").pop()}`}
+              {sessions.length} session{sessions.length !== 1 ? "s" : ""}
+              {selectedProject !== "all" &&
+                ` in ${selectedProject.split("/").pop()}`}
               {searchQuery && ` matching "${searchQuery}"`}
             </div>
           )}

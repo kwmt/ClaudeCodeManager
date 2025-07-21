@@ -10,7 +10,7 @@
 	},
 	"formatter": {
 		"enabled": true,
-		"indentStyle": "tab"
+		"indentStyle": "space"
 	},
 	"linter": {
 		"enabled": true,
@@ -29,6 +29,13 @@
 			"source": {
 				"organizeImports": "on"
 			}
+		}
+	},
+	"css": {
+		"formatter": {
+			"enabled": false,
+			"indentStyle": "space",
+			"indentWidth": 2
 		}
 	}
 }
