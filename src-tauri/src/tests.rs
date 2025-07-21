@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::claude_data::ClaudeDataManager;
     use crate::models::*;
     use std::fs;
@@ -20,73 +19,6 @@ mod tests {
         temp_dir
     }
 
-    fn create_test_session_file(claude_dir: &Path, project_name: &str, session_id: &str) {
-        let project_dir = claude_dir.join("projects").join(project_name);
-        fs::create_dir_all(&project_dir).unwrap();
-
-        let session_content = r#"{"uuid":"msg1","parentUuid":null,"sessionId":"test-session","timestamp":"2025-07-20T05:00:00.000Z","type":"user","message":{"role":"user","content":"Hello"},"cwd":"/test/path","gitBranch":"main"}
-{"uuid":"msg2","parentUuid":"msg1","sessionId":"test-session","timestamp":"2025-07-20T05:01:00.000Z","type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Hello! How can I help you?"}]},"cwd":"/test/path","gitBranch":"main"}"#;
-
-        let session_file = project_dir.join(format!("{}.jsonl", session_id));
-        fs::write(session_file, session_content).unwrap();
-    }
-
-    fn create_test_todo_file(claude_dir: &Path, session_id: &str) {
-        let todos_content = r#"[
-  {
-    "id": "1",
-    "content": "Test todo item",
-    "status": "Pending",
-    "priority": "High"
-  },
-  {
-    "id": "2",
-    "content": "Another test todo",
-    "status": "Completed",
-    "priority": "Medium"
-  }
-]"#;
-
-        let todo_file = claude_dir
-            .join("todos")
-            .join(format!("{}.json", session_id));
-        fs::write(todo_file, todos_content).unwrap();
-    }
-
-    fn create_test_settings_file(claude_dir: &Path) {
-        let settings_content = r#"{
-  "permissions": {
-    "defaultMode": "bypassPermissions",
-    "allow": ["Bash(find *)"],
-    "deny": ["Bash(rm -rf /*)"]
-  },
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "echo test"
-          }
-        ]
-      }
-    ]
-  }
-}"#;
-
-        let settings_file = claude_dir.join("settings.json");
-        fs::write(settings_file, settings_content).unwrap();
-    }
-
-    fn create_test_command_history(claude_dir: &Path) {
-        let command_content = r#"[Sun Jul 20 12:00:00 JST 2025] testuser: ls -la
-[Sun Jul 20 12:01:00 JST 2025] testuser: git status
-[Sun Jul 20 12:02:00 JST 2025] testuser: npm install"#;
-
-        let command_file = claude_dir.join("command_history.log");
-        fs::write(command_file, command_content).unwrap();
-    }
 
     #[tokio::test]
     async fn test_claude_data_manager_initialization() {
@@ -318,72 +250,86 @@ mod tests {
 
         // Test user message with simple string content
         let user_msg = &messages[0];
-        assert_eq!(user_msg.message_type, MessageType::User);
-        if let MessageContent::User { content, .. } = &user_msg.content {
-            assert_eq!(content, "Hello, how are you?");
+        if let ClaudeMessage::User { content, .. } = user_msg {
+            if let MessageContent::User { content: user_content, .. } = content {
+                assert_eq!(user_content, "Hello, how are you?");
+            } else {
+                panic!("Expected User message content");
+            }
         } else {
-            panic!("Expected User message content");
+            panic!("Expected User message variant");
         }
 
         // Test assistant message with text content
         let assistant_msg = &messages[1];
-        assert_eq!(assistant_msg.message_type, MessageType::Assistant);
-        if let MessageContent::Assistant { content, .. } = &assistant_msg.content {
-            assert_eq!(content.len(), 1);
-            if let ContentBlock::Text { text } = &content[0] {
-                assert_eq!(
-                    text,
-                    "Hello! I'm doing well, thank you for asking. How can I help you today?"
-                );
+        if let ClaudeMessage::Assistant { content, .. } = assistant_msg {
+            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+                assert_eq!(assistant_content.len(), 1);
+                if let ContentBlock::Text { text } = &assistant_content[0] {
+                    assert_eq!(
+                        text,
+                        "Hello! I'm doing well, thank you for asking. How can I help you today?"
+                    );
+                } else {
+                    panic!("Expected Text content block");
+                }
             } else {
-                panic!("Expected Text content block");
+                panic!("Expected Assistant message content");
             }
         } else {
-            panic!("Expected Assistant message content");
+            panic!("Expected Assistant message variant");
         }
 
         // Test user command message
         let user_cmd = &messages[2];
-        assert_eq!(user_cmd.message_type, MessageType::User);
-        if let MessageContent::User { content, .. } = &user_cmd.content {
-            assert!(content.contains("<command-name>ls</command-name>"));
-            assert!(content.contains("<command-message>list files</command-message>"));
-            assert!(content.contains("<command-args>-la</command-args>"));
+        if let ClaudeMessage::User { content, .. } = user_cmd {
+            if let MessageContent::User { content: user_content, .. } = content {
+                assert!(user_content.contains("<command-name>ls</command-name>"));
+                assert!(user_content.contains("<command-message>list files</command-message>"));
+                assert!(user_content.contains("<command-args>-la</command-args>"));
+            } else {
+                panic!("Expected User command content");
+            }
         } else {
-            panic!("Expected User command content");
+            panic!("Expected User message variant");
         }
 
         // Test assistant message with text and tool_use
         let assistant_tool = &messages[3];
-        assert_eq!(assistant_tool.message_type, MessageType::Assistant);
-        if let MessageContent::Assistant { content, .. } = &assistant_tool.content {
-            assert_eq!(content.len(), 2);
+        if let ClaudeMessage::Assistant { content, .. } = assistant_tool {
+            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+                assert_eq!(assistant_content.len(), 2);
 
-            // First block should be text
-            if let ContentBlock::Text { text } = &content[0] {
-                assert_eq!(text, "I'll list the files for you.");
-            } else {
-                panic!("Expected Text content block");
-            }
+                // First block should be text
+                if let ContentBlock::Text { text } = &assistant_content[0] {
+                    assert_eq!(text, "I'll list the files for you.");
+                } else {
+                    panic!("Expected Text content block");
+                }
 
-            // Second block should be tool_use
-            if let ContentBlock::ToolUse { id, name, input } = &content[1] {
-                assert_eq!(id, "tool_01");
-                assert_eq!(name, "Bash");
-                assert!(input.get("command").is_some());
-                assert_eq!(input["command"], "ls -la");
+                // Second block should be tool_use
+                if let ContentBlock::ToolUse { id, name, input } = &assistant_content[1] {
+                    assert_eq!(id, "tool_01");
+                    assert_eq!(name, "Bash");
+                    assert!(input.get("command").is_some());
+                    assert_eq!(input["command"], "ls -la");
+                } else {
+                    panic!("Expected ToolUse content block");
+                }
             } else {
-                panic!("Expected ToolUse content block");
+                panic!("Expected Assistant message content");
             }
         } else {
-            panic!("Expected Assistant message content");
+            panic!("Expected Assistant message variant");
         }
 
         // Test metadata fields
-        assert_eq!(user_msg.cwd, "/test/project");
-        assert_eq!(user_msg.git_branch, Some("main".to_string()));
-        assert_eq!(user_msg.session_id, "test-session");
-        assert!(user_msg.uuid.starts_with("user-msg"));
+        if let ClaudeMessage::User { cwd, git_branch, session_id, uuid, .. } = user_msg {
+            assert_eq!(cwd, "/test/project");
+            assert_eq!(git_branch, &Some("main".to_string()));
+            assert_eq!(session_id, "test-session");
+            assert!(uuid.starts_with("user-msg"));
+        }
     }
 
     #[tokio::test]
@@ -497,80 +443,95 @@ mod tests {
 
         // Test Pattern 1: User message with simple string content
         let user_text_msg = &messages[0];
-        assert_eq!(user_text_msg.message_type, MessageType::User);
-        assert_eq!(user_text_msg.uuid, "user-text-1");
-        if let MessageContent::User { content, .. } = &user_text_msg.content {
-            assert_eq!(content, "Hello, how are you?");
+        if let ClaudeMessage::User { uuid, content, .. } = user_text_msg {
+            assert_eq!(uuid, "user-text-1");
+            if let MessageContent::User { content: user_content, .. } = content {
+                assert_eq!(user_content, "Hello, how are you?");
+            } else {
+                panic!("Expected User message content");
+            }
         } else {
-            panic!("Expected User message content");
+            panic!("Expected User message variant");
         }
 
         // Test Pattern 2: Assistant message with single text block
         let assistant_text_msg = &messages[1];
-        assert_eq!(assistant_text_msg.message_type, MessageType::Assistant);
-        assert_eq!(assistant_text_msg.uuid, "assistant-text-1");
-        if let MessageContent::Assistant { content, .. } = &assistant_text_msg.content {
-            assert_eq!(content.len(), 1);
-            if let ContentBlock::Text { text } = &content[0] {
-                assert_eq!(
-                    text,
-                    "Hello! I'm doing well, thank you for asking. How can I help you today?"
-                );
+        if let ClaudeMessage::Assistant { uuid, content, .. } = assistant_text_msg {
+            assert_eq!(uuid, "assistant-text-1");
+            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+                assert_eq!(assistant_content.len(), 1);
+                if let ContentBlock::Text { text } = &assistant_content[0] {
+                    assert_eq!(
+                        text,
+                        "Hello! I'm doing well, thank you for asking. How can I help you today?"
+                    );
+                } else {
+                    panic!("Expected Text content block");
+                }
             } else {
-                panic!("Expected Text content block");
+                panic!("Expected Assistant message content");
             }
         } else {
-            panic!("Expected Assistant message content");
+            panic!("Expected Assistant message variant");
         }
 
         // Test Pattern 3: User command message with XML tags
         let user_command_msg = &messages[2];
-        assert_eq!(user_command_msg.message_type, MessageType::User);
-        assert_eq!(user_command_msg.uuid, "user-command-1");
-        if let MessageContent::User { content, .. } = &user_command_msg.content {
-            assert!(content.contains("<command-name>ls</command-name>"));
-            assert!(content.contains("<command-message>list files</command-message>"));
-            assert!(content.contains("<command-args>-la</command-args>"));
+        if let ClaudeMessage::User { uuid, content, .. } = user_command_msg {
+            assert_eq!(uuid, "user-command-1");
+            if let MessageContent::User { content: user_content, .. } = content {
+                assert!(user_content.contains("<command-name>ls</command-name>"));
+                assert!(user_content.contains("<command-message>list files</command-message>"));
+                assert!(user_content.contains("<command-args>-la</command-args>"));
+            } else {
+                panic!("Expected User command content");
+            }
         } else {
-            panic!("Expected User command content");
+            panic!("Expected User message variant");
         }
 
         // Test Pattern 4: Assistant message with text + tool_use
         let assistant_tool_msg = &messages[3];
-        assert_eq!(assistant_tool_msg.message_type, MessageType::Assistant);
-        assert_eq!(assistant_tool_msg.uuid, "assistant-tool-1");
-        if let MessageContent::Assistant { content, .. } = &assistant_tool_msg.content {
-            assert_eq!(content.len(), 2);
+        if let ClaudeMessage::Assistant { uuid, content, .. } = assistant_tool_msg {
+            assert_eq!(uuid, "assistant-tool-1");
+            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+                assert_eq!(assistant_content.len(), 2);
 
-            // First block: text
-            if let ContentBlock::Text { text } = &content[0] {
-                assert_eq!(text, "I'll list the files for you.");
-            } else {
-                panic!("Expected Text content block");
-            }
+                // First block: text
+                if let ContentBlock::Text { text } = &assistant_content[0] {
+                    assert_eq!(text, "I'll list the files for you.");
+                } else {
+                    panic!("Expected Text content block");
+                }
 
-            // Second block: tool_use
-            if let ContentBlock::ToolUse { id, name, input } = &content[1] {
-                assert_eq!(id, "tool_01");
-                assert_eq!(name, "Bash");
-                assert_eq!(input["command"], "ls -la");
-                assert_eq!(input["description"], "List files in current directory");
+                // Second block: tool_use
+                if let ContentBlock::ToolUse { id, name, input } = &assistant_content[1] {
+                    assert_eq!(id, "tool_01");
+                    assert_eq!(name, "Bash");
+                    assert_eq!(input["command"], "ls -la");
+                    assert_eq!(input["description"], "List files in current directory");
+                } else {
+                    panic!("Expected ToolUse content block");
+                }
             } else {
-                panic!("Expected ToolUse content block");
+                panic!("Expected Assistant message content");
             }
         } else {
-            panic!("Expected Assistant message content");
+            panic!("Expected Assistant message variant");
         }
 
         // Test Pattern 5: User message with tool_result (現在の実装では配列contentは空文字列として処理される)
         let user_tool_result_msg = &messages[4];
-        assert_eq!(user_tool_result_msg.message_type, MessageType::User);
-        assert_eq!(user_tool_result_msg.uuid, "user-tool-result-1");
-        if let MessageContent::User { content, .. } = &user_tool_result_msg.content {
-            // 現在の実装では配列contentは文字列として抽出できないため空文字列になる
-            assert_eq!(content, "");
+        if let ClaudeMessage::User { uuid, content, .. } = user_tool_result_msg {
+            assert_eq!(uuid, "user-tool-result-1");
+            if let MessageContent::User { content: user_content, .. } = content {
+                // 現在の実装では配列contentは文字列として抽出できないため空文字列になる
+                assert_eq!(user_content, "");
+            } else {
+                panic!("Expected User tool result content");
+            }
         } else {
-            panic!("Expected User tool result content");
+            panic!("Expected User message variant");
         }
 
         // Test Pattern 6: System message (skipped in parsing but verify other messages)
@@ -578,44 +539,58 @@ mod tests {
 
         // Test Pattern 6: User message with local command output
         let user_stdout_msg = &messages[5];
-        assert_eq!(user_stdout_msg.message_type, MessageType::User);
-        assert_eq!(user_stdout_msg.uuid, "user-stdout-1");
-        if let MessageContent::User { content, .. } = &user_stdout_msg.content {
-            assert!(
-                content.contains("<local-command-stdout>File content here</local-command-stdout>")
-            );
+        if let ClaudeMessage::User { uuid, content, .. } = user_stdout_msg {
+            assert_eq!(uuid, "user-stdout-1");
+            if let MessageContent::User { content: user_content, .. } = content {
+                assert!(
+                    user_content.contains("<local-command-stdout>File content here</local-command-stdout>")
+                );
+            } else {
+                panic!("Expected User stdout content");
+            }
         } else {
-            panic!("Expected User stdout content");
+            panic!("Expected User message variant");
         }
 
         // Test Pattern 7: Assistant message with multiple text blocks
         let assistant_multi_msg = &messages[6];
-        assert_eq!(assistant_multi_msg.message_type, MessageType::Assistant);
-        assert_eq!(assistant_multi_msg.uuid, "assistant-multi-text-1");
-        if let MessageContent::Assistant { content, .. } = &assistant_multi_msg.content {
-            assert_eq!(content.len(), 2);
+        if let ClaudeMessage::Assistant { uuid, content, .. } = assistant_multi_msg {
+            assert_eq!(uuid, "assistant-multi-text-1");
+            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+                assert_eq!(assistant_content.len(), 2);
 
-            if let ContentBlock::Text { text } = &content[0] {
-                assert_eq!(text, "I can see the file listing. ");
-            } else {
-                panic!("Expected first Text content block");
-            }
+                if let ContentBlock::Text { text } = &assistant_content[0] {
+                    assert_eq!(text, "I can see the file listing. ");
+                } else {
+                    panic!("Expected first Text content block");
+                }
 
-            if let ContentBlock::Text { text } = &content[1] {
-                assert_eq!(text, "Let me help you with that.");
+                if let ContentBlock::Text { text } = &assistant_content[1] {
+                    assert_eq!(text, "Let me help you with that.");
+                } else {
+                    panic!("Expected second Text content block");
+                }
             } else {
-                panic!("Expected second Text content block");
+                panic!("Expected Assistant multi-text content");
             }
         } else {
-            panic!("Expected Assistant multi-text content");
+            panic!("Expected Assistant message variant");
         }
 
         // Verify metadata for all messages
         for message in &messages {
-            assert_eq!(message.session_id, "test-session");
-            assert_eq!(message.cwd, "/test/project");
-            assert_eq!(message.git_branch, Some("main".to_string()));
-            assert!(!message.uuid.is_empty());
+            match message {
+                ClaudeMessage::User { session_id, cwd, git_branch, uuid, .. } |
+                ClaudeMessage::Assistant { session_id, cwd, git_branch, uuid, .. } => {
+                    assert_eq!(session_id, "test-session");
+                    assert_eq!(cwd, "/test/project");
+                    assert_eq!(git_branch, &Some("main".to_string()));
+                    assert!(!uuid.is_empty());
+                },
+                ClaudeMessage::Summary { .. } => {
+                    // Summary messages don't have the same metadata fields
+                }
+            }
         }
     }
 
@@ -642,26 +617,34 @@ mod tests {
         assert_eq!(messages.len(), 4);
 
         // Simple text
-        if let MessageContent::User { content, .. } = &messages[0].content {
-            assert_eq!(content, "Simple text message");
+        if let ClaudeMessage::User { content, .. } = &messages[0] {
+            if let MessageContent::User { content: user_content, .. } = content {
+                assert_eq!(user_content, "Simple text message");
+            }
         }
 
         // Multiline text
-        if let MessageContent::User { content, .. } = &messages[1].content {
-            assert_eq!(content, "Message with\nmultiple\nlines");
+        if let ClaudeMessage::User { content, .. } = &messages[1] {
+            if let MessageContent::User { content: user_content, .. } = content {
+                assert_eq!(user_content, "Message with\nmultiple\nlines");
+            }
         }
 
         // Command with XML
-        if let MessageContent::User { content, .. } = &messages[2].content {
-            assert!(content.contains("git"));
-            assert!(content.contains("check status"));
-            assert!(content.contains("status --porcelain"));
+        if let ClaudeMessage::User { content, .. } = &messages[2] {
+            if let MessageContent::User { content: user_content, .. } = content {
+                assert!(user_content.contains("git"));
+                assert!(user_content.contains("check status"));
+                assert!(user_content.contains("status --porcelain"));
+            }
         }
 
         // Local command output
-        if let MessageContent::User { content, .. } = &messages[3].content {
-            assert!(content.contains("new_file.txt"));
-            assert!(content.contains("modified_file.txt"));
+        if let ClaudeMessage::User { content, .. } = &messages[3] {
+            if let MessageContent::User { content: user_content, .. } = content {
+                assert!(user_content.contains("new_file.txt"));
+                assert!(user_content.contains("modified_file.txt"));
+            }
         }
     }
 
@@ -691,44 +674,52 @@ mod tests {
         assert_eq!(messages.len(), 4);
 
         // Single text block
-        if let MessageContent::Assistant { content, .. } = &messages[0].content {
-            assert_eq!(content.len(), 1);
-            if let ContentBlock::Text { text } = &content[0] {
-                assert_eq!(text, "Simple assistant response");
+        if let ClaudeMessage::Assistant { content, .. } = &messages[0] {
+            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+                assert_eq!(assistant_content.len(), 1);
+                if let ContentBlock::Text { text } = &assistant_content[0] {
+                    assert_eq!(text, "Simple assistant response");
+                }
             }
         }
 
         // Multiple text blocks
-        if let MessageContent::Assistant { content, .. } = &messages[1].content {
-            assert_eq!(content.len(), 2);
-            if let ContentBlock::Text { text } = &content[0] {
-                assert_eq!(text, "Response with ");
-            }
-            if let ContentBlock::Text { text } = &content[1] {
-                assert_eq!(text, "multiple text blocks");
+        if let ClaudeMessage::Assistant { content, .. } = &messages[1] {
+            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+                assert_eq!(assistant_content.len(), 2);
+                if let ContentBlock::Text { text } = &assistant_content[0] {
+                    assert_eq!(text, "Response with ");
+                }
+                if let ContentBlock::Text { text } = &assistant_content[1] {
+                    assert_eq!(text, "multiple text blocks");
+                }
             }
         }
 
         // Single tool use
-        if let MessageContent::Assistant { content, .. } = &messages[2].content {
-            assert_eq!(content.len(), 1);
-            if let ContentBlock::ToolUse { id, name, input } = &content[0] {
-                assert_eq!(id, "tool123");
-                assert_eq!(name, "Read");
-                assert_eq!(input["file_path"], "/test/file.txt");
+        if let ClaudeMessage::Assistant { content, .. } = &messages[2] {
+            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+                assert_eq!(assistant_content.len(), 1);
+                if let ContentBlock::ToolUse { id, name, input } = &assistant_content[0] {
+                    assert_eq!(id, "tool123");
+                    assert_eq!(name, "Read");
+                    assert_eq!(input["file_path"], "/test/file.txt");
+                }
             }
         }
 
         // Text + tool use combination
-        if let MessageContent::Assistant { content, .. } = &messages[3].content {
-            assert_eq!(content.len(), 2);
-            if let ContentBlock::Text { text } = &content[0] {
-                assert_eq!(text, "I'll read the file.");
-            }
-            if let ContentBlock::ToolUse { id, name, input } = &content[1] {
-                assert_eq!(id, "tool124");
-                assert_eq!(name, "Bash");
-                assert_eq!(input["command"], "cat file.txt");
+        if let ClaudeMessage::Assistant { content, .. } = &messages[3] {
+            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+                assert_eq!(assistant_content.len(), 2);
+                if let ContentBlock::Text { text } = &assistant_content[0] {
+                    assert_eq!(text, "I'll read the file.");
+                }
+                if let ContentBlock::ToolUse { id, name, input } = &assistant_content[1] {
+                    assert_eq!(id, "tool124");
+                    assert_eq!(name, "Bash");
+                    assert_eq!(input["command"], "cat file.txt");
+                }
             }
         }
     }
@@ -756,11 +747,17 @@ mod tests {
         // Only user and assistant messages should be included, system messages filtered out
         assert_eq!(messages.len(), 2);
 
-        assert_eq!(messages[0].message_type, MessageType::User);
-        assert_eq!(messages[0].uuid, "user-1");
+        if let ClaudeMessage::User { uuid, .. } = &messages[0] {
+            assert_eq!(uuid, "user-1");
+        } else {
+            panic!("Expected User message variant");
+        }
 
-        assert_eq!(messages[1].message_type, MessageType::Assistant);
-        assert_eq!(messages[1].uuid, "assistant-1");
+        if let ClaudeMessage::Assistant { uuid, .. } = &messages[1] {
+            assert_eq!(uuid, "assistant-1");
+        } else {
+            panic!("Expected Assistant message variant");
+        }
     }
 
     #[tokio::test]
@@ -786,31 +783,39 @@ mod tests {
         assert_eq!(messages.len(), 4);
 
         // Empty user content
-        if let MessageContent::User { content, .. } = &messages[0].content {
-            assert_eq!(content, "");
+        if let ClaudeMessage::User { content, .. } = &messages[0] {
+            if let MessageContent::User { content: user_content, .. } = content {
+                assert_eq!(user_content, "");
+            }
         }
 
         // Empty assistant content array
-        if let MessageContent::Assistant { content, .. } = &messages[1].content {
-            assert_eq!(content.len(), 0);
+        if let ClaudeMessage::Assistant { content, .. } = &messages[1] {
+            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+                assert_eq!(assistant_content.len(), 0);
+            }
         }
 
         // Valid user message
-        if let MessageContent::User { content, .. } = &messages[2].content {
-            assert_eq!(content, "Valid message");
+        if let ClaudeMessage::User { content, .. } = &messages[2] {
+            if let MessageContent::User { content: user_content, .. } = content {
+                assert_eq!(user_content, "Valid message");
+            }
         }
 
         // Assistant with empty text and tool_use blocks
-        if let MessageContent::Assistant { content, .. } = &messages[3].content {
-            assert_eq!(content.len(), 2);
+        if let ClaudeMessage::Assistant { content, .. } = &messages[3] {
+            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+                assert_eq!(assistant_content.len(), 2);
 
-            if let ContentBlock::Text { text } = &content[0] {
-                assert_eq!(text, "");
-            }
+                if let ContentBlock::Text { text } = &assistant_content[0] {
+                    assert_eq!(text, "");
+                }
 
-            if let ContentBlock::ToolUse { id, name, .. } = &content[1] {
-                assert_eq!(id, "");
-                assert_eq!(name, "");
+                if let ContentBlock::ToolUse { id, name, .. } = &assistant_content[1] {
+                    assert_eq!(id, "");
+                    assert_eq!(name, "");
+                }
             }
         }
     }
@@ -837,23 +842,29 @@ mod tests {
         assert_eq!(messages.len(), 3);
 
         // Unicode characters
-        if let MessageContent::User { content, .. } = &messages[0].content {
-            assert!(content.contains("日本語"));
-            assert!(content.contains("émojis"));
-            assert!(content.contains("🚀"));
+        if let ClaudeMessage::User { content, .. } = &messages[0] {
+            if let MessageContent::User { content: user_content, .. } = content {
+                assert!(user_content.contains("日本語"));
+                assert!(user_content.contains("émojis"));
+                assert!(user_content.contains("🚀"));
+            }
         }
 
         // Escaped characters
-        if let MessageContent::User { content, .. } = &messages[1].content {
-            assert!(content.contains("\"quotes\""));
-            assert!(content.contains("\\backslashes\\"));
+        if let ClaudeMessage::User { content, .. } = &messages[1] {
+            if let MessageContent::User { content: user_content, .. } = content {
+                assert!(user_content.contains("\"quotes\""));
+                assert!(user_content.contains("\\backslashes\\"));
+            }
         }
 
         // Newlines and tabs
-        if let MessageContent::Assistant { content, .. } = &messages[2].content {
-            if let ContentBlock::Text { text } = &content[0] {
-                assert!(text.contains("\n"));
-                assert!(text.contains("\t"));
+        if let ClaudeMessage::Assistant { content, .. } = &messages[2] {
+            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+                if let ContentBlock::Text { text } = &assistant_content[0] {
+                    assert!(text.contains("\n"));
+                    assert!(text.contains("\t"));
+                }
             }
         }
     }
@@ -881,20 +892,26 @@ mod tests {
         assert_eq!(messages.len(), 2);
 
         // User message with object message field
-        assert_eq!(messages[0].message_type, MessageType::User);
-        assert_eq!(messages[0].uuid, "user-msg-object");
-        if let MessageContent::User { content, .. } = &messages[0].content {
-            assert_eq!(content, "Message with object");
+        if let ClaudeMessage::User { uuid, content, .. } = &messages[0] {
+            assert_eq!(uuid, "user-msg-object");
+            if let MessageContent::User { content: user_content, .. } = content {
+                assert_eq!(user_content, "Message with object");
+            }
+        } else {
+            panic!("Expected User message variant");
         }
 
         // Assistant message with object message field
-        assert_eq!(messages[1].message_type, MessageType::Assistant);
-        assert_eq!(messages[1].uuid, "assistant-msg-object");
-        if let MessageContent::Assistant { content, .. } = &messages[1].content {
-            assert_eq!(content.len(), 1);
-            if let ContentBlock::Text { text } = &content[0] {
-                assert_eq!(text, "Assistant with object message");
+        if let ClaudeMessage::Assistant { uuid, content, .. } = &messages[1] {
+            assert_eq!(uuid, "assistant-msg-object");
+            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+                assert_eq!(assistant_content.len(), 1);
+                if let ContentBlock::Text { text } = &assistant_content[0] {
+                    assert_eq!(text, "Assistant with object message");
+                }
             }
+        } else {
+            panic!("Expected Assistant message variant");
         }
     }
 
@@ -921,41 +938,53 @@ mod tests {
         assert_eq!(messages.len(), 4);
 
         // Pattern 1: User message with string content
-        assert_eq!(messages[0].message_type, MessageType::User);
-        assert_eq!(messages[0].uuid, "user-string-content");
-        if let MessageContent::User { content, .. } = &messages[0].content {
-            assert_eq!(content, "String content for user");
+        if let ClaudeMessage::User { uuid, content, .. } = &messages[0] {
+            assert_eq!(uuid, "user-string-content");
+            if let MessageContent::User { content: user_content, .. } = content {
+                assert_eq!(user_content, "String content for user");
+            }
+        } else {
+            panic!("Expected User message variant");
         }
 
         // Pattern 2: User message with array content (現在の実装では空文字列)
-        assert_eq!(messages[1].message_type, MessageType::User);
-        assert_eq!(messages[1].uuid, "user-array-content");
-        if let MessageContent::User { content, .. } = &messages[1].content {
-            // 現在の実装では配列contentは文字列として抽出できない
-            assert_eq!(content, "");
+        if let ClaudeMessage::User { uuid, content, .. } = &messages[1] {
+            assert_eq!(uuid, "user-array-content");
+            if let MessageContent::User { content: user_content, .. } = content {
+                // 現在の実装では配列contentは文字列として抽出できない
+                assert_eq!(user_content, "");
+            }
+        } else {
+            panic!("Expected User message variant");
         }
 
         // Pattern 3: Assistant message with single array content
-        assert_eq!(messages[2].message_type, MessageType::Assistant);
-        assert_eq!(messages[2].uuid, "assistant-array-content");
-        if let MessageContent::Assistant { content, .. } = &messages[2].content {
-            assert_eq!(content.len(), 1);
-            if let ContentBlock::Text { text } = &content[0] {
-                assert_eq!(text, "Assistant array content");
+        if let ClaudeMessage::Assistant { uuid, content, .. } = &messages[2] {
+            assert_eq!(uuid, "assistant-array-content");
+            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+                assert_eq!(assistant_content.len(), 1);
+                if let ContentBlock::Text { text } = &assistant_content[0] {
+                    assert_eq!(text, "Assistant array content");
+                }
             }
+        } else {
+            panic!("Expected Assistant message variant");
         }
 
         // Pattern 4: Assistant message with multiple array content
-        assert_eq!(messages[3].message_type, MessageType::Assistant);
-        assert_eq!(messages[3].uuid, "assistant-multi-array");
-        if let MessageContent::Assistant { content, .. } = &messages[3].content {
-            assert_eq!(content.len(), 2);
-            if let ContentBlock::Text { text } = &content[0] {
-                assert_eq!(text, "First part");
+        if let ClaudeMessage::Assistant { uuid, content, .. } = &messages[3] {
+            assert_eq!(uuid, "assistant-multi-array");
+            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+                assert_eq!(assistant_content.len(), 2);
+                if let ContentBlock::Text { text } = &assistant_content[0] {
+                    assert_eq!(text, "First part");
+                }
+                if let ContentBlock::Text { text } = &assistant_content[1] {
+                    assert_eq!(text, "Second part");
+                }
             }
-            if let ContentBlock::Text { text } = &content[1] {
-                assert_eq!(text, "Second part");
-            }
+        } else {
+            panic!("Expected Assistant message variant");
         }
     }
 
@@ -988,27 +1017,43 @@ mod tests {
         assert_eq!(messages.len(), 4);
 
         // Good user message
-        assert_eq!(messages[0].uuid, "user-good");
-        if let MessageContent::User { content, .. } = &messages[0].content {
-            assert_eq!(content, "Good message");
+        if let ClaudeMessage::User { uuid, content, .. } = &messages[0] {
+            assert_eq!(uuid, "user-good");
+            if let MessageContent::User { content: user_content, .. } = content {
+                assert_eq!(user_content, "Good message");
+            }
+        } else {
+            panic!("Expected User message variant");
         }
 
         // User with no message field - content becomes empty
-        assert_eq!(messages[1].uuid, "user-no-message");
-        if let MessageContent::User { content, .. } = &messages[1].content {
-            assert_eq!(content, "");
+        if let ClaudeMessage::User { uuid, content, .. } = &messages[1] {
+            assert_eq!(uuid, "user-no-message");
+            if let MessageContent::User { content: user_content, .. } = content {
+                assert_eq!(user_content, "");
+            }
+        } else {
+            panic!("Expected User message variant");
         }
 
         // User with no content field - content becomes empty
-        assert_eq!(messages[2].uuid, "user-no-content");
-        if let MessageContent::User { content, .. } = &messages[2].content {
-            assert_eq!(content, "");
+        if let ClaudeMessage::User { uuid, content, .. } = &messages[2] {
+            assert_eq!(uuid, "user-no-content");
+            if let MessageContent::User { content: user_content, .. } = content {
+                assert_eq!(user_content, "");
+            }
+        } else {
+            panic!("Expected User message variant");
         }
 
         // Good assistant message
-        assert_eq!(messages[3].uuid, "assistant-good");
-        if let MessageContent::Assistant { content, .. } = &messages[3].content {
-            assert_eq!(content.len(), 1);
+        if let ClaudeMessage::Assistant { uuid, content, .. } = &messages[3] {
+            assert_eq!(uuid, "assistant-good");
+            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+                assert_eq!(assistant_content.len(), 1);
+            }
+        } else {
+            panic!("Expected Assistant message variant");
         }
 
         // Entries with missing type or unknown type should be filtered out
@@ -1036,34 +1081,42 @@ mod tests {
         assert_eq!(messages.len(), 2);
 
         // Complex user tool result (現在の実装では配列contentは空文字列)
-        assert_eq!(messages[0].uuid, "user-complex-tool-result");
-        if let MessageContent::User { content, .. } = &messages[0].content {
-            // 配列形式のcontentは現在の実装では処理されない
-            assert_eq!(content, "");
+        if let ClaudeMessage::User { uuid, content, .. } = &messages[0] {
+            assert_eq!(uuid, "user-complex-tool-result");
+            if let MessageContent::User { content: user_content, .. } = content {
+                // 配列形式のcontentは現在の実装では処理されない
+                assert_eq!(user_content, "");
+            }
+        } else {
+            panic!("Expected User message variant");
         }
 
         // Complex assistant with mixed content
-        assert_eq!(messages[1].uuid, "assistant-complex-mix");
-        if let MessageContent::Assistant { content, .. } = &messages[1].content {
-            assert_eq!(content.len(), 3);
+        if let ClaudeMessage::Assistant { uuid, content, .. } = &messages[1] {
+            assert_eq!(uuid, "assistant-complex-mix");
+            if let MessageContent::Assistant { content: assistant_content, .. } = content {
+                assert_eq!(assistant_content.len(), 3);
 
-            // First: text
-            if let ContentBlock::Text { text } = &content[0] {
-                assert_eq!(text, "Processing complex data:");
-            }
+                // First: text
+                if let ContentBlock::Text { text } = &assistant_content[0] {
+                    assert_eq!(text, "Processing complex data:");
+                }
 
-            // Second: complex tool_use with nested JSON
-            if let ContentBlock::ToolUse { id, name, input } = &content[1] {
-                assert_eq!(id, "tool_789");
-                assert_eq!(name, "MultiEdit");
-                assert!(input.get("file_path").is_some());
-                assert!(input.get("edits").is_some());
-            }
+                // Second: complex tool_use with nested JSON
+                if let ContentBlock::ToolUse { id, name, input } = &assistant_content[1] {
+                    assert_eq!(id, "tool_789");
+                    assert_eq!(name, "MultiEdit");
+                    assert!(input.get("file_path").is_some());
+                    assert!(input.get("edits").is_some());
+                }
 
-            // Third: text
-            if let ContentBlock::Text { text } = &content[2] {
-                assert_eq!(text, "Done!");
+                // Third: text
+                if let ContentBlock::Text { text } = &assistant_content[2] {
+                    assert_eq!(text, "Done!");
+                }
             }
+        } else {
+            panic!("Expected Assistant message variant");
         }
     }
 }
