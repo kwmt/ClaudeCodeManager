@@ -6,11 +6,14 @@ interface SessionBrowserProps {}
 
 export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
   const [sessions, setSessions] = useState<ClaudeSession[]>([]);
+  const [allSessions, setAllSessions] = useState<ClaudeSession[]>([]);
   const [selectedSession, setSelectedSession] = useState<ClaudeSession | null>(
     null,
   );
   const [messages, setMessages] = useState<ClaudeMessage[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedProject, setSelectedProject] = useState<string>("all");
+  const [projects, setProjects] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,19 +41,26 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
   }, []);
 
   useEffect(() => {
-    if (searchQuery.trim()) {
-      searchSessions();
-    } else {
-      loadSessions();
+    if (allSessions.length > 0) {
+      filterSessions(allSessions, searchQuery, selectedProject);
     }
-  }, [searchQuery]);
+  }, [searchQuery, selectedProject, allSessions]);
 
   const loadSessions = async () => {
     try {
       setLoading(true);
       setError(null);
       const data = await api.getAllSessions();
-      setSessions(data);
+      setAllSessions(data);
+      
+      // Extract unique projects
+      const uniqueProjects = Array.from(
+        new Set(data.map(session => session.project_path))
+      ).sort();
+      setProjects(uniqueProjects);
+      
+      // Apply current filters
+      filterSessions(data, searchQuery, selectedProject);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load sessions");
     } finally {
@@ -58,19 +68,29 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
     }
   };
 
-  const searchSessions = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await api.searchSessions(searchQuery);
-      setSessions(data);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to search sessions",
-      );
-    } finally {
-      setLoading(false);
+  const filterSessions = (
+    sessionsToFilter: ClaudeSession[],
+    query: string,
+    project: string
+  ) => {
+    let filtered = sessionsToFilter;
+
+    // Apply project filter
+    if (project !== "all") {
+      filtered = filtered.filter(session => session.project_path === project);
     }
+
+    // Apply search query filter
+    if (query.trim()) {
+      const queryLower = query.toLowerCase();
+      filtered = filtered.filter(session =>
+        session.project_path.toLowerCase().includes(queryLower) ||
+        session.session_id.toLowerCase().includes(queryLower) ||
+        session.git_branch?.toLowerCase().includes(queryLower)
+      );
+    }
+
+    setSessions(filtered);
   };
 
   const loadSessionMessages = async (session: ClaudeSession) => {
@@ -233,19 +253,46 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
     <div className="session-browser">
       <div className="session-browser-header">
         <h2>Session Browser</h2>
-        <div className="search-container">
-          <input
-            type="text"
-            placeholder="Search sessions by project path, branch, or ID..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="search-input"
-          />
+        <div className="header-controls">
+          <div className="project-filter">
+            <label htmlFor="project-select">Project:</label>
+            <select
+              id="project-select"
+              value={selectedProject}
+              onChange={(e) => setSelectedProject(e.target.value)}
+              className="project-select"
+            >
+              <option value="all">All Projects</option>
+              {projects.map((project) => (
+                <option key={project} value={project}>
+                  {project.split("/").pop() || project}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="search-container">
+            <label htmlFor="search-input">Search:</label>
+            <input
+              id="search-input"
+              type="text"
+              placeholder="Search sessions by project path, branch, or ID..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="search-input"
+            />
+          </div>
         </div>
       </div>
 
       <div className="session-browser-content">
         <div className="sessions-list">
+          {!loading && (
+            <div className="sessions-count">
+              {sessions.length} session{sessions.length !== 1 ? 's' : ''} 
+              {selectedProject !== "all" && ` in ${selectedProject.split("/").pop()}`}
+              {searchQuery && ` matching "${searchQuery}"`}
+            </div>
+          )}
           {loading ? (
             <div className="loading">Loading sessions...</div>
           ) : sessions.length === 0 ? (
