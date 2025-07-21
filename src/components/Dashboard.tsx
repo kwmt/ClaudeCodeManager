@@ -12,6 +12,17 @@ export const Dashboard: React.FC<DashboardProps> = () => {
 
   useEffect(() => {
     loadDashboardData();
+
+    // Listen for file change events
+    const handleDataChanged = () => {
+      loadDashboardData();
+    };
+
+    window.addEventListener("claude-data-changed", handleDataChanged);
+
+    return () => {
+      window.removeEventListener("claude-data-changed", handleDataChanged);
+    };
   }, []);
 
   const loadDashboardData = async () => {

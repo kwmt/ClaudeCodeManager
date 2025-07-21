@@ -1,7 +1,16 @@
 use crate::claude_data::ClaudeDataManager;
 use crate::models::*;
 use std::sync::Arc;
-use tauri::State;
+use tauri::{AppHandle, Emitter, State};
+use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
+use std::sync::mpsc;
+use std::time::Duration;
+use serde::Serialize;
+
+#[derive(Serialize, Clone)]
+struct FileChangeEvent {
+    message: String,
+}
 
 #[tauri::command]
 pub async fn get_all_sessions(
@@ -125,4 +134,52 @@ pub async fn export_session_data(
         .map_err(|e| e.to_string())?;
 
     serde_json::to_string_pretty(&messages).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn start_file_watcher(
+    app: AppHandle,
+    data_manager: State<'_, Arc<ClaudeDataManager>>,
+) -> Result<(), String> {
+    let data_manager_clone = data_manager.inner().clone();
+    let app_clone = app.clone();
+    
+    tokio::spawn(async move {
+        let claude_dir = dirs::home_dir()
+            .map(|home| home.join(".claude"))
+            .ok_or("Could not find home directory".to_string())?;
+
+        let (tx, rx) = mpsc::channel();
+        
+        let mut watcher = RecommendedWatcher::new(
+            move |res: Result<Event, notify::Error>| {
+                if let Ok(event) = res {
+                    let _ = tx.send(event);
+                }
+            },
+            Config::default(),
+        ).map_err(|e| e.to_string())?;
+
+        watcher.watch(&claude_dir, RecursiveMode::Recursive)
+            .map_err(|e| e.to_string())?;
+
+        // Process file change events
+        while let Ok(_event) = rx.recv() {
+            // Debounce: wait a bit to avoid rapid fire events
+            tokio::time::sleep(Duration::from_millis(500)).await;
+            
+            // Invalidate caches
+            data_manager_clone.invalidate_caches().await;
+            
+            // Emit event to frontend
+            let file_change_event = FileChangeEvent {
+                message: "Claude directory changed".to_string(),
+            };
+            let _ = app_clone.emit("file-changed", file_change_event);
+        }
+        
+        Ok::<(), String>(())
+    });
+    
+    Ok(())
 }
