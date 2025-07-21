@@ -435,17 +435,24 @@ impl ClaudeDataManager {
 
         let trimmed = cleaned.trim();
 
-        // 2行に収まるように、より短めにカット（約80文字で2行になることを想定）
-        let adjusted_max = if max_chars > 100 { 80 } else { max_chars };
+        // 2行に収まるように、日本語を考慮してより短めにカット
+        // 日本語は全角文字なので表示幅が広い。安全のため50文字程度に制限
+        let adjusted_max = if max_chars > 100 {
+            50
+        } else {
+            max_chars.min(50)
+        };
 
-        if trimmed.len() <= adjusted_max {
+        if trimmed.chars().count() <= adjusted_max {
             trimmed.to_string()
         } else {
-            let mut truncated = trimmed.chars().take(adjusted_max).collect::<String>();
+            let truncated: String = trimmed.chars().take(adjusted_max).collect();
+            // 日本語の場合、句読点や助詞で区切るのが自然だが、スペースで区切ることもある
             if let Some(last_space) = truncated.rfind(' ') {
-                truncated.truncate(last_space);
+                format!("{}...", &truncated[..last_space])
+            } else {
+                format!("{}...", truncated)
             }
-            format!("{}...", truncated)
         }
     }
 

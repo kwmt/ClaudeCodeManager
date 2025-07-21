@@ -330,7 +330,7 @@ body {
 .preview-text {
   font-size: 0.8rem;
   color: #555;
-  line-height: 1.5;
+  line-height: 1.4;
   margin: 0;
   padding: 0.5rem;
   background-color: #f8f9fa;
@@ -338,14 +338,19 @@ body {
   border-left: 3px solid #dee2e6;
   font-style: italic;
   
-  /* 2行省略表示 */
+  /* 2行省略表示 - 日本語対応 */
   display: -webkit-box;
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
   -webkit-line-clamp: 2;
   
+  /* 確実に2行に制限するための補強 */
+  max-height: calc(1.4em * 2 + 0.2em); /* 2行 + 少しの余裕 */
+  
+  /* 日本語の改行対応 */
   word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .session-meta {
