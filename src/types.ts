@@ -7,20 +7,26 @@ export interface ClaudeSession {
   git_branch?: string;
 }
 
-export interface ClaudeMessage {
-  uuid: string;
-  parent_uuid?: string;
-  session_id: string;
-  timestamp: string;
-  message_type: 'User' | 'Assistant';
-  content: {
-    role: string;
-    content: string | ContentBlock[];
-  };
-  cwd: string;
-  git_branch?: string;
-}
+export type ClaudeMessage = 
+  | {
+      uuid: string;
+      parent_uuid?: string;
+      session_id: string;
+      timestamp: string;
+      message_type: 'user' | 'assistant';
+      content: MessageContent;
+      cwd: string;
+      git_branch?: string;
+    }
+  | {
+      message_type: 'summary';
+      summary: string;
+      leafUuid: string;
+    };
 
+export type MessageContent = 
+  | { role: string; content: string }
+  | { role: string; content: ContentBlock[] };
 
 export type ContentBlock = 
   | { type: "text"; text: string }

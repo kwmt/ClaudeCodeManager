@@ -29,6 +29,19 @@ impl ClaudeDataManager {
         })
     }
 
+    #[cfg(test)]
+    pub fn new_with_dir(claude_dir: &Path) -> Result<Self, Box<dyn std::error::Error>> {
+        if !claude_dir.exists() {
+            return Err("Claude directory not found".into());
+        }
+
+        Ok(Self {
+            claude_dir: claude_dir.to_path_buf(),
+            _sessions_cache: RwLock::new(HashMap::new()),
+            messages_cache: RwLock::new(HashMap::new()),
+        })
+    }
+
     pub async fn get_all_sessions(&self) -> Result<Vec<ClaudeSession>, Box<dyn std::error::Error>> {
         let projects_dir = self.claude_dir.join("projects");
         let mut sessions = Vec::new();
@@ -129,17 +142,20 @@ impl ClaudeDataManager {
         &self,
         session_id: &str,
     ) -> Result<Vec<ClaudeMessage>, Box<dyn std::error::Error>> {
+        println!("get_session_messages: Fetching messages for session: {}", session_id);
         // Check cache first
-        {
-            let cache = self.messages_cache.read().await;
-            if let Some(messages) = cache.get(session_id) {
-                return Ok(messages.clone());
-            }
-        }
+        // {
+        //     let cache = self.messages_cache.read().await;
+        //     if let Some(messages) = cache.get(session_id) {
+        //         return Ok(messages.clone());
+        //     }
+        // }
 
         // Find session file
         let session_file = self.find_session_file(session_id)?;
+        println!("get_session_messages: Found session file: {:?}", session_file);
         let messages = self.parse_messages_file(&session_file, session_id).await?;
+        println!("get_session_messages: Parsed {} messages", messages.len());
 
         // Cache the result
         {
@@ -211,12 +227,6 @@ impl ClaudeDataManager {
             .parse::<DateTime<Utc>>()
             .unwrap_or_else(|_| Utc::now());
 
-        let message_type = match raw.get("type").and_then(|t| t.as_str()) {
-            Some("user") => MessageType::User,
-            Some("assistant") => MessageType::Assistant,
-            _ => return Ok(None),
-        };
-
         let cwd = raw
             .get("cwd")
             .and_then(|c| c.as_str())
@@ -228,8 +238,8 @@ impl ClaudeDataManager {
             .and_then(|b| b.as_str())
             .map(|s| s.to_string());
 
-        let content = match message_type {
-            MessageType::User => {
+        let message = match raw.get("type").and_then(|t| t.as_str()) {
+            Some("user") => {
                 let content_text = raw
                     .get("message")
                     .and_then(|m| m.get("content"))
@@ -237,12 +247,22 @@ impl ClaudeDataManager {
                     .unwrap_or("")
                     .to_string();
 
-                MessageContent::User {
+                let content = MessageContent::User {
                     role: "user".to_string(),
                     content: content_text,
+                };
+
+                ClaudeMessage::User {
+                    uuid,
+                    parent_uuid,
+                    session_id: session_id.to_string(),
+                    timestamp,
+                    content,
+                    cwd,
+                    git_branch,
                 }
             }
-            MessageType::Assistant => {
+            Some("assistant") => {
                 let content_blocks = raw
                     .get("message")
                     .and_then(|m| m.get("content"))
@@ -255,23 +275,43 @@ impl ClaudeDataManager {
                     })
                     .unwrap_or_default();
 
-                MessageContent::Assistant {
+                let content = MessageContent::Assistant {
                     role: "assistant".to_string(),
                     content: content_blocks,
+                };
+
+                ClaudeMessage::Assistant {
+                    uuid,
+                    parent_uuid,
+                    session_id: session_id.to_string(),
+                    timestamp,
+                    content,
+                    cwd,
+                    git_branch,
                 }
             }
+            Some("summary") => {
+                let summary = raw
+                    .get("summary")
+                    .and_then(|s| s.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                
+                let leaf_uuid = raw
+                    .get("leafUuid")
+                    .and_then(|u| u.as_str())
+                    .unwrap_or("")
+                    .to_string();
+
+                ClaudeMessage::Summary {
+                    summary,
+                    leaf_uuid,
+                }
+            }
+            _ => return Ok(None),
         };
 
-        Ok(Some(ClaudeMessage {
-            uuid,
-            parent_uuid,
-            session_id: session_id.to_string(),
-            timestamp,
-            message_type,
-            content,
-            cwd,
-            git_branch,
-        }))
+        Ok(Some(message))
     }
 
     fn parse_content_block(&self, block: &serde_json::Value) -> Option<ContentBlock> {

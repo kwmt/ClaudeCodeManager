@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api';
-import type { ClaudeSession, ClaudeMessage } from '../types';
+import type { ClaudeSession, ClaudeMessage, ContentBlock } from '../types';
 
 interface SessionBrowserProps {}
 
@@ -81,30 +81,108 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
     }
   };
 
-  const renderMessageContent = (message: ClaudeMessage) => {
-    if (message.message_type === 'User') {
-      const content = typeof message.content.content === 'string' ? message.content.content : '';
-      return <div className="message-content user-content">{content}</div>;
-    } else {
-      const content = Array.isArray(message.content.content) ? message.content.content : [];
+  const renderContentBlock = (block: ContentBlock, index: number) => {
+    if (block.type === 'text') {
       return (
-        <div className="message-content assistant-content">
-          {content.map((block, index) => {
-            if (block.type === 'text') {
-              return <div key={index} className="text-block">{block.text}</div>;
-            } else if (block.type === 'tool_use') {
-              return (
-                <div key={index} className="tool-use-block">
-                  <strong>Tool: {block.name}</strong>
-                  <pre>{JSON.stringify(block.input, null, 2)}</pre>
-                </div>
-              );
-            }
-            return null;
-          })}
+        <div key={index} className="text-block">
+          <pre className="content-text">{block.text}</pre>
         </div>
       );
     }
+    
+    if (block.type === 'tool_use') {
+      return (
+        <div key={index} className="tool-use-block">
+          <div className="tool-header">
+            <span className="tool-icon">🛠️</span>
+            <span className="tool-name">{block.name}</span>
+          </div>
+          <div className="tool-input">
+            <pre>{JSON.stringify(block.input, null, 2)}</pre>
+          </div>
+        </div>
+      );
+    }
+    
+    return null;
+  };
+
+  const renderMessageContent = (message: ClaudeMessage) => {
+    console.log(`Rendering message content for ${message.message_type}:`, JSON.stringify(message));
+    
+    if (message.message_type === 'user') {
+      const userContent = message.content.content;
+      
+      if (typeof userContent === 'string') {
+        // コマンドメッセージの場合の特別な処理
+        if (userContent.includes('<command-name>') && userContent.includes('</command-name>')) {
+          const commandMatch = userContent.match(/<command-name>([^<]+)<\/command-name>/);
+          const messageMatch = userContent.match(/<command-message>([^<]*)<\/command-message>/);
+          const argsMatch = userContent.match(/<command-args>([^<]*)<\/command-args>/);
+          
+          return (
+            <div className="message-content user-content command-content">
+              <div className="command-info">
+                <span className="command-label">Command:</span> {commandMatch?.[1] || 'Unknown'}
+              </div>
+              {messageMatch?.[1] && (
+                <div className="command-message">{messageMatch[1]}</div>
+              )}
+              {argsMatch?.[1] && (
+                <div className="command-args">
+                  <span className="args-label">Args:</span> {argsMatch[1]}
+                </div>
+              )}
+            </div>
+          );
+        }
+        
+        // 通常のテキストメッセージ（contentがstringの場合はそのまま表示）
+        return (
+          <div className="message-content user-content">
+            <pre className="content-text">{userContent}</pre>
+          </div>
+        );
+      } else if (Array.isArray(userContent)) {
+        // ContentBlock[]の場合
+        return (
+          <div className="message-content user-content">
+            {userContent.map((block: any, index: number) => renderContentBlock(block, index))}
+          </div>
+        );
+      }
+    }
+    
+    if (message.message_type === 'assistant') {
+      const assistantContent = message.content.content;
+      
+      if (Array.isArray(assistantContent)) {
+        return (
+          <div className="message-content assistant-content">
+            {assistantContent.map((block: any, index: number) => renderContentBlock(block, index))}
+          </div>
+        );
+      }
+    }
+    
+    if (message.message_type === 'summary') {
+      // Summaryメッセージの特別な処理 - summaryフィールドを使用
+      return (
+        <div className="message-content summary-message-content">
+          <div className="summary-message-header">
+            <span className="summary-message-icon">📋</span>
+            <span className="summary-message-label">Summary</span>
+          </div>
+          <div className="summary-message-text">{message.summary}</div>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="message-content">
+        <pre className="content-text">{JSON.stringify(message, null, 2)}</pre>
+      </div>
+    );
   };
 
   if (error) {
@@ -182,19 +260,19 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
                 <div className="no-messages">No messages found</div>
               ) : (
                 <div className="messages-list">
-                  {messages.map((message) => (
+                  {messages.map((message, index) => (
                     <div
-                      key={message.uuid}
+                      key={message.message_type === 'summary' ? `summary-${index}` : message.uuid}
                       className={`message ${message.message_type.toLowerCase()}`}
                     >
                       <div className="message-header">
                         <span className="message-type">{message.message_type}</span>
                         <span className="message-time">
-                          {new Date(message.timestamp).toLocaleString()}
+                          {message.message_type === 'summary' ? '' : new Date(message.timestamp).toLocaleString()}
                         </span>
                       </div>
                       {renderMessageContent(message)}
-                      {message.cwd && (
+                      {message.message_type !== 'summary' && message.cwd && (
                         <div className="message-meta">CWD: {message.cwd}</div>
                       )}
                     </div>
