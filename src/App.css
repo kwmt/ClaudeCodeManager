@@ -345,8 +345,7 @@ body {
   text-overflow: ellipsis;
   -webkit-line-clamp: 2;
   
-  /* 確実に2行に制限するための補強 */
-  max-height: calc(1.4em * 2 + 0.2em); /* 2行 + 少しの余裕 */
+  /* max-heightを削除 - line-clampのみで制御して文字が切れないように */
   
   /* 日本語の改行対応 */
   word-break: break-word;
