@@ -307,15 +307,15 @@ mod tests {
     async fn test_get_session_messages_content_parsing() {
         let temp_dir = create_test_claude_dir();
         let claude_dir = temp_dir.path().join(".claude");
-        
+
         // Create realistic session file with various content types
         create_realistic_session_file(&claude_dir, "test-project", "test-session");
-        
+
         let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
         let messages = manager.get_session_messages("test-session").await.unwrap();
-        
+
         assert_eq!(messages.len(), 4);
-        
+
         // Test user message with simple string content
         let user_msg = &messages[0];
         assert_eq!(user_msg.message_type, MessageType::User);
@@ -324,21 +324,24 @@ mod tests {
         } else {
             panic!("Expected User message content");
         }
-        
+
         // Test assistant message with text content
         let assistant_msg = &messages[1];
         assert_eq!(assistant_msg.message_type, MessageType::Assistant);
         if let MessageContent::Assistant { content, .. } = &assistant_msg.content {
             assert_eq!(content.len(), 1);
             if let ContentBlock::Text { text } = &content[0] {
-                assert_eq!(text, "Hello! I'm doing well, thank you for asking. How can I help you today?");
+                assert_eq!(
+                    text,
+                    "Hello! I'm doing well, thank you for asking. How can I help you today?"
+                );
             } else {
                 panic!("Expected Text content block");
             }
         } else {
             panic!("Expected Assistant message content");
         }
-        
+
         // Test user command message
         let user_cmd = &messages[2];
         assert_eq!(user_cmd.message_type, MessageType::User);
@@ -349,20 +352,20 @@ mod tests {
         } else {
             panic!("Expected User command content");
         }
-        
+
         // Test assistant message with text and tool_use
         let assistant_tool = &messages[3];
         assert_eq!(assistant_tool.message_type, MessageType::Assistant);
         if let MessageContent::Assistant { content, .. } = &assistant_tool.content {
             assert_eq!(content.len(), 2);
-            
+
             // First block should be text
             if let ContentBlock::Text { text } = &content[0] {
                 assert_eq!(text, "I'll list the files for you.");
             } else {
                 panic!("Expected Text content block");
             }
-            
+
             // Second block should be tool_use
             if let ContentBlock::ToolUse { id, name, input } = &content[1] {
                 assert_eq!(id, "tool_01");
@@ -375,7 +378,7 @@ mod tests {
         } else {
             panic!("Expected Assistant message content");
         }
-        
+
         // Test metadata fields
         assert_eq!(user_msg.cwd, "/test/project");
         assert_eq!(user_msg.git_branch, Some("main".to_string()));
@@ -387,12 +390,15 @@ mod tests {
     async fn test_get_session_messages_empty_session() {
         let temp_dir = create_test_claude_dir();
         let claude_dir = temp_dir.path().join(".claude");
-        
+
         let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
         let result = manager.get_session_messages("nonexistent-session").await;
-        
+
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Session file not found"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Session file not found"));
     }
 
     #[test]
@@ -401,11 +407,11 @@ mod tests {
         let text_block = ContentBlock::Text {
             text: "This is a test message".to_string(),
         };
-        
+
         if let ContentBlock::Text { text } = text_block {
             assert_eq!(text, "This is a test message");
         }
-        
+
         // Test tool use content block
         let tool_block = ContentBlock::ToolUse {
             id: "tool_123".to_string(),
@@ -415,7 +421,7 @@ mod tests {
                 "description": "Read test file"
             }),
         };
-        
+
         if let ContentBlock::ToolUse { id, name, input } = tool_block {
             assert_eq!(id, "tool_123");
             assert_eq!(name, "Read");
@@ -430,12 +436,12 @@ mod tests {
             role: "user".to_string(),
             content: "Simple user message".to_string(),
         };
-        
+
         if let MessageContent::User { role, content } = user_content {
             assert_eq!(role, "user");
             assert_eq!(content, "Simple user message");
         }
-        
+
         // Test Assistant message content with blocks
         let assistant_content = MessageContent::Assistant {
             role: "assistant".to_string(),
@@ -450,7 +456,7 @@ mod tests {
                 },
             ],
         };
-        
+
         if let MessageContent::Assistant { role, content } = assistant_content {
             assert_eq!(role, "assistant");
             assert_eq!(content.len(), 2);
@@ -480,15 +486,15 @@ mod tests {
     async fn test_get_session_messages_all_patterns() {
         let temp_dir = create_test_claude_dir();
         let claude_dir = temp_dir.path().join(".claude");
-        
+
         // Create comprehensive session file with all message patterns
         create_comprehensive_session_file(&claude_dir, "test-project", "test-session");
-        
+
         let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
         let messages = manager.get_session_messages("test-session").await.unwrap();
-        
+
         assert_eq!(messages.len(), 7); // システムメッセージは除外されるため
-        
+
         // Test Pattern 1: User message with simple string content
         let user_text_msg = &messages[0];
         assert_eq!(user_text_msg.message_type, MessageType::User);
@@ -498,7 +504,7 @@ mod tests {
         } else {
             panic!("Expected User message content");
         }
-        
+
         // Test Pattern 2: Assistant message with single text block
         let assistant_text_msg = &messages[1];
         assert_eq!(assistant_text_msg.message_type, MessageType::Assistant);
@@ -506,14 +512,17 @@ mod tests {
         if let MessageContent::Assistant { content, .. } = &assistant_text_msg.content {
             assert_eq!(content.len(), 1);
             if let ContentBlock::Text { text } = &content[0] {
-                assert_eq!(text, "Hello! I'm doing well, thank you for asking. How can I help you today?");
+                assert_eq!(
+                    text,
+                    "Hello! I'm doing well, thank you for asking. How can I help you today?"
+                );
             } else {
                 panic!("Expected Text content block");
             }
         } else {
             panic!("Expected Assistant message content");
         }
-        
+
         // Test Pattern 3: User command message with XML tags
         let user_command_msg = &messages[2];
         assert_eq!(user_command_msg.message_type, MessageType::User);
@@ -525,21 +534,21 @@ mod tests {
         } else {
             panic!("Expected User command content");
         }
-        
+
         // Test Pattern 4: Assistant message with text + tool_use
         let assistant_tool_msg = &messages[3];
         assert_eq!(assistant_tool_msg.message_type, MessageType::Assistant);
         assert_eq!(assistant_tool_msg.uuid, "assistant-tool-1");
         if let MessageContent::Assistant { content, .. } = &assistant_tool_msg.content {
             assert_eq!(content.len(), 2);
-            
+
             // First block: text
             if let ContentBlock::Text { text } = &content[0] {
                 assert_eq!(text, "I'll list the files for you.");
             } else {
                 panic!("Expected Text content block");
             }
-            
+
             // Second block: tool_use
             if let ContentBlock::ToolUse { id, name, input } = &content[1] {
                 assert_eq!(id, "tool_01");
@@ -552,7 +561,7 @@ mod tests {
         } else {
             panic!("Expected Assistant message content");
         }
-        
+
         // Test Pattern 5: User message with tool_result (現在の実装では配列contentは空文字列として処理される)
         let user_tool_result_msg = &messages[4];
         assert_eq!(user_tool_result_msg.message_type, MessageType::User);
@@ -563,33 +572,35 @@ mod tests {
         } else {
             panic!("Expected User tool result content");
         }
-        
+
         // Test Pattern 6: System message (skipped in parsing but verify other messages)
         // System messages are filtered out in parse_message_line, so we check the next user message
-        
-        // Test Pattern 6: User message with local command output  
+
+        // Test Pattern 6: User message with local command output
         let user_stdout_msg = &messages[5];
         assert_eq!(user_stdout_msg.message_type, MessageType::User);
         assert_eq!(user_stdout_msg.uuid, "user-stdout-1");
         if let MessageContent::User { content, .. } = &user_stdout_msg.content {
-            assert!(content.contains("<local-command-stdout>File content here</local-command-stdout>"));
+            assert!(
+                content.contains("<local-command-stdout>File content here</local-command-stdout>")
+            );
         } else {
             panic!("Expected User stdout content");
         }
-        
+
         // Test Pattern 7: Assistant message with multiple text blocks
         let assistant_multi_msg = &messages[6];
         assert_eq!(assistant_multi_msg.message_type, MessageType::Assistant);
         assert_eq!(assistant_multi_msg.uuid, "assistant-multi-text-1");
         if let MessageContent::Assistant { content, .. } = &assistant_multi_msg.content {
             assert_eq!(content.len(), 2);
-            
+
             if let ContentBlock::Text { text } = &content[0] {
                 assert_eq!(text, "I can see the file listing. ");
             } else {
                 panic!("Expected first Text content block");
             }
-            
+
             if let ContentBlock::Text { text } = &content[1] {
                 assert_eq!(text, "Let me help you with that.");
             } else {
@@ -598,7 +609,7 @@ mod tests {
         } else {
             panic!("Expected Assistant multi-text content");
         }
-        
+
         // Verify metadata for all messages
         for message in &messages {
             assert_eq!(message.session_id, "test-session");
@@ -612,7 +623,7 @@ mod tests {
     async fn test_get_session_messages_user_content_patterns() {
         let temp_dir = create_test_claude_dir();
         let claude_dir = temp_dir.path().join(".claude");
-        
+
         let project_dir = claude_dir.join("projects").join("user-content-test");
         fs::create_dir_all(&project_dir).unwrap();
 
@@ -624,29 +635,29 @@ mod tests {
 
         let session_file = project_dir.join("user-test.jsonl");
         fs::write(session_file, user_content_session).unwrap();
-        
+
         let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
         let messages = manager.get_session_messages("user-test").await.unwrap();
-        
+
         assert_eq!(messages.len(), 4);
-        
+
         // Simple text
         if let MessageContent::User { content, .. } = &messages[0].content {
             assert_eq!(content, "Simple text message");
         }
-        
+
         // Multiline text
         if let MessageContent::User { content, .. } = &messages[1].content {
             assert_eq!(content, "Message with\nmultiple\nlines");
         }
-        
+
         // Command with XML
         if let MessageContent::User { content, .. } = &messages[2].content {
             assert!(content.contains("git"));
             assert!(content.contains("check status"));
             assert!(content.contains("status --porcelain"));
         }
-        
+
         // Local command output
         if let MessageContent::User { content, .. } = &messages[3].content {
             assert!(content.contains("new_file.txt"));
@@ -658,7 +669,7 @@ mod tests {
     async fn test_get_session_messages_assistant_content_patterns() {
         let temp_dir = create_test_claude_dir();
         let claude_dir = temp_dir.path().join(".claude");
-        
+
         let project_dir = claude_dir.join("projects").join("assistant-content-test");
         fs::create_dir_all(&project_dir).unwrap();
 
@@ -670,12 +681,15 @@ mod tests {
 
         let session_file = project_dir.join("assistant-test.jsonl");
         fs::write(session_file, assistant_content_session).unwrap();
-        
+
         let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
-        let messages = manager.get_session_messages("assistant-test").await.unwrap();
-        
+        let messages = manager
+            .get_session_messages("assistant-test")
+            .await
+            .unwrap();
+
         assert_eq!(messages.len(), 4);
-        
+
         // Single text block
         if let MessageContent::Assistant { content, .. } = &messages[0].content {
             assert_eq!(content.len(), 1);
@@ -683,7 +697,7 @@ mod tests {
                 assert_eq!(text, "Simple assistant response");
             }
         }
-        
+
         // Multiple text blocks
         if let MessageContent::Assistant { content, .. } = &messages[1].content {
             assert_eq!(content.len(), 2);
@@ -694,7 +708,7 @@ mod tests {
                 assert_eq!(text, "multiple text blocks");
             }
         }
-        
+
         // Single tool use
         if let MessageContent::Assistant { content, .. } = &messages[2].content {
             assert_eq!(content.len(), 1);
@@ -704,7 +718,7 @@ mod tests {
                 assert_eq!(input["file_path"], "/test/file.txt");
             }
         }
-        
+
         // Text + tool use combination
         if let MessageContent::Assistant { content, .. } = &messages[3].content {
             assert_eq!(content.len(), 2);
@@ -723,7 +737,7 @@ mod tests {
     async fn test_get_session_messages_system_messages_filtered() {
         let temp_dir = create_test_claude_dir();
         let claude_dir = temp_dir.path().join(".claude");
-        
+
         let project_dir = claude_dir.join("projects").join("system-test");
         fs::create_dir_all(&project_dir).unwrap();
 
@@ -735,16 +749,16 @@ mod tests {
 
         let session_file = project_dir.join("system-test.jsonl");
         fs::write(session_file, system_messages_session).unwrap();
-        
+
         let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
         let messages = manager.get_session_messages("system-test").await.unwrap();
-        
+
         // Only user and assistant messages should be included, system messages filtered out
         assert_eq!(messages.len(), 2);
-        
+
         assert_eq!(messages[0].message_type, MessageType::User);
         assert_eq!(messages[0].uuid, "user-1");
-        
+
         assert_eq!(messages[1].message_type, MessageType::Assistant);
         assert_eq!(messages[1].uuid, "assistant-1");
     }
@@ -753,7 +767,7 @@ mod tests {
     async fn test_get_session_messages_edge_cases() {
         let temp_dir = create_test_claude_dir();
         let claude_dir = temp_dir.path().join(".claude");
-        
+
         let project_dir = claude_dir.join("projects").join("edge-case-test");
         fs::create_dir_all(&project_dir).unwrap();
 
@@ -765,35 +779,35 @@ mod tests {
 
         let session_file = project_dir.join("edge-test.jsonl");
         fs::write(session_file, edge_cases_session).unwrap();
-        
+
         let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
         let messages = manager.get_session_messages("edge-test").await.unwrap();
-        
+
         assert_eq!(messages.len(), 4);
-        
+
         // Empty user content
         if let MessageContent::User { content, .. } = &messages[0].content {
             assert_eq!(content, "");
         }
-        
+
         // Empty assistant content array
         if let MessageContent::Assistant { content, .. } = &messages[1].content {
             assert_eq!(content.len(), 0);
         }
-        
+
         // Valid user message
         if let MessageContent::User { content, .. } = &messages[2].content {
             assert_eq!(content, "Valid message");
         }
-        
+
         // Assistant with empty text and tool_use blocks
         if let MessageContent::Assistant { content, .. } = &messages[3].content {
             assert_eq!(content.len(), 2);
-            
+
             if let ContentBlock::Text { text } = &content[0] {
                 assert_eq!(text, "");
             }
-            
+
             if let ContentBlock::ToolUse { id, name, .. } = &content[1] {
                 assert_eq!(id, "");
                 assert_eq!(name, "");
@@ -801,11 +815,11 @@ mod tests {
         }
     }
 
-    #[tokio::test] 
+    #[tokio::test]
     async fn test_get_session_messages_special_characters() {
         let temp_dir = create_test_claude_dir();
         let claude_dir = temp_dir.path().join(".claude");
-        
+
         let project_dir = claude_dir.join("projects").join("special-chars-test");
         fs::create_dir_all(&project_dir).unwrap();
 
@@ -816,25 +830,25 @@ mod tests {
 
         let session_file = project_dir.join("special-test.jsonl");
         fs::write(session_file, special_chars_session).unwrap();
-        
+
         let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
         let messages = manager.get_session_messages("special-test").await.unwrap();
-        
+
         assert_eq!(messages.len(), 3);
-        
+
         // Unicode characters
         if let MessageContent::User { content, .. } = &messages[0].content {
             assert!(content.contains("日本語"));
             assert!(content.contains("émojis"));
             assert!(content.contains("🚀"));
         }
-        
+
         // Escaped characters
         if let MessageContent::User { content, .. } = &messages[1].content {
             assert!(content.contains("\"quotes\""));
             assert!(content.contains("\\backslashes\\"));
         }
-        
+
         // Newlines and tabs
         if let MessageContent::Assistant { content, .. } = &messages[2].content {
             if let ContentBlock::Text { text } = &content[0] {
@@ -848,7 +862,7 @@ mod tests {
     async fn test_get_session_messages_message_patterns() {
         let temp_dir = create_test_claude_dir();
         let claude_dir = temp_dir.path().join(".claude");
-        
+
         let project_dir = claude_dir.join("projects").join("message-patterns-test");
         fs::create_dir_all(&project_dir).unwrap();
 
@@ -859,20 +873,20 @@ mod tests {
 
         let session_file = project_dir.join("message-test.jsonl");
         fs::write(session_file, message_patterns_session).unwrap();
-        
+
         let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
         let messages = manager.get_session_messages("message-test").await.unwrap();
-        
+
         // System messages are filtered out, so we have 2 messages
         assert_eq!(messages.len(), 2);
-        
+
         // User message with object message field
         assert_eq!(messages[0].message_type, MessageType::User);
         assert_eq!(messages[0].uuid, "user-msg-object");
         if let MessageContent::User { content, .. } = &messages[0].content {
             assert_eq!(content, "Message with object");
         }
-        
+
         // Assistant message with object message field
         assert_eq!(messages[1].message_type, MessageType::Assistant);
         assert_eq!(messages[1].uuid, "assistant-msg-object");
@@ -888,7 +902,7 @@ mod tests {
     async fn test_get_session_messages_content_patterns() {
         let temp_dir = create_test_claude_dir();
         let claude_dir = temp_dir.path().join(".claude");
-        
+
         let project_dir = claude_dir.join("projects").join("content-patterns-test");
         fs::create_dir_all(&project_dir).unwrap();
 
@@ -900,19 +914,19 @@ mod tests {
 
         let session_file = project_dir.join("content-test.jsonl");
         fs::write(session_file, content_patterns_session).unwrap();
-        
+
         let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
         let messages = manager.get_session_messages("content-test").await.unwrap();
-        
+
         assert_eq!(messages.len(), 4);
-        
+
         // Pattern 1: User message with string content
         assert_eq!(messages[0].message_type, MessageType::User);
         assert_eq!(messages[0].uuid, "user-string-content");
         if let MessageContent::User { content, .. } = &messages[0].content {
             assert_eq!(content, "String content for user");
         }
-        
+
         // Pattern 2: User message with array content (現在の実装では空文字列)
         assert_eq!(messages[1].message_type, MessageType::User);
         assert_eq!(messages[1].uuid, "user-array-content");
@@ -920,7 +934,7 @@ mod tests {
             // 現在の実装では配列contentは文字列として抽出できない
             assert_eq!(content, "");
         }
-        
+
         // Pattern 3: Assistant message with single array content
         assert_eq!(messages[2].message_type, MessageType::Assistant);
         assert_eq!(messages[2].uuid, "assistant-array-content");
@@ -930,7 +944,7 @@ mod tests {
                 assert_eq!(text, "Assistant array content");
             }
         }
-        
+
         // Pattern 4: Assistant message with multiple array content
         assert_eq!(messages[3].message_type, MessageType::Assistant);
         assert_eq!(messages[3].uuid, "assistant-multi-array");
@@ -949,7 +963,7 @@ mod tests {
     async fn test_get_session_messages_malformed_entries() {
         let temp_dir = create_test_claude_dir();
         let claude_dir = temp_dir.path().join(".claude");
-        
+
         let project_dir = claude_dir.join("projects").join("malformed-test");
         fs::create_dir_all(&project_dir).unwrap();
 
@@ -963,37 +977,40 @@ mod tests {
 
         let session_file = project_dir.join("malformed-test.jsonl");
         fs::write(session_file, malformed_session).unwrap();
-        
+
         let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
-        let messages = manager.get_session_messages("malformed-test").await.unwrap();
-        
+        let messages = manager
+            .get_session_messages("malformed-test")
+            .await
+            .unwrap();
+
         // Only valid messages should be parsed (malformed ones are skipped)
         assert_eq!(messages.len(), 4);
-        
+
         // Good user message
         assert_eq!(messages[0].uuid, "user-good");
         if let MessageContent::User { content, .. } = &messages[0].content {
             assert_eq!(content, "Good message");
         }
-        
+
         // User with no message field - content becomes empty
         assert_eq!(messages[1].uuid, "user-no-message");
         if let MessageContent::User { content, .. } = &messages[1].content {
             assert_eq!(content, "");
         }
-        
+
         // User with no content field - content becomes empty
         assert_eq!(messages[2].uuid, "user-no-content");
         if let MessageContent::User { content, .. } = &messages[2].content {
             assert_eq!(content, "");
         }
-        
+
         // Good assistant message
         assert_eq!(messages[3].uuid, "assistant-good");
         if let MessageContent::Assistant { content, .. } = &messages[3].content {
             assert_eq!(content.len(), 1);
         }
-        
+
         // Entries with missing type or unknown type should be filtered out
         // So we don't see "missing-type" or "unknown-type" in the results
     }
@@ -1002,7 +1019,7 @@ mod tests {
     async fn test_get_session_messages_complex_content_structures() {
         let temp_dir = create_test_claude_dir();
         let claude_dir = temp_dir.path().join(".claude");
-        
+
         let project_dir = claude_dir.join("projects").join("complex-content-test");
         fs::create_dir_all(&project_dir).unwrap();
 
@@ -1012,29 +1029,29 @@ mod tests {
 
         let session_file = project_dir.join("complex-test.jsonl");
         fs::write(session_file, complex_content_session).unwrap();
-        
+
         let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
         let messages = manager.get_session_messages("complex-test").await.unwrap();
-        
+
         assert_eq!(messages.len(), 2);
-        
+
         // Complex user tool result (現在の実装では配列contentは空文字列)
         assert_eq!(messages[0].uuid, "user-complex-tool-result");
         if let MessageContent::User { content, .. } = &messages[0].content {
             // 配列形式のcontentは現在の実装では処理されない
             assert_eq!(content, "");
         }
-        
+
         // Complex assistant with mixed content
         assert_eq!(messages[1].uuid, "assistant-complex-mix");
         if let MessageContent::Assistant { content, .. } = &messages[1].content {
             assert_eq!(content.len(), 3);
-            
+
             // First: text
             if let ContentBlock::Text { text } = &content[0] {
                 assert_eq!(text, "Processing complex data:");
             }
-            
+
             // Second: complex tool_use with nested JSON
             if let ContentBlock::ToolUse { id, name, input } = &content[1] {
                 assert_eq!(id, "tool_789");
@@ -1042,7 +1059,7 @@ mod tests {
                 assert!(input.get("file_path").is_some());
                 assert!(input.get("edits").is_some());
             }
-            
+
             // Third: text
             if let ContentBlock::Text { text } = &content[2] {
                 assert_eq!(text, "Done!");
