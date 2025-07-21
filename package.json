@@ -18,29 +18,33 @@
     "cargo:check": "cd src-tauri && cargo check",
     "cargo:check:fast": "./scripts/fast-check.sh",
     "cargo:clippy": "cd src-tauri && cargo clippy",
+    "cargo:fmt": "cd src-tauri && cargo fmt",
+    "biome:format": "npx @biomejs/biome format --write src/",
+    "fmt": "npm run cargo:fmt && npm run biome:format",
     "lint": "npm run cargo:clippy",
     "check": "npm run cargo:check && tsc --noEmit",
     "check:fast": "npm run cargo:check:fast && tsc --noEmit"
   },
   "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
     "@tauri-apps/api": "^2",
-    "@tauri-apps/plugin-opener": "^2"
+    "@tauri-apps/plugin-opener": "^2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.1.2",
+    "@tauri-apps/cli": "^2",
+    "@testing-library/jest-dom": "^6.0.0",
+    "@testing-library/react": "^14.0.0",
+    "@testing-library/user-event": "^14.0.0",
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
+    "@vitest/coverage-v8": "^3.2.4",
+    "@vitest/ui": "^3.2.4",
+    "jsdom": "^23.0.0",
     "typescript": "~5.6.2",
     "vite": "^6.0.3",
-    "@tauri-apps/cli": "^2",
-    "vitest": "^3.2.4",
-    "@vitest/ui": "^3.2.4",
-    "@vitest/coverage-v8": "^3.2.4",
-    "@testing-library/react": "^14.0.0",
-    "@testing-library/jest-dom": "^6.0.0",
-    "@testing-library/user-event": "^14.0.0",
-    "jsdom": "^23.0.0"
+    "vitest": "^3.2.4"
   }
 }
