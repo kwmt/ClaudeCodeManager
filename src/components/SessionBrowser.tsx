@@ -108,7 +108,6 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
   };
 
   const renderMessageContent = (message: ClaudeMessage) => {
-    console.log(`Rendering message content for ${message.message_type}:`, JSON.stringify(message));
     
     if (message.message_type === 'user') {
       const userContent = message.content.content;

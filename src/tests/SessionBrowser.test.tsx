@@ -152,8 +152,8 @@ describe('SessionBrowser', () => {
         content: {
           role: 'assistant',
           content: [
-            { Text: { text: 'Of course! I\'d be happy to help you with TypeScript.' } },
-            { Text: { text: 'What specific aspect would you like to know about?' } }
+            { type: "text", text: 'Of course! I\'d be happy to help you with TypeScript.' },
+            { type: "text", text: 'What specific aspect would you like to know about?' }
           ]
         },
         cwd: '/test',
@@ -196,13 +196,12 @@ describe('SessionBrowser', () => {
         content: {
           role: 'assistant',
           content: [
-            { Text: { text: 'Let me check your TypeScript configuration.' } },
+            { type: "text", text: 'Let me check your TypeScript configuration.' },
             { 
-              ToolUse: { 
-                id: 'tool1',
-                name: 'Read',
-                input: { file_path: '/test/tsconfig.json' }
-              }
+              type: "tool_use",
+              id: 'tool1',
+              name: 'Read',
+              input: { file_path: '/test/tsconfig.json' }
             }
           ]
         },

@@ -380,34 +380,41 @@ impl ClaudeDataManager {
             if let Some(end) = line.find(']') {
                 let _timestamp_str = &line[start + 1..end];
 
-                if let Some(colon_pos) = line[end..].find(':') {
-                    let absolute_colon_pos = end + colon_pos;
-
-                    // Skip "] " after the timestamp
-                    let user_start = if line.len() > end + 2 {
-                        end + 2
-                    } else {
+                // Look for '] ' pattern and skip it using character boundaries
+                let pattern = "] ";
+                if let Some(pattern_pos) = line[end..].find(pattern) {
+                    let start_pos = end + pattern_pos + pattern.len();
+                    
+                    // Make sure we don't go beyond string boundaries
+                    if start_pos >= line.len() {
                         return None;
-                    };
+                    }
+                    
+                    // Use safe character boundary slice
+                    let remaining = &line[start_pos..];
+                    
+                    // Find the first colon in the remaining part
+                    if let Some(colon_pos) = remaining.find(':') {
+                        let user_part = &remaining[..colon_pos];
+                        
+                        // Find command after ': ' using safe slicing
+                        let command_pattern = ": ";
+                        if let Some(cmd_start) = remaining[colon_pos..].find(command_pattern) {
+                            let cmd_pos = colon_pos + cmd_start + command_pattern.len();
+                            if cmd_pos < remaining.len() {
+                                let command = &remaining[cmd_pos..];
+                                
+                                // Try to parse timestamp (simplified)
+                                let timestamp = Utc::now(); // For now, use current time
 
-                    if absolute_colon_pos > user_start {
-                        let user_part = &line[user_start..absolute_colon_pos];
-                        let command_start = if line.len() > absolute_colon_pos + 2 {
-                            absolute_colon_pos + 2
-                        } else {
-                            return None;
-                        };
-                        let command = &line[command_start..];
-
-                        // Try to parse timestamp (simplified)
-                        let timestamp = Utc::now(); // For now, use current time
-
-                        return Some(CommandLogEntry {
-                            timestamp,
-                            user: user_part.to_string(),
-                            command: command.to_string(),
-                            cwd: None,
-                        });
+                                return Some(CommandLogEntry {
+                                    timestamp,
+                                    user: user_part.to_string(),
+                                    command: command.to_string(),
+                                    cwd: None,
+                                });
+                            }
+                        }
                     }
                 }
             }
