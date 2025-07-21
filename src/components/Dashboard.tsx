@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { api } from "../api";
 import type { SessionStats, ProjectSummary } from "../types";
 
@@ -9,23 +9,12 @@ export const Dashboard: React.FC<DashboardProps> = () => {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [updating, setUpdating] = useState<{
+    stats: boolean;
+    projects: boolean;
+  }>({ stats: false, projects: false });
 
-  useEffect(() => {
-    loadDashboardData();
-
-    // Listen for file change events
-    const handleDataChanged = () => {
-      loadDashboardData();
-    };
-
-    window.addEventListener("claude-data-changed", handleDataChanged);
-
-    return () => {
-      window.removeEventListener("claude-data-changed", handleDataChanged);
-    };
-  }, []);
-
-  const loadDashboardData = async () => {
+  const loadInitialData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -44,7 +33,79 @@ export const Dashboard: React.FC<DashboardProps> = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  const updateStats = useCallback(async () => {
+    if (updating.stats) return;
+
+    try {
+      setUpdating((prev) => ({ ...prev, stats: true }));
+      const statsData = await api.getSessionStats();
+      setStats(statsData);
+    } catch (err) {
+      console.error("Failed to update stats:", err);
+    } finally {
+      setUpdating((prev) => ({ ...prev, stats: false }));
+    }
+  }, [updating.stats]);
+
+  const updateProjects = useCallback(async () => {
+    if (updating.projects) return;
+
+    try {
+      setUpdating((prev) => ({ ...prev, projects: true }));
+      const projectsData = await api.getProjectSummary();
+      setProjects(projectsData);
+    } catch (err) {
+      console.error("Failed to update projects:", err);
+    } finally {
+      setUpdating((prev) => ({ ...prev, projects: false }));
+    }
+  }, [updating.projects]);
+
+  useEffect(() => {
+    loadInitialData();
+
+    // Listen for file change events with selective updates
+    const handleDataChanged = (event: CustomEvent) => {
+      const changedPath = event.detail?.path;
+
+      if (!changedPath) {
+        // If no specific path, update both
+        updateStats();
+        updateProjects();
+        return;
+      }
+
+      // Update stats for session changes
+      if (
+        changedPath.includes("/projects/") &&
+        changedPath.endsWith(".jsonl")
+      ) {
+        updateStats();
+      }
+
+      // Update projects for any project-related changes
+      if (
+        changedPath.includes("/projects/") ||
+        changedPath.includes("/todos/")
+      ) {
+        updateProjects();
+      }
+    };
+
+    window.addEventListener(
+      "claude-data-changed",
+      handleDataChanged as EventListener,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "claude-data-changed",
+        handleDataChanged as EventListener,
+      );
+    };
+  }, [loadInitialData, updateStats, updateProjects]);
 
   if (loading) {
     return <div className="dashboard-loading">Loading dashboard...</div>;
@@ -65,7 +126,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
       <h2>Claude Code Manager Dashboard</h2>
 
       {stats && (
-        <div className="stats-grid">
+        <div className={`stats-grid ${updating.stats ? "updating" : ""}`}>
           <div className="stat-card">
             <h3>Total Sessions</h3>
             <p className="stat-value">{stats.total_sessions}</p>
@@ -89,7 +150,9 @@ export const Dashboard: React.FC<DashboardProps> = () => {
         </div>
       )}
 
-      <div className="projects-section">
+      <div
+        className={`projects-section ${updating.projects ? "updating" : ""}`}
+      >
         <h3>Recent Projects</h3>
         {projects.length === 0 ? (
           <p>No projects found</p>
