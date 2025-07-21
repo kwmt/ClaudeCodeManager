@@ -330,7 +330,7 @@ body {
 .preview-text {
   font-size: 0.8rem;
   color: #555;
-  line-height: 1.2;
+  line-height: 1.3;
   margin: 0;
   padding: 0.4rem 0.5rem;
   background-color: #f8f9fa;
@@ -345,8 +345,7 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   
-  /* Ensure consistent height */
-  max-height: 2.4em; /* 2 lines × 1.2 line-height */
+  /* Remove max-height to allow proper text display */
   word-break: break-word;
 }
 
