@@ -12,22 +12,34 @@ pub struct ClaudeSession {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ClaudeMessage {
-    pub uuid: String,
-    pub parent_uuid: Option<String>,
-    pub session_id: String,
-    pub timestamp: DateTime<Utc>,
-    pub message_type: MessageType,
-    pub content: MessageContent,
-    pub cwd: String,
-    pub git_branch: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum MessageType {
-    User,
-    Assistant,
+#[serde(tag = "message_type")]
+pub enum ClaudeMessage {
+    #[serde(rename = "user")]
+    User {
+        uuid: String,
+        parent_uuid: Option<String>,
+        session_id: String,
+        timestamp: DateTime<Utc>,
+        content: MessageContent,
+        cwd: String,
+        git_branch: Option<String>,
+    },
+    #[serde(rename = "assistant")]
+    Assistant {
+        uuid: String,
+        parent_uuid: Option<String>,
+        session_id: String,
+        timestamp: DateTime<Utc>,
+        content: MessageContent,
+        cwd: String,
+        git_branch: Option<String>,
+    },
+    #[serde(rename = "summary")]
+    Summary {
+        summary: String,
+        #[serde(rename = "leafUuid")]
+        leaf_uuid: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

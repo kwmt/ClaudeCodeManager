@@ -6,7 +6,7 @@
 }
 
 body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   background-color: #f5f5f5;
   color: #333;
 }
@@ -25,7 +25,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .nav-title {
@@ -83,7 +83,7 @@ body {
   background: white;
   padding: 1.5rem;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   text-align: center;
 }
 
@@ -115,7 +115,7 @@ body {
   background: white;
   padding: 1.5rem;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .project-card h4 {
@@ -184,7 +184,7 @@ body {
 .sessions-list {
   background: white;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   overflow-y: auto;
 }
 
@@ -242,7 +242,7 @@ body {
 .messages-panel {
   background: white;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
 }
@@ -298,21 +298,192 @@ body {
   line-height: 1.5;
 }
 
-.text-block {
+/* Pre-formatted content text */
+.content-text {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
+    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: #333;
+  margin: 0;
+  padding: 0.5rem;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+}
+
+.user-content .content-text {
+  background-color: #f0f8ff;
+}
+
+.assistant-content .content-text {
+  background-color: #f0fff0;
+}
+
+/* Command messages styling */
+.command-content {
+  background-color: #fff3cd;
+  padding: 0.75rem;
+  border-radius: 4px;
+}
+
+.command-info {
+  font-weight: 600;
+  color: #856404;
   margin-bottom: 0.5rem;
+}
+
+.command-label {
+  color: #856404;
+}
+
+.command-message {
+  color: #333;
+  margin: 0.5rem 0;
+}
+
+.command-args {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.args-label {
+  font-weight: 600;
+  color: #856404;
+}
+
+.text-block {
+  margin-bottom: 0.75rem;
 }
 
 .tool-use-block {
-  background: #f1c40f;
-  padding: 0.5rem;
+  background: #e8f4fd;
+  border: 1px solid #bee5eb;
+  padding: 1rem;
   border-radius: 4px;
+  margin-bottom: 0.75rem;
+}
+
+.tool-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: #0c5460;
+}
+
+.tool-icon {
+  font-size: 1.2rem;
+}
+
+.tool-name {
+  font-size: 0.95rem;
+}
+
+.tool-input {
+  background: white;
+  border: 1px solid #d1ecf1;
+  border-radius: 4px;
+  padding: 0.5rem;
 }
 
 .tool-use-block pre {
-  margin-top: 0.5rem;
+  margin: 0;
   font-size: 0.8rem;
   overflow-x: auto;
+  font-family: "Courier New", Courier, monospace;
+  color: #333;
+}
+
+/* Summary block styling */
+.summary-block {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 0.75rem;
+}
+
+.summary-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+  color: #495057;
+}
+
+.summary-icon {
+  font-size: 1.2rem;
+}
+
+.summary-label {
+  font-size: 0.95rem;
+}
+
+.summary-content {
+  color: #333;
+}
+
+.summary-text {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.summary-uuid {
+  font-size: 0.85rem;
+  color: #6c757d;
+  padding: 0.5rem;
+  background: white;
+  border-radius: 3px;
+  border: 1px solid #dee2e6;
+}
+
+.uuid-label {
+  font-weight: 600;
+  margin-right: 0.5rem;
+}
+
+.uuid-value {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.8rem;
+}
+
+/* Summary message styling */
+.summary-message-content {
+  background: #fffbf0;
+  border: 1px solid #ffeaa7;
+  border-radius: 4px;
+  padding: 1rem;
+}
+
+.summary-message-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+  color: #b8860b;
+}
+
+.summary-message-icon {
+  font-size: 1.2rem;
+}
+
+.summary-message-label {
+  font-size: 1rem;
+}
+
+.summary-message-text {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #333;
+  font-weight: 500;
 }
 
 .message-meta {
@@ -337,7 +508,7 @@ body {
 .commands-list {
   background: white;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   max-height: calc(100vh - 200px);
   overflow-y: auto;
 }
@@ -373,7 +544,7 @@ body {
 }
 
 .command-text code {
-  font-family: 'Courier New', monospace;
+  font-family: "Courier New", monospace;
   font-size: 0.9rem;
 }
 
@@ -429,7 +600,7 @@ body {
 .todos-list {
   background: white;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   max-height: calc(100vh - 300px);
   overflow-y: auto;
 }
@@ -470,7 +641,7 @@ body {
 .settings-content {
   background: white;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   padding: 2rem;
   max-height: calc(100vh - 200px);
   overflow-y: auto;
@@ -569,7 +740,7 @@ body {
 }
 
 .json-viewer pre {
-  font-family: 'Courier New', monospace;
+  font-family: "Courier New", monospace;
   font-size: 0.8rem;
 }
 
@@ -609,7 +780,7 @@ body {
   padding: 2rem;
   background: white;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .dashboard-error h3,

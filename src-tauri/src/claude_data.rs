@@ -29,6 +29,19 @@ impl ClaudeDataManager {
         })
     }
 
+    #[cfg(test)]
+    pub fn new_with_dir(claude_dir: &Path) -> Result<Self, Box<dyn std::error::Error>> {
+        if !claude_dir.exists() {
+            return Err("Claude directory not found".into());
+        }
+
+        Ok(Self {
+            claude_dir: claude_dir.to_path_buf(),
+            _sessions_cache: RwLock::new(HashMap::new()),
+            messages_cache: RwLock::new(HashMap::new()),
+        })
+    }
+
     pub async fn get_all_sessions(&self) -> Result<Vec<ClaudeSession>, Box<dyn std::error::Error>> {
         let projects_dir = self.claude_dir.join("projects");
         let mut sessions = Vec::new();
@@ -211,12 +224,6 @@ impl ClaudeDataManager {
             .parse::<DateTime<Utc>>()
             .unwrap_or_else(|_| Utc::now());
 
-        let message_type = match raw.get("type").and_then(|t| t.as_str()) {
-            Some("user") => MessageType::User,
-            Some("assistant") => MessageType::Assistant,
-            _ => return Ok(None),
-        };
-
         let cwd = raw
             .get("cwd")
             .and_then(|c| c.as_str())
@@ -228,8 +235,8 @@ impl ClaudeDataManager {
             .and_then(|b| b.as_str())
             .map(|s| s.to_string());
 
-        let content = match message_type {
-            MessageType::User => {
+        let message = match raw.get("type").and_then(|t| t.as_str()) {
+            Some("user") => {
                 let content_text = raw
                     .get("message")
                     .and_then(|m| m.get("content"))
@@ -237,12 +244,22 @@ impl ClaudeDataManager {
                     .unwrap_or("")
                     .to_string();
 
-                MessageContent::User {
+                let content = MessageContent::User {
                     role: "user".to_string(),
                     content: content_text,
+                };
+
+                ClaudeMessage::User {
+                    uuid,
+                    parent_uuid,
+                    session_id: session_id.to_string(),
+                    timestamp,
+                    content,
+                    cwd,
+                    git_branch,
                 }
             }
-            MessageType::Assistant => {
+            Some("assistant") => {
                 let content_blocks = raw
                     .get("message")
                     .and_then(|m| m.get("content"))
@@ -255,23 +272,40 @@ impl ClaudeDataManager {
                     })
                     .unwrap_or_default();
 
-                MessageContent::Assistant {
+                let content = MessageContent::Assistant {
                     role: "assistant".to_string(),
                     content: content_blocks,
+                };
+
+                ClaudeMessage::Assistant {
+                    uuid,
+                    parent_uuid,
+                    session_id: session_id.to_string(),
+                    timestamp,
+                    content,
+                    cwd,
+                    git_branch,
                 }
             }
+            Some("summary") => {
+                let summary = raw
+                    .get("summary")
+                    .and_then(|s| s.as_str())
+                    .unwrap_or("")
+                    .to_string();
+
+                let leaf_uuid = raw
+                    .get("leafUuid")
+                    .and_then(|u| u.as_str())
+                    .unwrap_or("")
+                    .to_string();
+
+                ClaudeMessage::Summary { summary, leaf_uuid }
+            }
+            _ => return Ok(None),
         };
 
-        Ok(Some(ClaudeMessage {
-            uuid,
-            parent_uuid,
-            session_id: session_id.to_string(),
-            timestamp,
-            message_type,
-            content,
-            cwd,
-            git_branch,
-        }))
+        Ok(Some(message))
     }
 
     fn parse_content_block(&self, block: &serde_json::Value) -> Option<ContentBlock> {
@@ -334,19 +368,42 @@ impl ClaudeDataManager {
             if let Some(end) = line.find(']') {
                 let _timestamp_str = &line[start + 1..end];
 
-                if let Some(colon_pos) = line[end..].find(':') {
-                    let user_part = &line[end + 2..end + colon_pos];
-                    let command = &line[end + colon_pos + 2..];
+                // Look for '] ' pattern and skip it using character boundaries
+                let pattern = "] ";
+                if let Some(pattern_pos) = line[end..].find(pattern) {
+                    let start_pos = end + pattern_pos + pattern.len();
 
-                    // Try to parse timestamp (simplified)
-                    let timestamp = Utc::now(); // For now, use current time
+                    // Make sure we don't go beyond string boundaries
+                    if start_pos >= line.len() {
+                        return None;
+                    }
 
-                    return Some(CommandLogEntry {
-                        timestamp,
-                        user: user_part.to_string(),
-                        command: command.to_string(),
-                        cwd: None,
-                    });
+                    // Use safe character boundary slice
+                    let remaining = &line[start_pos..];
+
+                    // Find the first colon in the remaining part
+                    if let Some(colon_pos) = remaining.find(':') {
+                        let user_part = &remaining[..colon_pos];
+
+                        // Find command after ': ' using safe slicing
+                        let command_pattern = ": ";
+                        if let Some(cmd_start) = remaining[colon_pos..].find(command_pattern) {
+                            let cmd_pos = colon_pos + cmd_start + command_pattern.len();
+                            if cmd_pos < remaining.len() {
+                                let command = &remaining[cmd_pos..];
+
+                                // Try to parse timestamp (simplified)
+                                let timestamp = Utc::now(); // For now, use current time
+
+                                return Some(CommandLogEntry {
+                                    timestamp,
+                                    user: user_part.to_string(),
+                                    command: command.to_string(),
+                                    cwd: None,
+                                });
+                            }
+                        }
+                    }
                 }
             }
         }
