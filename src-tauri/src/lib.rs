@@ -28,8 +28,7 @@ pub fn run() {
             get_session_stats,
             search_sessions,
             search_commands,
-            export_session_data,
-            start_file_watcher
+            export_session_data
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

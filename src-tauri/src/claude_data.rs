@@ -524,13 +524,6 @@ impl ClaudeDataManager {
         })
     }
 
-    pub async fn invalidate_caches(&self) {
-        let mut sessions_cache = self._sessions_cache.write().await;
-        let mut messages_cache = self.messages_cache.write().await;
-        sessions_cache.clear();
-        messages_cache.clear();
-    }
-
     async fn get_file_modified_time(
         &self,
         path: &Path,
@@ -593,14 +586,5 @@ impl ClaudeDataManager {
 
         changed_sessions.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
         Ok(changed_sessions)
-    }
-
-    pub async fn invalidate_session_cache(&self, session_id: &str) {
-        let mut sessions_cache = self._sessions_cache.write().await;
-        let mut messages_cache = self.messages_cache.write().await;
-
-        // Remove specific session from caches
-        sessions_cache.retain(|_, session| session.session_id != session_id);
-        messages_cache.remove(session_id);
     }
 }

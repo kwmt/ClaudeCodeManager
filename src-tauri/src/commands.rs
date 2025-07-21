@@ -1,16 +1,7 @@
 use crate::claude_data::ClaudeDataManager;
 use crate::models::*;
-use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
-use serde::Serialize;
-use std::sync::mpsc;
 use std::sync::Arc;
-use std::time::Duration;
-use tauri::{AppHandle, Emitter, State};
-
-#[derive(Serialize, Clone)]
-struct FileChangeEvent {
-    message: String,
-}
+use tauri::State;
 
 #[tauri::command]
 pub async fn get_all_sessions(
