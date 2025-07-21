@@ -1,16 +1,19 @@
 use crate::models::*;
 use chrono::{DateTime, Utc};
 use dirs::home_dir;
+use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
 use std::collections::HashMap;
 use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
+use std::sync::mpsc;
 use tokio::sync::RwLock;
 
 pub struct ClaudeDataManager {
     claude_dir: PathBuf,
     _sessions_cache: RwLock<HashMap<String, ClaudeSession>>,
     messages_cache: RwLock<HashMap<String, Vec<ClaudeMessage>>>,
+    _watcher: Option<RecommendedWatcher>,
 }
 
 impl ClaudeDataManager {
@@ -22,10 +25,29 @@ impl ClaudeDataManager {
             return Err("~/.claude directory not found".into());
         }
 
+        // Create file watcher
+        let (tx, _rx) = mpsc::channel();
+        let mut watcher = RecommendedWatcher::new(
+            move |res: Result<Event, notify::Error>| {
+                match res {
+                    Ok(event) => {
+                        // Send file change events through the channel
+                        let _ = tx.send(event);
+                    }
+                    Err(e) => eprintln!("File watcher error: {e:?}"),
+                }
+            },
+            Config::default(),
+        )?;
+
+        // Watch the .claude directory recursively
+        watcher.watch(&claude_dir, RecursiveMode::Recursive)?;
+
         Ok(Self {
             claude_dir,
             _sessions_cache: RwLock::new(HashMap::new()),
             messages_cache: RwLock::new(HashMap::new()),
+            _watcher: Some(watcher),
         })
     }
 
@@ -39,6 +61,7 @@ impl ClaudeDataManager {
             claude_dir: claude_dir.to_path_buf(),
             _sessions_cache: RwLock::new(HashMap::new()),
             messages_cache: RwLock::new(HashMap::new()),
+            _watcher: None, // No watcher in test mode
         })
     }
 
@@ -496,5 +519,12 @@ impl ClaudeDataManager {
             active_projects,
             pending_todos,
         })
+    }
+
+    pub async fn invalidate_caches(&self) {
+        let mut sessions_cache = self._sessions_cache.write().await;
+        let mut messages_cache = self.messages_cache.write().await;
+        sessions_cache.clear();
+        messages_cache.clear();
     }
 }

@@ -17,6 +17,24 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
 
   useEffect(() => {
     loadSessions();
+
+    // Listen for file change events
+    const handleDataChanged = () => {
+      if (searchQuery.trim()) {
+        searchSessions();
+      } else {
+        loadSessions();
+      }
+      // Clear selected session to avoid stale data
+      setSelectedSession(null);
+      setMessages([]);
+    };
+
+    window.addEventListener("claude-data-changed", handleDataChanged);
+
+    return () => {
+      window.removeEventListener("claude-data-changed", handleDataChanged);
+    };
   }, []);
 
   useEffect(() => {

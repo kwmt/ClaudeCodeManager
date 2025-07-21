@@ -105,4 +105,13 @@ export const api = {
     }
     return mockApi.exportSessionData(sessionId);
   },
+
+  // Real-time monitoring
+  async startFileWatcher(): Promise<void> {
+    if (isTauri && tauriApi) {
+      return tauriApi.invoke("start_file_watcher");
+    }
+    // Mock API doesn't need file watching
+    return Promise.resolve();
+  },
 };
