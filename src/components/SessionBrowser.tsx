@@ -16,9 +16,6 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
   const [projects, setProjects] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
-  const [refreshingProjects, setRefreshingProjects] = useState<Set<string>>(
-    new Set(),
-  );
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -94,37 +91,8 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
     }
   };
 
-  const refreshProject = async (projectPath: string) => {
-    try {
-      setRefreshingProjects((prev) => new Set(prev.add(projectPath)));
-
-      const data = await api.getAllSessions();
-      const projectSessions = data.filter(
-        (session) => session.project_path === projectPath,
-      );
-
-      setAllSessions((prevSessions) => {
-        const updatedSessions = prevSessions.filter(
-          (s) => s.project_path !== projectPath,
-        );
-        const finalSessions = [...updatedSessions, ...projectSessions].sort(
-          (a, b) => b.updated_at.localeCompare(a.updated_at),
-        );
-
-        filterSessions(finalSessions, searchQuery, selectedProject);
-        return finalSessions;
-      });
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to refresh project",
-      );
-    } finally {
-      setRefreshingProjects((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(projectPath);
-        return newSet;
-      });
-    }
+  const refreshAllSessions = async () => {
+    await loadSessions();
   };
 
   const exportSession = async (sessionId: string) => {
@@ -302,6 +270,14 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
               className="search-input"
             />
           </div>
+          <button
+            className="refresh-all-button"
+            onClick={refreshAllSessions}
+            disabled={loading}
+            title="Refresh all sessions"
+          >
+            {loading ? "🔄" : "🔄"} Refresh
+          </button>
         </div>
       </div>
 
@@ -330,22 +306,8 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
                   <h4>
                     {session.project_path.split("/").pop() ||
                       session.project_path}
-                    {refreshingProjects.has(session.project_path) && (
-                      <span className="refreshing-indicator"> 🔄</span>
-                    )}
                   </h4>
                   <div className="session-actions">
-                    <button
-                      className="refresh-button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        refreshProject(session.project_path);
-                      }}
-                      disabled={refreshingProjects.has(session.project_path)}
-                      title="Refresh this project"
-                    >
-                      🔄
-                    </button>
                     <button
                       className="export-button"
                       onClick={(e) => {

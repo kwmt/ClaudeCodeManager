@@ -47,9 +47,7 @@ describe("Session Updates Optimization", () => {
     });
   });
 
-  it("should show refreshing indicator when manually refreshing a project", async () => {
-    const { api } = await import("../api");
-
+  it("should show refreshing indicator when manually refreshing all sessions", async () => {
     render(<SessionBrowser />);
 
     // Wait for initial load to complete
@@ -63,46 +61,24 @@ describe("Session Updates Optimization", () => {
       expect(webApp).toBeInTheDocument();
     });
 
-    // Create a slow promise to simulate network delay
-    let resolvePromise: (value: any) => void;
-    const slowPromise = new Promise((resolve) => {
-      resolvePromise = resolve;
-    });
+    // 全体のリフレッシュボタンを見つけてクリック
+    const refreshButton = screen.getByRole("button", { name: /Refresh/i });
+    expect(refreshButton).toBeInTheDocument();
 
-    // refreshProjectはgetAllSessionsを呼び出すので、それをモック
-    vi.mocked(api.getAllSessions).mockReturnValueOnce(slowPromise as any);
+    fireEvent.click(refreshButton);
 
-    // リフレッシュボタンを見つけてクリック
-    const refreshButtons = screen.getAllByTitle("Refresh this project");
-    expect(refreshButtons.length).toBeGreaterThan(0);
-
-    fireEvent.click(refreshButtons[0]);
-
-    // リフレッシュボタンが無効になることを確認
+    // リフレッシュボタンが無効になることを確認（ローディング中）
     await waitFor(() => {
-      expect(refreshButtons[0]).toBeDisabled();
+      expect(refreshButton).toBeDisabled();
     });
-
-    // Resolve the promise to complete the update
-    const mockSessionsData = [
-      {
-        session_id: "session-1",
-        project_path: "/Users/developer/projects/web-app",
-        created_at: "2025-07-20T10:00:00Z",
-        updated_at: "2025-07-20T11:30:00Z",
-        message_count: 15,
-        git_branch: "main",
-      },
-    ];
-    resolvePromise!(mockSessionsData);
 
     // Wait for refreshing to complete
     await waitFor(() => {
-      expect(refreshButtons[0]).not.toBeDisabled();
+      expect(refreshButton).not.toBeDisabled();
     });
   });
 
-  it("should not show loading state during selective updates", async () => {
+  it("should allow manual refresh of all sessions via refresh button", async () => {
     const { api } = await import("../api");
 
     render(<SessionBrowser />);
@@ -131,18 +107,14 @@ describe("Session Updates Optimization", () => {
     ];
     vi.mocked(api.getAllSessions).mockResolvedValueOnce(mockSessions);
 
-    // リフレッシュボタンをクリック
-    const refreshButtons = screen.getAllByTitle("Refresh this project");
-    if (refreshButtons.length > 0) {
-      fireEvent.click(refreshButtons[0]);
+    // 全体のリフレッシュボタンをクリック
+    const refreshButton = screen.getByRole("button", { name: /Refresh/i });
+    fireEvent.click(refreshButton);
 
-      // Should not show loading state during selective update
-      expect(screen.queryByText(/Loading sessions/)).not.toBeInTheDocument();
-
-      await waitFor(() => {
-        expect(api.getAllSessions).toHaveBeenCalled();
-      });
-    }
+    // 更新が成功することを確認
+    await waitFor(() => {
+      expect(api.getAllSessions).toHaveBeenCalled();
+    });
   });
 
   it("should filter sessions by project", async () => {
