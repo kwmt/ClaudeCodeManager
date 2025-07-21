@@ -531,14 +531,19 @@ impl ClaudeDataManager {
         messages_cache.clear();
     }
 
-    async fn get_file_modified_time(&self, path: &Path) -> Result<DateTime<Utc>, Box<dyn std::error::Error>> {
+    async fn get_file_modified_time(
+        &self,
+        path: &Path,
+    ) -> Result<DateTime<Utc>, Box<dyn std::error::Error>> {
         let metadata = fs::metadata(path)?;
         let modified = metadata.modified()?;
         let datetime = DateTime::<Utc>::from(modified);
         Ok(datetime)
     }
 
-    pub async fn get_changed_sessions(&self) -> Result<Vec<ClaudeSession>, Box<dyn std::error::Error>> {
+    pub async fn get_changed_sessions(
+        &self,
+    ) -> Result<Vec<ClaudeSession>, Box<dyn std::error::Error>> {
         let projects_dir = self.claude_dir.join("projects");
         let mut changed_sessions = Vec::new();
         let mut timestamps = self.file_timestamps.write().await;
@@ -593,7 +598,7 @@ impl ClaudeDataManager {
     pub async fn invalidate_session_cache(&self, session_id: &str) {
         let mut sessions_cache = self._sessions_cache.write().await;
         let mut messages_cache = self.messages_cache.write().await;
-        
+
         // Remove specific session from caches
         sessions_cache.retain(|_, session| session.session_id != session_id);
         messages_cache.remove(session_id);

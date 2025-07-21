@@ -184,7 +184,9 @@ pub async fn start_file_watcher(
             if let Some(path) = event.paths.first() {
                 if path.extension().and_then(|e| e.to_str()) == Some("jsonl") {
                     if let Some(session_id) = path.file_stem().and_then(|n| n.to_str()) {
-                        data_manager_clone.invalidate_session_cache(session_id).await;
+                        data_manager_clone
+                            .invalidate_session_cache(session_id)
+                            .await;
                     }
                 } else {
                     // For non-session files, invalidate all caches

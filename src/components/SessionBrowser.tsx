@@ -68,34 +68,42 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
       setRefreshing(true);
       setError(null);
       const changedSessions = await api.getChangedSessions();
-      
+
       if (changedSessions.length > 0) {
         // Update existing sessions or add new ones
-        setAllSessions(prevSessions => {
+        setAllSessions((prevSessions) => {
           const updatedSessions = [...prevSessions];
-          const sessionMap = new Map(updatedSessions.map(s => [s.session_id, s]));
-          
-          changedSessions.forEach(changedSession => {
+          const sessionMap = new Map(
+            updatedSessions.map((s) => [s.session_id, s]),
+          );
+
+          changedSessions.forEach((changedSession) => {
             sessionMap.set(changedSession.session_id, changedSession);
           });
-          
-          const finalSessions = Array.from(sessionMap.values())
-            .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
-          
+
+          const finalSessions = Array.from(sessionMap.values()).sort((a, b) =>
+            b.updated_at.localeCompare(a.updated_at),
+          );
+
           // Update projects list
           const uniqueProjects = Array.from(
             new Set(finalSessions.map((session) => session.project_path)),
           ).sort();
           setProjects(uniqueProjects);
-          
+
           // Apply current filters to the updated data
           filterSessions(finalSessions, searchQuery, selectedProject);
-          
+
           return finalSessions;
         });
 
         // If the currently selected session was updated, refresh its messages
-        if (selectedSession && changedSessions.some(s => s.session_id === selectedSession.session_id)) {
+        if (
+          selectedSession &&
+          changedSessions.some(
+            (s) => s.session_id === selectedSession.session_id,
+          )
+        ) {
           loadSessionMessages(selectedSession);
         }
       }

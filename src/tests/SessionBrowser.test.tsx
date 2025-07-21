@@ -50,8 +50,12 @@ describe("SessionBrowser", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Session Browser")).toBeInTheDocument();
-      expect(screen.getByRole("heading", { name: "project1" })).toBeInTheDocument();
-      expect(screen.getByRole("heading", { name: "project2" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "project1" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "project2" }),
+      ).toBeInTheDocument();
     });
   });
 
@@ -61,8 +65,12 @@ describe("SessionBrowser", () => {
     render(<SessionBrowser />);
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "project1" })).toBeInTheDocument();
-      expect(screen.getByRole("heading", { name: "project2" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "project1" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "project2" }),
+      ).toBeInTheDocument();
     });
 
     const searchInput = screen.getByPlaceholderText(
@@ -71,8 +79,12 @@ describe("SessionBrowser", () => {
     fireEvent.change(searchInput, { target: { value: "project1" } });
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "project1" })).toBeInTheDocument();
-      expect(screen.queryByRole("heading", { name: "project2" })).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "project1" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: "project2" }),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -95,10 +107,14 @@ describe("SessionBrowser", () => {
     render(<SessionBrowser />);
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "project1" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "project1" }),
+      ).toBeInTheDocument();
     });
 
-    const sessionItem = screen.getByRole("heading", { name: "project1" }).closest(".session-item");
+    const sessionItem = screen
+      .getByRole("heading", { name: "project1" })
+      .closest(".session-item");
     fireEvent.click(sessionItem!);
 
     await waitFor(() => {
@@ -129,10 +145,14 @@ describe("SessionBrowser", () => {
     render(<SessionBrowser />);
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "project1" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "project1" }),
+      ).toBeInTheDocument();
     });
 
-    const sessionItem = screen.getByRole("heading", { name: "project1" }).closest(".session-item");
+    const sessionItem = screen
+      .getByRole("heading", { name: "project1" })
+      .closest(".session-item");
     fireEvent.click(sessionItem!);
 
     await waitFor(() => {
@@ -179,10 +199,14 @@ describe("SessionBrowser", () => {
     render(<SessionBrowser />);
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "project1" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "project1" }),
+      ).toBeInTheDocument();
     });
 
-    const sessionItem = screen.getByRole("heading", { name: "project1" }).closest(".session-item");
+    const sessionItem = screen
+      .getByRole("heading", { name: "project1" })
+      .closest(".session-item");
     fireEvent.click(sessionItem!);
 
     await waitFor(() => {
@@ -231,10 +255,14 @@ describe("SessionBrowser", () => {
     render(<SessionBrowser />);
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "project1" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "project1" }),
+      ).toBeInTheDocument();
     });
 
-    const sessionItem = screen.getByRole("heading", { name: "project1" }).closest(".session-item");
+    const sessionItem = screen
+      .getByRole("heading", { name: "project1" })
+      .closest(".session-item");
     fireEvent.click(sessionItem!);
 
     await waitFor(() => {
@@ -275,10 +303,14 @@ describe("SessionBrowser", () => {
     render(<SessionBrowser />);
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "project1" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "project1" }),
+      ).toBeInTheDocument();
     });
 
-    const sessionItem = screen.getByRole("heading", { name: "project1" }).closest(".session-item");
+    const sessionItem = screen
+      .getByRole("heading", { name: "project1" })
+      .closest(".session-item");
     fireEvent.click(sessionItem!);
 
     await waitFor(() => {
@@ -309,10 +341,14 @@ describe("SessionBrowser", () => {
     render(<SessionBrowser />);
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "project1" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "project1" }),
+      ).toBeInTheDocument();
     });
 
-    const sessionItem = screen.getByRole("heading", { name: "project1" }).closest(".session-item");
+    const sessionItem = screen
+      .getByRole("heading", { name: "project1" })
+      .closest(".session-item");
     fireEvent.click(sessionItem!);
 
     await waitFor(() => {
@@ -360,7 +396,9 @@ describe("SessionBrowser", () => {
     render(<SessionBrowser />);
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "project1" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "project1" }),
+      ).toBeInTheDocument();
     });
 
     const exportButtons = screen.getAllByText("Export");
