@@ -24,7 +24,7 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
     // Listen for file change events
     const handleDataChanged = () => {
       if (searchQuery.trim()) {
-        searchSessions();
+        loadSessions();
       } else {
         loadSessions();
       }
