@@ -29,7 +29,7 @@ function App() {
       try {
         // Check if we're in Tauri environment
         const { listen } = await import("@tauri-apps/api/event");
-        
+
         const unlisten = await listen("file-changed", (event) => {
           console.log("File changed:", event.payload);
           // Trigger a refresh of components by emitting a custom event

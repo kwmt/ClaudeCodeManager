@@ -150,20 +150,53 @@ body {
 
 /* Session Browser */
 .session-browser-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   margin-bottom: 2rem;
 }
 
 .session-browser-header h2 {
   color: #2c3e50;
+  margin-bottom: 1rem;
+}
+
+.header-controls {
+  display: flex;
+  gap: 1rem;
+  align-items: end;
+}
+
+.project-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.project-filter label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.project-select {
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  min-width: 200px;
+  background: white;
 }
 
 .search-container {
   flex: 1;
   max-width: 400px;
-  margin-left: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.search-container label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #2c3e50;
 }
 
 .search-input {
@@ -189,6 +222,15 @@ body {
   overflow-y: auto;
   height: 100%;
   min-height: 0;
+}
+
+.sessions-count {
+  padding: 0.75rem 1rem;
+  background: #f8f9fa;
+  border-bottom: 1px solid #ecf0f1;
+  font-size: 0.9rem;
+  color: #6c757d;
+  font-weight: 500;
 }
 
 .session-item {
