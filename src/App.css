@@ -332,7 +332,7 @@ body {
   color: #555;
   line-height: 1.5;
   margin: 0;
-  padding: 0.5rem;
+  padding: 0.5rem 0.5rem 0.5rem 0.5rem; /* 上下左右とも同じpadding */
   background-color: #f8f9fa;
   border-radius: 4px;
   border-left: 3px solid #dee2e6;
@@ -344,8 +344,8 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
   
-  /* 確実に2行のみにするための高さ制限 */
-  height: 3.6em; /* 1.5 line-height × 2 lines + padding */
+  /* 上下のpaddingを考慮した高さ設定 */
+  height: 4.0em; /* 1.5 × 2 lines + 上下padding 0.5rem × 2 */
   box-sizing: border-box;
   
   word-break: break-word;
