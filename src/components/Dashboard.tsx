@@ -116,7 +116,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
       <div className="dashboard-error">
         <h3>Error loading dashboard</h3>
         <p>{error}</p>
-        <button onClick={loadDashboardData}>Retry</button>
+        <button onClick={loadInitialData}>Retry</button>
       </div>
     );
   }
