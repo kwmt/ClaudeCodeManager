@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "jq -r '.tool_input.file_path | select(endswith(\".rs\"))' | xargs -r cd src-tauri && cargo fmt"
+            "command": "jq -r '.tool_input.file_path | select(endswith(\".rs\"))' | xargs -I {} bash -c 'cd src-tauri && cargo fmt'"
           }
         ]
       }
