@@ -21,7 +21,6 @@ debug = 1
 debug-assertions = false
 overflow-checks = false
 lto = false
-panic = 'unwind'
 incremental = false
 codegen-units = 256
 

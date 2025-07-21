@@ -21,23 +21,7 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
   useEffect(() => {
     loadSessions();
 
-    // Listen for file change events
-    const handleDataChanged = () => {
-      if (searchQuery.trim()) {
-        loadSessions();
-      } else {
-        loadSessions();
-      }
-      // Clear selected session to avoid stale data
-      setSelectedSession(null);
-      setMessages([]);
-    };
-
-    window.addEventListener("claude-data-changed", handleDataChanged);
-
-    return () => {
-      window.removeEventListener("claude-data-changed", handleDataChanged);
-    };
+    // File change events disabled - real-time updates removed
   }, []);
 
   useEffect(() => {
@@ -105,6 +89,10 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
     } finally {
       setLoadingMessages(false);
     }
+  };
+
+  const refreshAllSessions = async () => {
+    await loadSessions();
   };
 
   const exportSession = async (sessionId: string) => {
@@ -282,6 +270,14 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
               className="search-input"
             />
           </div>
+          <button
+            className="refresh-all-button"
+            onClick={refreshAllSessions}
+            disabled={loading}
+            title="Refresh all sessions"
+          >
+            {loading ? "🔄" : "🔄"} Refresh
+          </button>
         </div>
       </div>
 
@@ -311,15 +307,17 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
                     {session.project_path.split("/").pop() ||
                       session.project_path}
                   </h4>
-                  <button
-                    className="export-button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      exportSession(session.session_id);
-                    }}
-                  >
-                    Export
-                  </button>
+                  <div className="session-actions">
+                    <button
+                      className="export-button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        exportSession(session.session_id);
+                      }}
+                    >
+                      Export
+                    </button>
+                  </div>
                 </div>
                 <p className="session-path">{session.project_path}</p>
                 <div className="session-meta">
