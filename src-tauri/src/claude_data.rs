@@ -435,10 +435,13 @@ impl ClaudeDataManager {
 
         let trimmed = cleaned.trim();
 
-        if trimmed.len() <= max_chars {
+        // 2行に収まるように、より短めにカット（約80文字で2行になることを想定）
+        let adjusted_max = if max_chars > 100 { 80 } else { max_chars };
+
+        if trimmed.len() <= adjusted_max {
             trimmed.to_string()
         } else {
-            let mut truncated = trimmed.chars().take(max_chars).collect::<String>();
+            let mut truncated = trimmed.chars().take(adjusted_max).collect::<String>();
             if let Some(last_space) = truncated.rfind(' ') {
                 truncated.truncate(last_space);
             }
