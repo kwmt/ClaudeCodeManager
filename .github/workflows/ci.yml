@@ -86,7 +86,7 @@ jobs:
       env:
         # Optimize test compilation
         CARGO_INCREMENTAL: 1
-        RUSTFLAGS: "-C debug-assertions=off -C incremental"
+        RUSTFLAGS: "-C debug-assertions=off"
         # Enable faster linking
         CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER: clang
         CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER: clang
