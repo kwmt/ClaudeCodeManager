@@ -168,7 +168,12 @@ export const mockApi = {
 
   async getSessionMessages(sessionId: string): Promise<ClaudeMessage[]> {
     await new Promise(resolve => setTimeout(resolve, 300));
-    return mockMessages.filter(msg => msg.session_id === sessionId);
+    return mockMessages.filter(msg => {
+      if (msg.message_type === 'summary') {
+        return false; // Summary messages don't belong to specific sessions
+      }
+      return msg.session_id === sessionId;
+    });
   },
 
   async searchSessions(query: string): Promise<ClaudeSession[]> {
@@ -214,7 +219,12 @@ export const mockApi = {
 
   async exportSessionData(sessionId: string): Promise<string> {
     await new Promise(resolve => setTimeout(resolve, 200));
-    const messages = mockMessages.filter(msg => msg.session_id === sessionId);
+    const messages = mockMessages.filter(msg => {
+      if (msg.message_type === 'summary') {
+        return false; // Summary messages don't belong to specific sessions
+      }
+      return msg.session_id === sessionId;
+    });
     return JSON.stringify(messages, null, 2);
   },
 };

@@ -235,6 +235,84 @@ describe('SessionBrowser', () => {
     expect(screen.getByText('assistant')).toBeInTheDocument();
   });
 
+  it('displays assistant message with text blocks correctly', async () => {
+    const mockMessages = [
+      {
+        uuid: 'msg4',
+        session_id: 'session1',
+        timestamp: '2025-07-20T10:03:00Z',
+        message_type: 'assistant',
+        content: {
+          role: 'assistant',
+          content: [
+            { type: "text", text: 'Here is a summary of our discussion:' },
+            { type: "text", text: 'This concludes our conversation.' }
+          ]
+        },
+        cwd: '/test',
+        git_branch: 'main'
+      }
+    ];
+
+    mockApi.getAllSessions.mockResolvedValue(mockSessions);
+    mockApi.getSessionMessages.mockResolvedValue(mockMessages);
+
+    render(<SessionBrowser />);
+
+    await waitFor(() => {
+      expect(screen.getByText('project1')).toBeInTheDocument();
+    });
+
+    const sessionItem = screen.getByText('project1').closest('.session-item');
+    fireEvent.click(sessionItem!);
+
+    await waitFor(() => {
+      expect(screen.getByText('Messages for project1')).toBeInTheDocument();
+    });
+
+    // Check that the assistant message is rendered
+    await waitFor(() => {
+      expect(screen.getByText('assistant')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('assistant')).toBeInTheDocument();
+  });
+
+  it('displays summary message type correctly', async () => {
+    const mockMessages = [
+      {
+        message_type: 'summary',
+        summary: 'This is a summary message with important insights about the conversation.',
+        leafUuid: '048b4bfd-ab71-4413-8f9d-b89bed5b683c'
+      }
+    ];
+
+    mockApi.getAllSessions.mockResolvedValue(mockSessions);
+    mockApi.getSessionMessages.mockResolvedValue(mockMessages);
+
+    render(<SessionBrowser />);
+
+    await waitFor(() => {
+      expect(screen.getByText('project1')).toBeInTheDocument();
+    });
+
+    const sessionItem = screen.getByText('project1').closest('.session-item');
+    fireEvent.click(sessionItem!);
+
+    await waitFor(() => {
+      expect(screen.getByText('Messages for project1')).toBeInTheDocument();
+    });
+
+    // Check that the summary message is rendered
+    await waitFor(() => {
+      expect(screen.getByText('summary')).toBeInTheDocument();
+      expect(screen.getByText('This is a summary message with important insights about the conversation.')).toBeInTheDocument();
+    });
+
+    // Check that we have a summary message
+    expect(screen.getByText('Summary')).toBeInTheDocument();
+  });
+
   it('handles export functionality', async () => {
     mockApi.getAllSessions.mockResolvedValue(mockSessions);
     mockApi.exportSessionData.mockResolvedValue('{"test": "data"}');

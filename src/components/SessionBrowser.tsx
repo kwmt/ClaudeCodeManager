@@ -104,6 +104,7 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
       );
     }
     
+    
     return null;
   };
 
