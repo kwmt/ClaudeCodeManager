@@ -94,25 +94,46 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
       setMessages(data);
       setFilteredMessages(data);
 
-      // Auto-scroll to the first message after loading
-      if (data.length > 0) {
+      // Auto-scroll to the message containing the latest content preview
+      if (data.length > 0 && session.latest_content_preview) {
         // Use setTimeout to ensure DOM is updated before scrolling
         setTimeout(() => {
-          const firstMessage = data[0];
-          const messageId =
-            firstMessage.message_type === "summary"
-              ? "summary-0"
-              : firstMessage.uuid;
-          const messageElement = document.getElementById(
-            `message-${messageId}`,
-          );
-          if (messageElement && messageListRef.current) {
-            // Scroll to top of the message list first, then to the specific message
-            messageListRef.current.scrollTop = 0;
-            setTimeout(() => {
+          // Find the message that contains the preview text
+          let targetMessage = null;
+          let targetIndex = -1;
+
+          // Search for the message containing the preview text
+          for (let i = 0; i < data.length; i++) {
+            const message = data[i];
+            const content = getMessageTextContent(message);
+            if (
+              session.latest_content_preview &&
+              content.includes(session.latest_content_preview)
+            ) {
+              targetMessage = message;
+              targetIndex = i;
+              break;
+            }
+          }
+
+          // If no message found with preview, fall back to the last message
+          if (!targetMessage && data.length > 0) {
+            targetIndex = data.length - 1;
+            targetMessage = data[targetIndex];
+          }
+
+          if (targetMessage) {
+            const messageId =
+              targetMessage.message_type === "summary"
+                ? `summary-${targetIndex}`
+                : targetMessage.uuid;
+            const messageElement = document.getElementById(
+              `message-${messageId}`,
+            );
+            if (messageElement && messageListRef.current) {
               messageElement.scrollIntoView({
                 behavior: "smooth",
-                block: "start",
+                block: "center",
               });
               // Highlight message briefly
               messageElement.classList.add("highlighted");
@@ -120,7 +141,7 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
                 () => messageElement.classList.remove("highlighted"),
                 2000,
               );
-            }, 50);
+            }
           }
         }, 150);
       }
