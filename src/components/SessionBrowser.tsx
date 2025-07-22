@@ -95,20 +95,19 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
     await loadSessions();
   };
 
-  const exportSession = async (sessionId: string) => {
+
+  const activateIdeWindow = async (session: ClaudeSession) => {
+    if (!session.ide_info) {
+      setError("No IDE information available for this session");
+      return;
+    }
+
     try {
-      const data = await api.exportSessionData(sessionId);
-      const blob = new Blob([data], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `session_${sessionId}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      await api.activateIdeWindow(session.ide_info);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to export session");
+      setError(
+        err instanceof Error ? err.message : "Failed to activate IDE window",
+      );
     }
   };
 
@@ -308,15 +307,18 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
                       session.project_path}
                   </h4>
                   <div className="session-actions">
-                    <button
-                      className="export-button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        exportSession(session.session_id);
-                      }}
-                    >
-                      Export
-                    </button>
+                    {session.ide_info && (
+                      <button
+                        className="export-button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          activateIdeWindow(session);
+                        }}
+                        title={`${session.ide_info.ide_name} (PID: ${session.ide_info.pid})`}
+                      >
+                        IDE
+                      </button>
+                    )}
                   </div>
                 </div>
                 <p className="session-path">{session.project_path}</p>

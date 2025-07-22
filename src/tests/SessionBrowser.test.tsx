@@ -10,6 +10,7 @@ vi.mock("../api", () => ({
     searchSessions: vi.fn(),
     getSessionMessages: vi.fn(),
     exportSessionData: vi.fn(),
+    activateIdeWindow: vi.fn(),
   },
 }));
 
@@ -369,29 +370,23 @@ describe("SessionBrowser", () => {
     expect(screen.getByText("Summary")).toBeInTheDocument();
   });
 
-  it("handles export functionality", async () => {
-    mockApi.getAllSessions.mockResolvedValue(mockSessions);
-    mockApi.exportSessionData.mockResolvedValue('{"test": "data"}');
-
-    // Mock URL.createObjectURL and document methods
-    const originalCreateObjectURL = globalThis.URL.createObjectURL;
-    const originalRevokeObjectURL = globalThis.URL.revokeObjectURL;
-    globalThis.URL.createObjectURL = vi.fn(() => "blob:test");
-    globalThis.URL.revokeObjectURL = vi.fn();
-
-    const mockClick = vi.fn();
-    const originalCreateElement = document.createElement.bind(document);
-
-    vi.spyOn(document, "createElement").mockImplementation(
-      (tagName: string) => {
-        if (tagName === "a") {
-          const element = originalCreateElement(tagName) as HTMLAnchorElement;
-          element.click = mockClick;
-          return element;
-        }
-        return originalCreateElement(tagName);
+  it("handles IDE window activation when IDE info is available", async () => {
+    const mockSessionsWithIde = [
+      {
+        ...mockSessions[0],
+        ide_info: {
+          pid: 12345,
+          workspace_folders: ["/test/project1"],
+          ide_name: "VS Code",
+          transport: "stdio",
+          running_in_windows: false,
+          auth_token: "test-token",
+        },
       },
-    );
+    ];
+
+    mockApi.getAllSessions.mockResolvedValue(mockSessionsWithIde);
+    mockApi.activateIdeWindow = vi.fn().mockResolvedValue(undefined);
 
     render(<SessionBrowser />);
 
@@ -401,16 +396,19 @@ describe("SessionBrowser", () => {
       ).toBeInTheDocument();
     });
 
-    const exportButtons = screen.getAllByText("Export");
-    fireEvent.click(exportButtons[0]);
+    const ideButtons = screen.getAllByText("IDE");
+    fireEvent.click(ideButtons[0]);
 
     await waitFor(() => {
-      expect(mockApi.exportSessionData).toHaveBeenCalledWith("session1");
+      expect(mockApi.activateIdeWindow).toHaveBeenCalledWith({
+        pid: 12345,
+        workspace_folders: ["/test/project1"],
+        ide_name: "VS Code",
+        transport: "stdio",
+        running_in_windows: false,
+        auth_token: "test-token",
+      });
     });
-
-    // Restore URL methods
-    globalThis.URL.createObjectURL = originalCreateObjectURL;
-    globalThis.URL.revokeObjectURL = originalRevokeObjectURL;
   });
 
   it("shows empty state when no sessions found", async () => {

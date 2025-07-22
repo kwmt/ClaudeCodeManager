@@ -173,6 +173,7 @@ mod tests {
                 message_count: 10,
                 git_branch: Some("main".to_string()),
                 latest_content_preview: Some("Test session 1 content preview".to_string()),
+                ide_info: None,
             },
             ClaudeSession {
                 session_id: "s2".to_string(),
@@ -182,6 +183,7 @@ mod tests {
                 message_count: 5,
                 git_branch: Some("dev".to_string()),
                 latest_content_preview: Some("Test session 2 content preview".to_string()),
+                ide_info: None,
             },
         ];
 

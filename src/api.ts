@@ -6,6 +6,7 @@ import type {
   ClaudeSettings,
   ProjectSummary,
   SessionStats,
+  IdeInfo,
 } from "./types";
 
 // Check if we're running in Tauri environment
@@ -112,6 +113,15 @@ export const api = {
       return tauriApi.invoke("export_session_data", { sessionId });
     }
     return mockApi.exportSessionData(sessionId);
+  },
+
+  // IDE window activation
+  async activateIdeWindow(ideInfo: IdeInfo): Promise<void> {
+    if (isTauri && tauriApi) {
+      return tauriApi.invoke("activate_ide_window", { ideInfo });
+    }
+    // Mock API doesn't need window activation
+    return Promise.resolve();
   },
 
   // Real-time monitoring

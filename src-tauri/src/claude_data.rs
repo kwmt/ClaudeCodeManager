@@ -79,16 +79,12 @@ impl ClaudeDataManager {
         for entry in fs::read_dir(&projects_dir)? {
             let entry = entry?;
             let project_path = entry.path();
-
             if project_path.is_dir() {
                 let project_name = project_path
                     .file_name()
                     .and_then(|n| n.to_str())
                     .unwrap_or("")
                     .to_string();
-
-                // Decode project path
-                let decoded_path = project_name.replace("-", "/");
 
                 for session_file in fs::read_dir(&project_path)? {
                     let session_file = session_file?;
@@ -102,7 +98,7 @@ impl ClaudeDataManager {
                             .to_string();
 
                         let session = self
-                            .parse_session_file(&file_path, &session_id, &decoded_path)
+                            .parse_session_file(&file_path, &session_id, &project_name)
                             .await?;
                         sessions.push(session);
                     }
@@ -162,6 +158,8 @@ impl ClaudeDataManager {
             }
         }
 
+        let ide_info = self.find_ide_info_for_project(project_path).await;
+
         Ok(ClaudeSession {
             session_id: session_id.to_string(),
             project_path: project_path.to_string(),
@@ -170,6 +168,7 @@ impl ClaudeDataManager {
             message_count,
             git_branch,
             latest_content_preview,
+            ide_info,
         })
     }
 
@@ -647,8 +646,6 @@ impl ClaudeDataManager {
                     .unwrap_or("")
                     .to_string();
 
-                let decoded_path = project_name.replace("-", "/");
-
                 for session_file in fs::read_dir(&project_path)? {
                     let session_file = session_file?;
                     let file_path = session_file.path();
@@ -665,7 +662,7 @@ impl ClaudeDataManager {
                                 .to_string();
 
                             let session = self
-                                .parse_session_file(&file_path, &session_id, &decoded_path)
+                                .parse_session_file(&file_path, &session_id, &project_name)
                                 .await?;
                             changed_sessions.push(session);
                             timestamps.insert(file_path.clone(), current_time);
@@ -677,5 +674,111 @@ impl ClaudeDataManager {
 
         changed_sessions.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
         Ok(changed_sessions)
+    }
+
+    async fn find_ide_info_for_project(&self, project_path: &str) -> Option<IdeInfo> {
+        let ide_dir = self.claude_dir.join("ide");
+
+        if !ide_dir.exists() {
+            return None;
+        }
+
+        // Read all IDE lock files
+        if let Ok(entries) = fs::read_dir(&ide_dir) {
+            for entry in entries.flatten() {
+                let file_path = entry.path();
+
+                if file_path.extension().and_then(|e| e.to_str()) == Some("lock") {
+                    if let Ok(content) = fs::read_to_string(&file_path) {
+                        if let Ok(ide_data) = serde_json::from_str::<serde_json::Value>(&content) {
+                            // Check if this IDE instance has the project in workspace folders
+                            if let Some(workspace_folders) =
+                                ide_data.get("workspaceFolders").and_then(|w| w.as_array())
+                            {
+                                for folder in workspace_folders {
+                                    if let Some(folder_path) = folder.as_str() {
+                                        if folder_path == project_path {
+                                            // Found matching IDE instance, extract info
+                                            return Some(IdeInfo {
+                                                pid: ide_data
+                                                    .get("pid")
+                                                    .and_then(|p| p.as_u64())
+                                                    .unwrap_or(0)
+                                                    as u32,
+                                                workspace_folders: workspace_folders
+                                                    .iter()
+                                                    .filter_map(|f| f.as_str())
+                                                    .map(|s| s.to_string())
+                                                    .collect(),
+                                                ide_name: ide_data
+                                                    .get("ideName")
+                                                    .and_then(|n| n.as_str())
+                                                    .unwrap_or("Unknown")
+                                                    .to_string(),
+                                                transport: ide_data
+                                                    .get("transport")
+                                                    .and_then(|t| t.as_str())
+                                                    .unwrap_or("unknown")
+                                                    .to_string(),
+                                                running_in_windows: ide_data
+                                                    .get("runningInWindows")
+                                                    .and_then(|r| r.as_bool())
+                                                    .unwrap_or(false),
+                                                auth_token: ide_data
+                                                    .get("authToken")
+                                                    .and_then(|a| a.as_str())
+                                                    .unwrap_or("")
+                                                    .to_string(),
+                                            });
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        None
+    }
+
+    pub async fn activate_ide_window(
+        &self,
+        ide_info: &IdeInfo,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        #[cfg(target_os = "macos")]
+        {
+            // Use AppleScript to bring VS Code window to front on macOS
+            let script = format!(
+                r#"
+                tell application "System Events"
+                    set frontmost of first process whose unix id is {} to true
+                end tell
+                "#,
+                ide_info.pid
+            );
+
+            std::process::Command::new("osascript")
+                .arg("-e")
+                .arg(&script)
+                .output()?;
+        }
+
+        #[cfg(target_os = "windows")]
+        {
+            // Windows implementation would go here
+            // For now, return an error
+            return Err("Window activation not yet implemented for Windows".into());
+        }
+
+        #[cfg(target_os = "linux")]
+        {
+            // Linux implementation would go here
+            // For now, return an error
+            return Err("Window activation not yet implemented for Linux".into());
+        }
+
+        Ok(())
     }
 }
