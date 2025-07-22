@@ -305,7 +305,10 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
                     {session.project_path.split("/").pop() ||
                       session.project_path}
                     {session.is_processing && (
-                      <span className="processing-indicator" title="Session has sequences still processing">
+                      <span
+                        className="processing-indicator"
+                        title="Session has sequences still processing"
+                      >
                         <span className="processing-dot"></span>
                       </span>
                     )}
@@ -376,7 +379,10 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
                         <span className="message-type">
                           {message.message_type}
                           {message.message_type !== "summary" && (
-                            <span className={`status-indicator status-${message.processing_status}`} title={`Status: ${message.processing_status}${message.message_type === "assistant" && message.stop_reason ? ` (${message.stop_reason})` : ""}`}>
+                            <span
+                              className={`status-indicator status-${message.processing_status}`}
+                              title={`Status: ${message.processing_status}${message.message_type === "assistant" && message.stop_reason ? ` (${message.stop_reason})` : ""}`}
+                            >
                               <span className="status-dot"></span>
                             </span>
                           )}

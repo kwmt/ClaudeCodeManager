@@ -157,14 +157,17 @@ impl ClaudeDataManager {
                     }
                 }
 
-                // Check for incomplete sequences (no stop_reason in assistant messages)
+                // Check for incomplete sequences (assistant messages with no content)
                 if message.get("type").and_then(|t| t.as_str()) == Some("assistant") {
-                    let has_stop_reason = message
+                    let has_content = message
                         .get("message")
-                        .and_then(|m| m.get("stop_reason"))
-                        .is_some();
-
-                    if !has_stop_reason {
+                        .and_then(|m| m.get("content"))
+                        .and_then(|c| c.as_array())
+                        .map(|arr| !arr.is_empty())
+                        .unwrap_or(false);
+                    
+                    // Only consider it processing if there's no content at all
+                    if !has_content {
                         has_incomplete_sequence = true;
                     }
                 }
@@ -312,7 +315,7 @@ impl ClaudeDataManager {
                 }
             }
             Some("assistant") => {
-                let content_blocks = raw
+                let content_blocks: Vec<crate::models::ContentBlock> = raw
                     .get("message")
                     .and_then(|m| m.get("content"))
                     .and_then(|c| c.as_array())
@@ -324,12 +327,7 @@ impl ClaudeDataManager {
                     })
                     .unwrap_or_default();
 
-                let content = MessageContent::Assistant {
-                    role: "assistant".to_string(),
-                    content: content_blocks,
-                };
-
-                // Extract stop_reason and determine processing status
+                // Extract stop_reason and determine processing status before moving content_blocks
                 let stop_reason = raw
                     .get("message")
                     .and_then(|m| m.get("stop_reason"))
@@ -344,7 +342,20 @@ impl ClaudeDataManager {
                         "tool_use" => crate::models::ProcessingStatus::Completed,
                         _ => crate::models::ProcessingStatus::Error,
                     },
-                    None => crate::models::ProcessingStatus::Processing,
+                    // If stop_reason is null but message has content, consider it completed
+                    // Only truly incomplete messages would be missing entirely from the file
+                    None => {
+                        if content_blocks.is_empty() {
+                            crate::models::ProcessingStatus::Processing
+                        } else {
+                            crate::models::ProcessingStatus::Completed
+                        }
+                    }
+                };
+
+                let content = MessageContent::Assistant {
+                    role: "assistant".to_string(),
+                    content: content_blocks,
                 };
 
                 ClaudeMessage::Assistant {
