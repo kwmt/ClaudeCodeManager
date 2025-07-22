@@ -3,9 +3,13 @@ import { marked } from "marked";
 import { api } from "../api";
 import type { ClaudeSession, ClaudeMessage, ContentBlock } from "../types";
 
-interface SessionBrowserProps {}
+interface SessionBrowserProps {
+  initialProjectFilter?: string;
+}
 
-export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
+export const SessionBrowser: React.FC<SessionBrowserProps> = ({
+  initialProjectFilter = "all",
+}) => {
   const [sessions, setSessions] = useState<ClaudeSession[]>([]);
   const [allSessions, setAllSessions] = useState<ClaudeSession[]>([]);
   const [selectedSession, setSelectedSession] = useState<ClaudeSession | null>(
@@ -13,7 +17,8 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
   );
   const [messages, setMessages] = useState<ClaudeMessage[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedProject, setSelectedProject] = useState<string>("all");
+  const [selectedProject, setSelectedProject] =
+    useState<string>(initialProjectFilter);
   const [projects, setProjects] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
@@ -154,7 +159,7 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
 
   const refreshAllSessions = async () => {
     const currentSessionId = selectedSession?.session_id;
-    
+
     try {
       setLoading(true);
       setError(null);
@@ -173,7 +178,9 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
       // Refresh messages if a session is selected
       if (currentSessionId) {
         // Find the updated session data
-        const updatedSession = data.find(s => s.session_id === currentSessionId);
+        const updatedSession = data.find(
+          (s) => s.session_id === currentSessionId,
+        );
         if (updatedSession) {
           await loadSessionMessages(updatedSession);
         }

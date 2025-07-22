@@ -10,18 +10,25 @@ type Tab = "dashboard" | "sessions" | "commands" | "todos" | "settings";
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
+  const [sessionProjectFilter, setSessionProjectFilter] =
+    useState<string>("all");
 
   // File watcher and real-time updates disabled
   // useEffect(() => {
   //   // File watcher functionality removed
   // }, []);
 
+  const navigateToSessionsWithProject = (projectPath: string) => {
+    setSessionProjectFilter(projectPath);
+    setActiveTab("sessions");
+  };
+
   const renderActiveTab = () => {
     switch (activeTab) {
       case "dashboard":
-        return <Dashboard />;
+        return <Dashboard onProjectClick={navigateToSessionsWithProject} />;
       case "sessions":
-        return <SessionBrowser />;
+        return <SessionBrowser initialProjectFilter={sessionProjectFilter} />;
       case "commands":
         return <CommandHistory />;
       case "todos":
@@ -29,7 +36,7 @@ function App() {
       case "settings":
         return <SettingsEditor />;
       default:
-        return <Dashboard />;
+        return <Dashboard onProjectClick={navigateToSessionsWithProject} />;
     }
   };
 
