@@ -980,7 +980,6 @@ button:hover:not(:disabled) {
 
 .processing-dot {
   background-color: #f39c12;
-  animation: pulse 1.5s infinite;
 }
 
 .status-indicator {
@@ -991,7 +990,6 @@ button:hover:not(:disabled) {
 
 .status-processing .status-dot {
   background-color: #f39c12;
-  animation: pulse 1.5s infinite;
 }
 
 .status-completed .status-dot {
@@ -1006,17 +1004,3 @@ button:hover:not(:disabled) {
   background-color: #e74c3c;
 }
 
-@keyframes pulse {
-  0% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.5;
-    transform: scale(1.2);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}

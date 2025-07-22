@@ -157,17 +157,14 @@ impl ClaudeDataManager {
                     }
                 }
 
-                // Check for incomplete sequences (assistant messages with no content)
+                // Check for incomplete sequences (assistant messages without stop_reason)
                 if message.get("type").and_then(|t| t.as_str()) == Some("assistant") {
-                    let has_content = message
+                    let has_stop_reason = message
                         .get("message")
-                        .and_then(|m| m.get("content"))
-                        .and_then(|c| c.as_array())
-                        .map(|arr| !arr.is_empty())
-                        .unwrap_or(false);
-                    
-                    // Only consider it processing if there's no content at all
-                    if !has_content {
+                        .and_then(|m| m.get("stop_reason"))
+                        .is_some();
+
+                    if !has_stop_reason {
                         has_incomplete_sequence = true;
                     }
                 }
@@ -342,15 +339,8 @@ impl ClaudeDataManager {
                         "tool_use" => crate::models::ProcessingStatus::Completed,
                         _ => crate::models::ProcessingStatus::Error,
                     },
-                    // If stop_reason is null but message has content, consider it completed
-                    // Only truly incomplete messages would be missing entirely from the file
-                    None => {
-                        if content_blocks.is_empty() {
-                            crate::models::ProcessingStatus::Processing
-                        } else {
-                            crate::models::ProcessingStatus::Completed
-                        }
-                    }
+                    // If stop_reason is missing, consider it processing (without animation)
+                    None => crate::models::ProcessingStatus::Processing,
                 };
 
                 let content = MessageContent::Assistant {
