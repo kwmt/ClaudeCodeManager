@@ -29,7 +29,8 @@ pub fn run() {
             search_sessions,
             search_commands,
             export_session_data,
-            activate_ide_window
+            activate_ide_window,
+            open_session_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

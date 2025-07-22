@@ -366,8 +366,12 @@ describe("SessionBrowser", () => {
       ).toBeInTheDocument();
     });
 
-    // Check that we have a summary message
-    expect(screen.getByText("Summary")).toBeInTheDocument();
+    // Check that we have a summary message label (within the message content)
+    const summaryMessages = screen.getAllByText("Summary");
+    expect(summaryMessages).toHaveLength(2); // One in dropdown, one in message
+
+    // More specifically, check for the summary message icon
+    expect(screen.getByText("📋")).toBeInTheDocument();
   });
 
   it("handles IDE window activation when IDE info is available", async () => {

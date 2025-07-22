@@ -372,11 +372,82 @@ body {
 .messages-header {
   padding: 1rem;
   border-bottom: 1px solid #ecf0f1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
-.messages-header h3 {
+.messages-title h3 {
   color: #2c3e50;
   margin-bottom: 0.5rem;
+}
+
+.session-id-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.session-id-container p {
+  margin: 0;
+}
+
+.open-file-button {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.open-file-button:hover {
+  background: #2980b9;
+  transform: translateY(-1px);
+}
+
+.message-controls {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.message-search-input {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  min-width: 200px;
+}
+
+.message-type-select {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  background: white;
+  min-width: 120px;
+}
+
+.markdown-toggle {
+  display: flex;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.markdown-toggle label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.markdown-toggle input[type="checkbox"] {
+  margin: 0;
 }
 
 .messages-list {
@@ -391,6 +462,18 @@ body {
   padding: 1rem;
   border-radius: 8px;
   border-left: 4px solid #ddd;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.message:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.message.highlighted {
+  background-color: #fff3cd !important;
+  border-left-color: #f39c12 !important;
+  box-shadow: 0 0 15px rgba(243, 156, 18, 0.3);
 }
 
 .message.user {
@@ -401,6 +484,11 @@ body {
 .message.assistant {
   background: #fff;
   border-left-color: #2ecc71;
+}
+
+.message.summary {
+  background: #fffbf0;
+  border-left-color: #f39c12;
 }
 
 .message-header {
@@ -438,6 +526,15 @@ body {
   padding: 0.5rem;
   background-color: #f9f9f9;
   border-radius: 4px;
+}
+
+/* Enhanced word wrapping */
+.word-wrap {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 
 .user-content .content-text {
@@ -507,6 +604,13 @@ body {
 
 .tool-name {
   font-size: 0.95rem;
+}
+
+.tool-file-path {
+  font-size: 0.85rem;
+  color: #6c757d;
+  margin-left: 1rem;
+  font-family: "Courier New", Courier, monospace;
 }
 
 .tool-input {
@@ -1003,5 +1107,372 @@ button:hover:not(:disabled) {
 
 .status-error .status-dot {
   background-color: #e74c3c;
+}
+
+/* Diff view styling */
+.diff-view {
+  margin-bottom: 1rem;
+}
+
+.diff-summary {
+  background: #f8f9fa;
+  color: #6c757d;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  border: 1px solid #dee2e6;
+  border-top: none;
+}
+
+.unified-diff {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.85rem;
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-top: none;
+  overflow-x: auto;
+}
+
+.diff-line {
+  display: flex;
+  align-items: flex-start;
+  min-height: 1.5rem;
+}
+
+.diff-line-context {
+  background: #fff;
+}
+
+.diff-line-removed {
+  background: #ffeef0;
+}
+
+.diff-line-added {
+  background: #e6ffed;
+}
+
+.line-numbers {
+  display: flex;
+  flex-shrink: 0;
+  border-right: 1px solid #dee2e6;
+  background: #f8f9fa;
+  text-align: right;
+  user-select: none;
+}
+
+.old-line-num,
+.new-line-num {
+  width: 50px;
+  padding: 0 0.5rem;
+  color: #6c757d;
+  font-size: 0.8rem;
+  display: inline-block;
+}
+
+.old-line-num {
+  border-right: 1px solid #dee2e6;
+}
+
+.diff-marker {
+  width: 20px;
+  text-align: center;
+  color: #6c757d;
+  flex-shrink: 0;
+  font-weight: 600;
+}
+
+.diff-line-removed .diff-marker {
+  color: #e74c3c;
+}
+
+.diff-line-added .diff-marker {
+  color: #27ae60;
+}
+
+.diff-line-content {
+  flex: 1;
+  margin: 0;
+  padding: 0 0.5rem;
+  white-space: pre;
+  overflow-wrap: break-word;
+  word-break: break-all;
+  background: transparent;
+}
+
+/* Old diff view styles (kept for backward compatibility) */
+.diff-header {
+  background: #34495e;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 4px 4px 0 0;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.diff-content {
+  border: 1px solid #dee2e6;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  overflow: hidden;
+}
+
+.diff-old, .diff-new {
+  position: relative;
+  padding: 0;
+  margin: 0;
+}
+
+.diff-label {
+  background: rgba(0, 0, 0, 0.05);
+  padding: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.diff-old .diff-label {
+  color: #e74c3c;
+  background: #fadbd8;
+}
+
+.diff-new .diff-label {
+  color: #27ae60;
+  background: #d5f4e6;
+}
+
+.diff-removed {
+  background-color: #fadbd8 !important;
+  border-left: 4px solid #e74c3c;
+  margin: 0;
+}
+
+.diff-added {
+  background-color: #d5f4e6 !important;
+  border-left: 4px solid #27ae60;
+  margin: 0;
+}
+
+.diff-removed::before {
+  content: "";
+  position: absolute;
+  left: -4px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: #e74c3c;
+}
+
+.diff-added::before {
+  content: "";
+  position: absolute;
+  left: -4px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: #27ae60;
+}
+
+/* MultiEdit specific styles */
+.multi-edit-section {
+  margin-top: 1rem;
+}
+
+.multi-edit-section:first-child {
+  margin-top: 0;
+}
+
+.diff-edit-number {
+  background: #e9ecef;
+  color: #495057;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: 1px solid #dee2e6;
+  border-bottom: none;
+}
+
+/* Enhance tool-use-block for diff view */
+.tool-use-block.diff-view {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+}
+
+.tool-use-block.diff-view .tool-header {
+  background: #e9ecef;
+  padding: 0.75rem;
+  border-radius: 4px 4px 0 0;
+  margin: -1rem -1rem 0.5rem -1rem;
+}
+
+/* Responsive message controls */
+@media (max-width: 768px) {
+  .messages-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .message-controls {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .message-search-input,
+  .message-type-select {
+    min-width: auto;
+    width: 100%;
+  }
+}
+
+/* Markdown content styling */
+.markdown-content {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+  line-height: 1.6;
+  color: #333;
+  background-color: transparent;
+  padding: 0;
+  overflow-wrap: break-word;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 {
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: #2c3e50;
+}
+
+.markdown-content h1 { 
+  font-size: 2em; 
+  border-bottom: 1px solid #ecf0f1;
+  padding-bottom: 0.3em;
+}
+.markdown-content h2 { 
+  font-size: 1.5em;
+  border-bottom: 1px solid #ecf0f1;
+  padding-bottom: 0.3em;
+}
+.markdown-content h3 { font-size: 1.25em; }
+.markdown-content h4 { font-size: 1em; }
+.markdown-content h5 { font-size: 0.875em; }
+.markdown-content h6 { 
+  font-size: 0.85em;
+  color: #6c757d;
+}
+
+.markdown-content p {
+  margin: 0 0 1rem 0;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  margin: 0 0 1rem 0;
+  padding-left: 2rem;
+}
+
+.markdown-content li {
+  margin-bottom: 0.25rem;
+}
+
+.markdown-content li > ul,
+.markdown-content li > ol {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.markdown-content code {
+  background-color: rgba(52, 152, 219, 0.1);
+  padding: 0.2rem 0.4rem;
+  border-radius: 3px;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.85em;
+  color: #e74c3c;
+}
+
+.markdown-content pre {
+  background-color: #f6f8fa;
+  border: 1px solid #e1e4e8;
+  color: #333;
+  padding: 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 0 0 1rem 0;
+  line-height: 1.45;
+}
+
+.markdown-content pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+  font-size: 0.85em;
+}
+
+.markdown-content blockquote {
+  border-left: 4px solid #ddd;
+  margin: 0 0 1rem 0;
+  padding: 0 1rem;
+  color: #666;
+}
+
+.markdown-content blockquote p {
+  margin-bottom: 0;
+}
+
+.markdown-content a {
+  color: #3498db;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.markdown-content a:hover {
+  text-decoration: underline;
+}
+
+.markdown-content table {
+  border-collapse: collapse;
+  margin: 0 0 1rem 0;
+  width: 100%;
+}
+
+.markdown-content table th,
+.markdown-content table td {
+  border: 1px solid #ddd;
+  padding: 0.5rem 0.75rem;
+}
+
+.markdown-content table th {
+  background-color: #f6f8fa;
+  font-weight: 600;
+}
+
+.markdown-content table tr:nth-child(even) {
+  background-color: #f6f8fa;
+}
+
+.markdown-content hr {
+  border: none;
+  border-top: 1px solid #e1e4e8;
+  margin: 1.5rem 0;
+}
+
+.markdown-content strong {
+  font-weight: 600;
+}
+
+.markdown-content em {
+  font-style: italic;
+}
+
+.markdown-content del {
+  text-decoration: line-through;
+  color: #6c757d;
+}
+
+/* 絵文字のスタイル */
+.markdown-content .emoji {
+  font-family: Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
 }
 
