@@ -616,12 +616,14 @@ impl ClaudeDataManager {
                     last_activity: session.updated_at,
                     total_messages: 0,
                     active_todos: 0,
+                    latest_message: None,
                 });
 
             entry.session_count += 1;
             entry.total_messages += session.message_count;
             if session.updated_at > entry.last_activity {
                 entry.last_activity = session.updated_at;
+                entry.latest_message = session.latest_content_preview.clone();
             }
         }
 

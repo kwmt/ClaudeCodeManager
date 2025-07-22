@@ -104,6 +104,7 @@ export interface ProjectSummary {
   last_activity: string;
   total_messages: number;
   active_todos: number;
+  latest_message?: string;
 }
 
 export interface SessionStats {

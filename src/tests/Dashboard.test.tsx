@@ -42,6 +42,7 @@ describe("Dashboard", () => {
         last_activity: "2025-07-20T10:00:00Z",
         total_messages: 50,
         active_todos: 2,
+        latest_message: "This is the latest message from project1",
       },
       {
         project_path: "/test/project2",
@@ -49,6 +50,7 @@ describe("Dashboard", () => {
         last_activity: "2025-07-19T15:30:00Z",
         total_messages: 30,
         active_todos: 1,
+        latest_message: "Latest message for project2",
       },
     ];
 
@@ -73,6 +75,14 @@ describe("Dashboard", () => {
     // Check projects are displayed
     expect(screen.getByText("project1")).toBeInTheDocument();
     expect(screen.getByText("project2")).toBeInTheDocument();
+
+    // Check latest messages are displayed
+    expect(
+      screen.getByText("Latest: This is the latest message from project1"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Latest: Latest message for project2"),
+    ).toBeInTheDocument();
   });
 
   it("handles error state", async () => {
@@ -121,5 +131,38 @@ describe("Dashboard", () => {
 
     expect(mockApi.getSessionStats).toHaveBeenCalledTimes(2);
     expect(mockApi.getProjectSummary).toHaveBeenCalledTimes(2);
+  });
+
+  it("handles projects without latest message", async () => {
+    const mockStats = {
+      total_sessions: 5,
+      total_messages: 50,
+      total_commands: 25,
+      active_projects: 2,
+      pending_todos: 3,
+    };
+
+    const mockProjects = [
+      {
+        project_path: "/test/project3",
+        session_count: 2,
+        last_activity: "2025-07-18T12:00:00Z",
+        total_messages: 20,
+        active_todos: 0,
+        // No latest_message field
+      },
+    ];
+
+    mockApi.getSessionStats.mockResolvedValue(mockStats);
+    mockApi.getProjectSummary.mockResolvedValue(mockProjects);
+
+    render(<Dashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText("project3")).toBeInTheDocument();
+    });
+
+    // Check that no "Latest:" text is displayed for projects without latest_message
+    expect(screen.queryByText(/Latest:/)).not.toBeInTheDocument();
   });
 });

@@ -219,11 +219,16 @@ mod tests {
             last_activity: chrono::Utc::now(),
             total_messages: 100,
             active_todos: 3,
+            latest_message: Some("Latest message preview".to_string()),
         };
 
         assert_eq!(summary.session_count, 5);
         assert_eq!(summary.total_messages, 100);
         assert_eq!(summary.active_todos, 3);
+        assert_eq!(
+            summary.latest_message,
+            Some("Latest message preview".to_string())
+        );
     }
 
     fn create_realistic_session_file(claude_dir: &Path, project_name: &str, session_id: &str) {
