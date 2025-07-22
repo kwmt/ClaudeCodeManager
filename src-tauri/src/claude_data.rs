@@ -86,7 +86,6 @@ impl ClaudeDataManager {
                     .unwrap_or("")
                     .to_string();
 
-
                 for session_file in fs::read_dir(&project_path)? {
                     let session_file = session_file?;
                     let file_path = session_file.path();
@@ -647,7 +646,6 @@ impl ClaudeDataManager {
                     .unwrap_or("")
                     .to_string();
 
-
                 for session_file in fs::read_dir(&project_path)? {
                     let session_file = session_file?;
                     let file_path = session_file.path();
@@ -680,7 +678,6 @@ impl ClaudeDataManager {
 
     async fn find_ide_info_for_project(&self, project_path: &str) -> Option<IdeInfo> {
         let ide_dir = self.claude_dir.join("ide");
-
 
         if !ide_dir.exists() {
             return None;
