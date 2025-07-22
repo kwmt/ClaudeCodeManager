@@ -167,7 +167,7 @@ pub async fn open_session_file(
     let session = sessions
         .into_iter()
         .find(|s| s.session_id == session_id)
-        .ok_or_else(|| format!("Session with ID {} not found", session_id))?;
+        .ok_or_else(|| format!("Session with ID {session_id} not found"))?;
 
     // Construct the file path
     let home_dir = dirs::home_dir().ok_or_else(|| "Could not find home directory".to_string())?;
@@ -176,7 +176,7 @@ pub async fn open_session_file(
         .join(".claude")
         .join("projects")
         .join(session.project_path.trim_start_matches('/'))
-        .join(format!("{}.jsonl", session_id));
+        .join(format!("{session_id}.jsonl"));
 
     // Open the file with the default application
     #[cfg(target_os = "macos")]
@@ -185,7 +185,7 @@ pub async fn open_session_file(
             .arg("-R") // Reveal in Finder
             .arg(&file_path)
             .spawn()
-            .map_err(|e| format!("Failed to open file: {}", e))?;
+            .map_err(|e| format!("Failed to open file: {e}"))?;
     }
 
     #[cfg(target_os = "windows")]
@@ -194,7 +194,7 @@ pub async fn open_session_file(
             .arg("/select,")
             .arg(&file_path)
             .spawn()
-            .map_err(|e| format!("Failed to open file: {}", e))?;
+            .map_err(|e| format!("Failed to open file: {e}"))?;
     }
 
     #[cfg(target_os = "linux")]
