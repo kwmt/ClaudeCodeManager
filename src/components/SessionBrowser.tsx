@@ -381,8 +381,11 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
     if (block.type === "text") {
       const text = block.text;
 
-      // Check if text looks like markdown (contains headers, lists, code blocks)
-      const looksLikeMarkdown = /^#{1,6}\s|^\*\s|^-\s|^```|^\d+\.\s/.test(text);
+      // Check if text looks like markdown (contains headers, lists, code blocks, inline code, emphasis)
+      const looksLikeMarkdown =
+        /#{1,6}\s|\*\s|-\s|```|\d+\.\s|\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\[.*\]\(.*\)/m.test(
+          text,
+        );
 
       return (
         <div key={index} className="text-block">
@@ -590,9 +593,10 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
         }
 
         // 通常のテキストメッセージ（contentがstringの場合はそのまま表示）
-        const looksLikeMarkdown = /^#{1,6}\s|^\*\s|^-\s|^```|^\d+\.\s/m.test(
-          userContent,
-        );
+        const looksLikeMarkdown =
+          /#{1,6}\s|\*\s|-\s|```|\d+\.\s|\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\[.*\]\(.*\)/m.test(
+            userContent,
+          );
         return (
           <div className="message-content user-content">
             {renderText(userContent, looksLikeMarkdown)}
