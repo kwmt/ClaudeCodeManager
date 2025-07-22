@@ -137,6 +137,17 @@ pub async fn export_session_data(
     serde_json::to_string_pretty(&messages).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+pub async fn activate_ide_window(
+    ide_info: IdeInfo,
+    data_manager: State<'_, Arc<ClaudeDataManager>>,
+) -> Result<(), String> {
+    data_manager
+        .activate_ide_window(&ide_info)
+        .await
+        .map_err(|e| e.to_string())
+}
+
 // File watcher functionality disabled - was causing real-time updates
 // #[tauri::command]
 // pub async fn start_file_watcher(...) -> Result<(), String> { ... }

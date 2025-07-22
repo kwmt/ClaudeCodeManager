@@ -1,3 +1,12 @@
+export interface IdeInfo {
+  pid: number;
+  workspace_folders: string[];
+  ide_name: string;
+  transport: string;
+  running_in_windows: boolean;
+  auth_token: string;
+}
+
 export interface ClaudeSession {
   session_id: string;
   project_path: string;
@@ -6,6 +15,7 @@ export interface ClaudeSession {
   message_count: number;
   git_branch?: string;
   latest_content_preview?: string;
+  ide_info?: IdeInfo;
 }
 
 export type ClaudeMessage =

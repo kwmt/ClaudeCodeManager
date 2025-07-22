@@ -112,6 +112,21 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
     }
   };
 
+  const activateIdeWindow = async (session: ClaudeSession) => {
+    if (!session.ide_info) {
+      setError("No IDE information available for this session");
+      return;
+    }
+
+    try {
+      await api.activateIdeWindow(session.ide_info);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to activate IDE window",
+      );
+    }
+  };
+
   const renderContentBlock = (block: ContentBlock, index: number) => {
     if (block.type === "text") {
       return (
@@ -308,15 +323,18 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
                       session.project_path}
                   </h4>
                   <div className="session-actions">
-                    <button
-                      className="export-button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        exportSession(session.session_id);
-                      }}
-                    >
-                      Export
-                    </button>
+                    {session.ide_info && (
+                      <button
+                        className="export-button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          activateIdeWindow(session);
+                        }}
+                        title={`${session.ide_info.ide_name} (PID: ${session.ide_info.pid})`}
+                      >
+                        IDE
+                      </button>
+                    )}
                   </div>
                 </div>
                 <p className="session-path">{session.project_path}</p>

@@ -2,6 +2,16 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IdeInfo {
+    pub pid: u32,
+    pub workspace_folders: Vec<String>,
+    pub ide_name: String,
+    pub transport: String,
+    pub running_in_windows: bool,
+    pub auth_token: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClaudeSession {
     pub session_id: String,
     pub project_path: String,
@@ -10,6 +20,7 @@ pub struct ClaudeSession {
     pub message_count: usize,
     pub git_branch: Option<String>,
     pub latest_content_preview: Option<String>,
+    pub ide_info: Option<IdeInfo>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
