@@ -229,36 +229,7 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
 
   const renderContentBlock = (block: ContentBlock, index: number) => {
     if (block.type === "text") {
-      // Check if this is an Edit tool with old_string/new_string for diff view
       const text = block.text;
-
-      // Try to parse as JSON to detect Edit tool usage
-      try {
-        const parsed = JSON.parse(text);
-        if (parsed.old_string && parsed.new_string) {
-          return (
-            <div key={index} className="text-block diff-view">
-              <div className="diff-header">Code Changes</div>
-              <div className="diff-content">
-                <div className="diff-old">
-                  <div className="diff-label">- Removed</div>
-                  <pre className="content-text diff-removed">
-                    {parsed.old_string}
-                  </pre>
-                </div>
-                <div className="diff-new">
-                  <div className="diff-label">+ Added</div>
-                  <pre className="content-text diff-added">
-                    {parsed.new_string}
-                  </pre>
-                </div>
-              </div>
-            </div>
-          );
-        }
-      } catch {
-        // Not valid JSON, continue with normal text rendering
-      }
 
       // Check if text looks like markdown (contains headers, lists, code blocks)
       const looksLikeMarkdown = /^#{1,6}\s|^\*\s|^-\s|^```|^\d+\.\s/.test(text);
@@ -271,6 +242,78 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
     }
 
     if (block.type === "tool_use") {
+      // Check if this is an Edit tool with old_string/new_string
+      if (
+        block.name === "Edit" &&
+        block.input.old_string &&
+        block.input.new_string
+      ) {
+        return (
+          <div key={index} className="tool-use-block diff-view">
+            <div className="tool-header">
+              <span className="tool-icon">🛠️</span>
+              <span className="tool-name">{block.name}</span>
+              {block.input.file_path && (
+                <span className="tool-file-path">{block.input.file_path}</span>
+              )}
+            </div>
+            <div className="diff-header">Code Changes</div>
+            <div className="diff-content">
+              <div className="diff-old">
+                <div className="diff-label">- Removed</div>
+                <pre className="content-text diff-removed">
+                  {block.input.old_string}
+                </pre>
+              </div>
+              <div className="diff-new">
+                <div className="diff-label">+ Added</div>
+                <pre className="content-text diff-added">
+                  {block.input.new_string}
+                </pre>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // Check if this is a MultiEdit tool with edits array
+      if (
+        block.name === "MultiEdit" &&
+        block.input.edits &&
+        Array.isArray(block.input.edits)
+      ) {
+        return (
+          <div key={index} className="tool-use-block diff-view">
+            <div className="tool-header">
+              <span className="tool-icon">🛠️</span>
+              <span className="tool-name">{block.name}</span>
+              {block.input.file_path && (
+                <span className="tool-file-path">{block.input.file_path}</span>
+              )}
+            </div>
+            <div className="diff-header">Multiple Code Changes</div>
+            {block.input.edits.map((edit: any, editIndex: number) => (
+              <div key={editIndex} className="diff-content">
+                <div className="diff-edit-number">Edit {editIndex + 1}</div>
+                <div className="diff-old">
+                  <div className="diff-label">- Removed</div>
+                  <pre className="content-text diff-removed">
+                    {edit.old_string}
+                  </pre>
+                </div>
+                <div className="diff-new">
+                  <div className="diff-label">+ Added</div>
+                  <pre className="content-text diff-added">
+                    {edit.new_string}
+                  </pre>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      }
+
+      // Default tool_use rendering
       return (
         <div key={index} className="tool-use-block">
           <div className="tool-header">

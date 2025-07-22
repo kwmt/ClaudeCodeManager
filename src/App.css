@@ -580,6 +580,13 @@ body {
   font-size: 0.95rem;
 }
 
+.tool-file-path {
+  font-size: 0.85rem;
+  color: #6c757d;
+  margin-left: 1rem;
+  font-family: "Courier New", Courier, monospace;
+}
+
 .tool-input {
   background: white;
   border: 1px solid #d1ecf1;
@@ -1151,6 +1158,34 @@ button:hover:not(:disabled) {
   bottom: 0;
   width: 4px;
   background: #27ae60;
+}
+
+/* MultiEdit specific styles */
+.diff-edit-number {
+  background: #95a5a6;
+  color: white;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-top: 1rem;
+  border-radius: 4px 4px 0 0;
+}
+
+.diff-content:first-child .diff-edit-number {
+  margin-top: 0;
+}
+
+/* Enhance tool-use-block for diff view */
+.tool-use-block.diff-view {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+}
+
+.tool-use-block.diff-view .tool-header {
+  background: #e9ecef;
+  padding: 0.75rem;
+  border-radius: 4px 4px 0 0;
+  margin: -1rem -1rem 0.5rem -1rem;
 }
 
 /* Responsive message controls */
