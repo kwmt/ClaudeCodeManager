@@ -1088,6 +1088,91 @@ button:hover:not(:disabled) {
   margin-bottom: 1rem;
 }
 
+.diff-summary {
+  background: #f8f9fa;
+  color: #6c757d;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  border: 1px solid #dee2e6;
+  border-top: none;
+}
+
+.unified-diff {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.85rem;
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-top: none;
+  overflow-x: auto;
+}
+
+.diff-line {
+  display: flex;
+  align-items: flex-start;
+  min-height: 1.5rem;
+}
+
+.diff-line-context {
+  background: #fff;
+}
+
+.diff-line-removed {
+  background: #ffeef0;
+}
+
+.diff-line-added {
+  background: #e6ffed;
+}
+
+.line-numbers {
+  display: flex;
+  flex-shrink: 0;
+  border-right: 1px solid #dee2e6;
+  background: #f8f9fa;
+  text-align: right;
+  user-select: none;
+}
+
+.old-line-num,
+.new-line-num {
+  width: 50px;
+  padding: 0 0.5rem;
+  color: #6c757d;
+  font-size: 0.8rem;
+  display: inline-block;
+}
+
+.old-line-num {
+  border-right: 1px solid #dee2e6;
+}
+
+.diff-marker {
+  width: 20px;
+  text-align: center;
+  color: #6c757d;
+  flex-shrink: 0;
+  font-weight: 600;
+}
+
+.diff-line-removed .diff-marker {
+  color: #e74c3c;
+}
+
+.diff-line-added .diff-marker {
+  color: #27ae60;
+}
+
+.diff-line-content {
+  flex: 1;
+  margin: 0;
+  padding: 0 0.5rem;
+  white-space: pre;
+  overflow-wrap: break-word;
+  word-break: break-all;
+  background: transparent;
+}
+
+/* Old diff view styles (kept for backward compatibility) */
 .diff-header {
   background: #34495e;
   color: white;
@@ -1161,18 +1246,22 @@ button:hover:not(:disabled) {
 }
 
 /* MultiEdit specific styles */
+.multi-edit-section {
+  margin-top: 1rem;
+}
+
+.multi-edit-section:first-child {
+  margin-top: 0;
+}
+
 .diff-edit-number {
-  background: #95a5a6;
-  color: white;
+  background: #e9ecef;
+  color: #495057;
   padding: 0.5rem 1rem;
   font-size: 0.85rem;
   font-weight: 600;
-  margin-top: 1rem;
-  border-radius: 4px 4px 0 0;
-}
-
-.diff-content:first-child .diff-edit-number {
-  margin-top: 0;
+  border: 1px solid #dee2e6;
+  border-bottom: none;
 }
 
 /* Enhance tool-use-block for diff view */

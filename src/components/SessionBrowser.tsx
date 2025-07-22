@@ -264,6 +264,104 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
     return <pre className="content-text word-wrap">{text}</pre>;
   };
 
+  // Calculate diff statistics and generate line-by-line diff
+  const generateDiff = (
+    oldString: string,
+    newString: string,
+    filePath?: string,
+  ) => {
+    const oldLines = oldString.split("\n");
+    const newLines = newString.split("\n");
+
+    // Simple diff algorithm - find common prefix and suffix
+    let commonPrefixLength = 0;
+    const minLength = Math.min(oldLines.length, newLines.length);
+
+    // Find common prefix
+    while (
+      commonPrefixLength < minLength &&
+      oldLines[commonPrefixLength] === newLines[commonPrefixLength]
+    ) {
+      commonPrefixLength++;
+    }
+
+    // Find common suffix
+    let commonSuffixLength = 0;
+    while (
+      commonSuffixLength < minLength - commonPrefixLength &&
+      oldLines[oldLines.length - 1 - commonSuffixLength] ===
+        newLines[newLines.length - 1 - commonSuffixLength]
+    ) {
+      commonSuffixLength++;
+    }
+
+    // Calculate removed and added lines
+    const removedStart = commonPrefixLength;
+    const removedEnd = oldLines.length - commonSuffixLength;
+    const addedStart = commonPrefixLength;
+    const addedEnd = newLines.length - commonSuffixLength;
+
+    const removedLines = oldLines.slice(removedStart, removedEnd);
+    const addedLines = newLines.slice(addedStart, addedEnd);
+
+    // Generate unified diff view
+    const diffLines: Array<{
+      type: "context" | "removed" | "added";
+      oldLineNum?: number;
+      newLineNum?: number;
+      content: string;
+    }> = [];
+
+    // Add context before changes (up to 3 lines)
+    const contextStart = Math.max(0, commonPrefixLength - 3);
+    for (let i = contextStart; i < commonPrefixLength; i++) {
+      diffLines.push({
+        type: "context",
+        oldLineNum: i + 1,
+        newLineNum: i + 1,
+        content: oldLines[i],
+      });
+    }
+
+    // Add removed lines
+    for (let i = 0; i < removedLines.length; i++) {
+      diffLines.push({
+        type: "removed",
+        oldLineNum: removedStart + i + 1,
+        content: removedLines[i],
+      });
+    }
+
+    // Add added lines
+    for (let i = 0; i < addedLines.length; i++) {
+      diffLines.push({
+        type: "added",
+        newLineNum: addedStart + i + 1,
+        content: addedLines[i],
+      });
+    }
+
+    // Add context after changes (up to 3 lines)
+    const contextEndStart = oldLines.length - commonSuffixLength;
+    const contextEndLimit = Math.min(contextEndStart + 3, oldLines.length);
+    for (let i = contextEndStart; i < contextEndLimit; i++) {
+      const newLineIndex = i - (oldLines.length - newLines.length);
+      diffLines.push({
+        type: "context",
+        oldLineNum: i + 1,
+        newLineNum: newLineIndex + 1,
+        content: oldLines[i],
+      });
+    }
+
+    return {
+      filePath: filePath || "Unknown file",
+      additions: addedLines.length,
+      deletions: removedLines.length,
+      diffLines,
+    };
+  };
+
   const activateIdeWindow = async (session: ClaudeSession) => {
     if (!session.ide_info) {
       setError("No IDE information available for this session");
@@ -300,29 +398,47 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
         block.input.old_string &&
         block.input.new_string
       ) {
+        const diff = generateDiff(
+          block.input.old_string,
+          block.input.new_string,
+          block.input.file_path,
+        );
+
         return (
           <div key={index} className="tool-use-block diff-view">
             <div className="tool-header">
-              <span className="tool-icon">🛠️</span>
-              <span className="tool-name">{block.name}</span>
-              {block.input.file_path && (
-                <span className="tool-file-path">{block.input.file_path}</span>
-              )}
+              <span className="tool-icon">⏺</span>
+              <span className="tool-name">Update({diff.filePath})</span>
             </div>
-            <div className="diff-header">Code Changes</div>
-            <div className="diff-content">
-              <div className="diff-old">
-                <div className="diff-label">- Removed</div>
-                <pre className="content-text diff-removed">
-                  {block.input.old_string}
-                </pre>
-              </div>
-              <div className="diff-new">
-                <div className="diff-label">+ Added</div>
-                <pre className="content-text diff-added">
-                  {block.input.new_string}
-                </pre>
-              </div>
+            <div className="diff-summary">
+              ⎿ Updated {diff.filePath} with {diff.additions} addition
+              {diff.additions !== 1 ? "s" : ""} and {diff.deletions} removal
+              {diff.deletions !== 1 ? "s" : ""}
+            </div>
+            <div className="diff-content unified-diff">
+              {diff.diffLines.map((line, lineIndex) => (
+                <div
+                  key={lineIndex}
+                  className={`diff-line diff-line-${line.type}`}
+                >
+                  <span className="line-numbers">
+                    <span className="old-line-num">
+                      {line.oldLineNum || ""}
+                    </span>
+                    <span className="new-line-num">
+                      {line.newLineNum || ""}
+                    </span>
+                  </span>
+                  <span className="diff-marker">
+                    {line.type === "removed"
+                      ? "-"
+                      : line.type === "added"
+                        ? "+"
+                        : " "}
+                  </span>
+                  <pre className="diff-line-content">{line.content}</pre>
+                </div>
+              ))}
             </div>
           </div>
         );
@@ -334,33 +450,84 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
         block.input.edits &&
         Array.isArray(block.input.edits)
       ) {
+        const totalAdditions = block.input.edits.reduce(
+          (sum: number, edit: any) => {
+            const diff = generateDiff(
+              edit.old_string || "",
+              edit.new_string || "",
+            );
+            return sum + diff.additions;
+          },
+          0,
+        );
+
+        const totalDeletions = block.input.edits.reduce(
+          (sum: number, edit: any) => {
+            const diff = generateDiff(
+              edit.old_string || "",
+              edit.new_string || "",
+            );
+            return sum + diff.deletions;
+          },
+          0,
+        );
+
         return (
           <div key={index} className="tool-use-block diff-view">
             <div className="tool-header">
-              <span className="tool-icon">🛠️</span>
-              <span className="tool-name">{block.name}</span>
-              {block.input.file_path && (
-                <span className="tool-file-path">{block.input.file_path}</span>
-              )}
+              <span className="tool-icon">⏺</span>
+              <span className="tool-name">
+                MultiEdit({block.input.file_path || "Unknown file"})
+              </span>
             </div>
-            <div className="diff-header">Multiple Code Changes</div>
-            {block.input.edits.map((edit: any, editIndex: number) => (
-              <div key={editIndex} className="diff-content">
-                <div className="diff-edit-number">Edit {editIndex + 1}</div>
-                <div className="diff-old">
-                  <div className="diff-label">- Removed</div>
-                  <pre className="content-text diff-removed">
-                    {edit.old_string}
-                  </pre>
+            <div className="diff-summary">
+              ⎿ Updated {block.input.file_path || "file"} with {totalAdditions}{" "}
+              total addition{totalAdditions !== 1 ? "s" : ""} and{" "}
+              {totalDeletions} total removal{totalDeletions !== 1 ? "s" : ""}{" "}
+              across {block.input.edits.length} edit
+              {block.input.edits.length !== 1 ? "s" : ""}
+            </div>
+            {block.input.edits.map((edit: any, editIndex: number) => {
+              const diff = generateDiff(
+                edit.old_string || "",
+                edit.new_string || "",
+                block.input.file_path,
+              );
+              return (
+                <div key={editIndex} className="multi-edit-section">
+                  <div className="diff-edit-number">
+                    Edit {editIndex + 1} ({diff.additions} addition
+                    {diff.additions !== 1 ? "s" : ""}, {diff.deletions} removal
+                    {diff.deletions !== 1 ? "s" : ""})
+                  </div>
+                  <div className="diff-content unified-diff">
+                    {diff.diffLines.map((line, lineIndex) => (
+                      <div
+                        key={lineIndex}
+                        className={`diff-line diff-line-${line.type}`}
+                      >
+                        <span className="line-numbers">
+                          <span className="old-line-num">
+                            {line.oldLineNum || ""}
+                          </span>
+                          <span className="new-line-num">
+                            {line.newLineNum || ""}
+                          </span>
+                        </span>
+                        <span className="diff-marker">
+                          {line.type === "removed"
+                            ? "-"
+                            : line.type === "added"
+                              ? "+"
+                              : " "}
+                        </span>
+                        <pre className="diff-line-content">{line.content}</pre>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="diff-new">
-                  <div className="diff-label">+ Added</div>
-                  <pre className="content-text diff-added">
-                    {edit.new_string}
-                  </pre>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         );
       }
