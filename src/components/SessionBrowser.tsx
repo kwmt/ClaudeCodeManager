@@ -153,10 +153,35 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
   };
 
   const refreshAllSessions = async () => {
-    await loadSessions();
-    // Refresh messages if a session is selected
-    if (selectedSession) {
-      await loadSessionMessages(selectedSession);
+    const currentSessionId = selectedSession?.session_id;
+    
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await api.getAllSessions();
+      setAllSessions(data);
+
+      // Extract unique projects
+      const uniqueProjects = Array.from(
+        new Set(data.map((session) => session.project_path)),
+      ).sort();
+      setProjects(uniqueProjects);
+
+      // Apply current filters
+      filterSessions(data, searchQuery, selectedProject);
+
+      // Refresh messages if a session is selected
+      if (currentSessionId) {
+        // Find the updated session data
+        const updatedSession = data.find(s => s.session_id === currentSessionId);
+        if (updatedSession) {
+          await loadSessionMessages(updatedSession);
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load sessions");
+    } finally {
+      setLoading(false);
     }
   };
 
