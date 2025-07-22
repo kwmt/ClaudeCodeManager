@@ -304,14 +304,12 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
                   <h4>
                     {session.project_path.split("/").pop() ||
                       session.project_path}
-                    {session.is_processing && (
-                      <span
-                        className="processing-indicator"
-                        title="Session has sequences still processing"
-                      >
-                        <span className="processing-dot"></span>
-                      </span>
-                    )}
+                    <span
+                      className={`session-status-indicator ${session.is_processing ? 'status-processing' : 'status-completed'}`}
+                      title={session.is_processing ? "Session has sequences still processing" : "Session completed"}
+                    >
+                      <span className="status-dot"></span>
+                    </span>
                   </h4>
                   <div className="session-actions">
                     {session.ide_info && (

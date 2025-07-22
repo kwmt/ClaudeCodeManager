@@ -964,7 +964,8 @@ button:hover:not(:disabled) {
 }
 
 /* Processing Status Indicators */
-.processing-indicator {
+.processing-indicator,
+.session-status-indicator {
   display: inline-flex;
   align-items: center;
   margin-left: 0.5rem;
