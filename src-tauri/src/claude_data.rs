@@ -403,7 +403,7 @@ impl ClaudeDataManager {
                         }
                     } else if block.get("type").and_then(|t| t.as_str()) == Some("tool_use") {
                         if let Some(name) = block.get("name").and_then(|n| n.as_str()) {
-                            text_parts.push(format!("[Using tool: {}]", name));
+                            text_parts.push(format!("[Using tool: {name}]"));
                         }
                     }
                 }
@@ -449,9 +449,10 @@ impl ClaudeDataManager {
             let truncated: String = trimmed.chars().take(adjusted_max).collect();
             // 日本語の場合、句読点や助詞で区切るのが自然だが、スペースで区切ることもある
             if let Some(last_space) = truncated.rfind(' ') {
-                format!("{}...", &truncated[..last_space])
+                let truncated_at_space = &truncated[..last_space];
+                format!("{truncated_at_space}...")
             } else {
-                format!("{}...", truncated)
+                format!("{truncated}...")
             }
         }
     }
