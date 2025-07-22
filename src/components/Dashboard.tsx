@@ -2,9 +2,11 @@ import React, { useEffect, useState, useCallback } from "react";
 import { api } from "../api";
 import type { SessionStats, ProjectSummary } from "../types";
 
-interface DashboardProps {}
+interface DashboardProps {
+  onProjectClick?: (projectPath: string) => void;
+}
 
-export const Dashboard: React.FC<DashboardProps> = () => {
+export const Dashboard: React.FC<DashboardProps> = ({ onProjectClick }) => {
   const [stats, setStats] = useState<SessionStats | null>(null);
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,7 +123,11 @@ export const Dashboard: React.FC<DashboardProps> = () => {
         ) : (
           <div className="projects-list">
             {projects.slice(0, 10).map((project) => (
-              <div key={project.project_path} className="project-card">
+              <div
+                key={project.project_path}
+                className="project-card clickable"
+                onClick={() => onProjectClick?.(project.project_path)}
+              >
                 <h4>
                   {project.project_path.split("/").pop() ||
                     project.project_path}
