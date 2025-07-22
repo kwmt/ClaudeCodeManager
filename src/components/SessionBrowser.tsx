@@ -93,6 +93,37 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
       const data = await api.getSessionMessages(session.session_id);
       setMessages(data);
       setFilteredMessages(data);
+
+      // Auto-scroll to the first message after loading
+      if (data.length > 0) {
+        // Use setTimeout to ensure DOM is updated before scrolling
+        setTimeout(() => {
+          const firstMessage = data[0];
+          const messageId =
+            firstMessage.message_type === "summary"
+              ? "summary-0"
+              : firstMessage.uuid;
+          const messageElement = document.getElementById(
+            `message-${messageId}`,
+          );
+          if (messageElement && messageListRef.current) {
+            // Scroll to top of the message list first, then to the specific message
+            messageListRef.current.scrollTop = 0;
+            setTimeout(() => {
+              messageElement.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              });
+              // Highlight message briefly
+              messageElement.classList.add("highlighted");
+              setTimeout(
+                () => messageElement.classList.remove("highlighted"),
+                2000,
+              );
+            }, 50);
+          }
+        }, 150);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load messages");
     } finally {
