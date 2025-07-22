@@ -323,6 +323,35 @@ body {
   word-break: break-all;
 }
 
+.session-preview {
+  margin-bottom: 0.5rem;
+}
+
+.preview-text {
+  font-size: 0.8rem;
+  color: #555;
+  line-height: 1.4;
+  margin: 0;
+  padding: 0.5rem;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  border-left: 3px solid #dee2e6;
+  font-style: italic;
+  
+  /* 2行省略表示 - 日本語対応 */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  -webkit-line-clamp: 2;
+  
+  /* max-heightを削除 - line-clampのみで制御して文字が切れないように */
+  
+  /* 日本語の改行対応 */
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
 .session-meta {
   display: flex;
   gap: 1rem;

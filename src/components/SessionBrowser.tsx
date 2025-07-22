@@ -320,6 +320,13 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
                   </div>
                 </div>
                 <p className="session-path">{session.project_path}</p>
+                {session.latest_content_preview && (
+                  <div className="session-preview">
+                    <p className="preview-text">
+                      {session.latest_content_preview}
+                    </p>
+                  </div>
+                )}
                 <div className="session-meta">
                   <span>{session.message_count} messages</span>
                   {session.git_branch && (
