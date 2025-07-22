@@ -172,6 +172,7 @@ mod tests {
                 updated_at: chrono::Utc::now(),
                 message_count: 10,
                 git_branch: Some("main".to_string()),
+                latest_content_preview: Some("Test session 1 content preview".to_string()),
             },
             ClaudeSession {
                 session_id: "s2".to_string(),
@@ -180,6 +181,7 @@ mod tests {
                 updated_at: chrono::Utc::now(),
                 message_count: 5,
                 git_branch: Some("dev".to_string()),
+                latest_content_preview: Some("Test session 2 content preview".to_string()),
             },
         ];
 
