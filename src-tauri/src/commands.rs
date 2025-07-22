@@ -151,3 +151,72 @@ pub async fn activate_ide_window(
 // File watcher functionality disabled - was causing real-time updates
 // #[tauri::command]
 // pub async fn start_file_watcher(...) -> Result<(), String> { ... }
+
+#[tauri::command]
+pub async fn open_session_file(
+    session_id: String,
+    data_manager: State<'_, Arc<ClaudeDataManager>>,
+) -> Result<(), String> {
+    // Get all sessions to find the one with matching ID
+    let sessions = data_manager
+        .get_all_sessions()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Find the session with the given ID
+    let session = sessions
+        .into_iter()
+        .find(|s| s.session_id == session_id)
+        .ok_or_else(|| format!("Session with ID {} not found", session_id))?;
+
+    // Construct the file path
+    let home_dir = dirs::home_dir().ok_or_else(|| "Could not find home directory".to_string())?;
+
+    let file_path = home_dir
+        .join(".claude")
+        .join("projects")
+        .join(session.project_path.trim_start_matches('/'))
+        .join(format!("{}.jsonl", session_id));
+
+    // Open the file with the default application
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg("-R") // Reveal in Finder
+            .arg(&file_path)
+            .spawn()
+            .map_err(|e| format!("Failed to open file: {}", e))?;
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg("/select,")
+            .arg(&file_path)
+            .spawn()
+            .map_err(|e| format!("Failed to open file: {}", e))?;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        // Try common file managers
+        let file_managers = ["xdg-open", "nautilus", "dolphin", "thunar", "pcmanfm"];
+        let mut opened = false;
+
+        for fm in &file_managers {
+            if let Ok(_) = std::process::Command::new(fm)
+                .arg(file_path.parent().unwrap_or(&file_path))
+                .spawn()
+            {
+                opened = true;
+                break;
+            }
+        }
+
+        if !opened {
+            return Err("Could not find a suitable file manager".to_string());
+        }
+    }
+
+    Ok(())
+}

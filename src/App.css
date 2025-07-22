@@ -384,6 +384,32 @@ body {
   margin-bottom: 0.5rem;
 }
 
+.session-id-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.session-id-container p {
+  margin: 0;
+}
+
+.open-file-button {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.open-file-button:hover {
+  background: #2980b9;
+  transform: translateY(-1px);
+}
+
 .message-controls {
   display: flex;
   gap: 1rem;

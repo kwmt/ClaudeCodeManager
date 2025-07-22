@@ -124,6 +124,15 @@ export const api = {
     return Promise.resolve();
   },
 
+  async openSessionFile(sessionId: string): Promise<void> {
+    if (isTauri && tauriApi) {
+      return tauriApi.invoke("open_session_file", { sessionId });
+    }
+    // Mock API doesn't support file operations
+    console.log(`Would open JSONL file for session: ${sessionId}`);
+    return Promise.resolve();
+  },
+
   // Real-time monitoring
   async startFileWatcher(): Promise<void> {
     if (isTauri && tauriApi) {

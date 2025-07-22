@@ -782,7 +782,18 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
                   <h3>
                     Messages for {selectedSession.project_path.split("/").pop()}
                   </h3>
-                  <p>Session ID: {selectedSession.session_id}</p>
+                  <div className="session-id-container">
+                    <p>Session ID: {selectedSession.session_id}</p>
+                    <button
+                      className="open-file-button"
+                      onClick={() =>
+                        api.openSessionFile(selectedSession.session_id)
+                      }
+                      title="Open JSONL file in Finder"
+                    >
+                      📂
+                    </button>
+                  </div>
                 </div>
 
                 <div className="message-controls">
