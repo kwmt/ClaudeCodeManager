@@ -95,7 +95,6 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
     await loadSessions();
   };
 
-
   const activateIdeWindow = async (session: ClaudeSession) => {
     if (!session.ide_info) {
       setError("No IDE information available for this session");
@@ -305,6 +304,11 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
                   <h4>
                     {session.project_path.split("/").pop() ||
                       session.project_path}
+                    {session.is_processing && (
+                      <span className="processing-indicator" title="Session has sequences still processing">
+                        <span className="processing-dot"></span>
+                      </span>
+                    )}
                   </h4>
                   <div className="session-actions">
                     {session.ide_info && (
@@ -371,6 +375,11 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = () => {
                       <div className="message-header">
                         <span className="message-type">
                           {message.message_type}
+                          {message.message_type !== "summary" && (
+                            <span className={`status-indicator status-${message.processing_status}`} title={`Status: ${message.processing_status}${message.message_type === "assistant" && message.stop_reason ? ` (${message.stop_reason})` : ""}`}>
+                              <span className="status-dot"></span>
+                            </span>
+                          )}
                         </span>
                         <span className="message-time">
                           {message.message_type === "summary"

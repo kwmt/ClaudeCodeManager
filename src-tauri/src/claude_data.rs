@@ -163,7 +163,7 @@ impl ClaudeDataManager {
                         .get("message")
                         .and_then(|m| m.get("stop_reason"))
                         .is_some();
-                    
+
                     if !has_stop_reason {
                         has_incomplete_sequence = true;
                     }

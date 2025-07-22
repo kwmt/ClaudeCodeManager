@@ -962,3 +962,61 @@ button:hover:not(:disabled) {
     padding: 1rem;
   }
 }
+
+/* Processing Status Indicators */
+.processing-indicator {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.5rem;
+}
+
+.processing-dot,
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.processing-dot {
+  background-color: #f39c12;
+  animation: pulse 1.5s infinite;
+}
+
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.5rem;
+}
+
+.status-processing .status-dot {
+  background-color: #f39c12;
+  animation: pulse 1.5s infinite;
+}
+
+.status-completed .status-dot {
+  background-color: #27ae60;
+}
+
+.status-stopped .status-dot {
+  background-color: #e67e22;
+}
+
+.status-error .status-dot {
+  background-color: #e74c3c;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
