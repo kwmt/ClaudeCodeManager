@@ -125,6 +125,7 @@ impl ClaudeDataManager {
         let mut git_branch: Option<String> = None;
         let mut latest_content_preview: Option<String> = None;
         let mut latest_timestamp: Option<DateTime<Utc>> = None;
+        let mut has_incomplete_sequence = false;
 
         for line in reader.lines() {
             let line = line?;
@@ -155,6 +156,18 @@ impl ClaudeDataManager {
                         }
                     }
                 }
+
+                // Check for incomplete sequences (no stop_reason in assistant messages)
+                if message.get("type").and_then(|t| t.as_str()) == Some("assistant") {
+                    let has_stop_reason = message
+                        .get("message")
+                        .and_then(|m| m.get("stop_reason"))
+                        .is_some();
+                    
+                    if !has_stop_reason {
+                        has_incomplete_sequence = true;
+                    }
+                }
             }
         }
 
@@ -169,6 +182,7 @@ impl ClaudeDataManager {
             git_branch,
             latest_content_preview,
             ide_info,
+            is_processing: has_incomplete_sequence,
         })
     }
 
@@ -283,6 +297,9 @@ impl ClaudeDataManager {
                     content: content_text,
                 };
 
+                // User messages are always completed when they exist
+                let processing_status = crate::models::ProcessingStatus::Completed;
+
                 ClaudeMessage::User {
                     uuid,
                     parent_uuid,
@@ -291,6 +308,7 @@ impl ClaudeDataManager {
                     content,
                     cwd,
                     git_branch,
+                    processing_status,
                 }
             }
             Some("assistant") => {
@@ -311,6 +329,24 @@ impl ClaudeDataManager {
                     content: content_blocks,
                 };
 
+                // Extract stop_reason and determine processing status
+                let stop_reason = raw
+                    .get("message")
+                    .and_then(|m| m.get("stop_reason"))
+                    .and_then(|sr| sr.as_str())
+                    .map(|s| s.to_string());
+
+                let processing_status = match &stop_reason {
+                    Some(reason) => match reason.as_str() {
+                        "end_turn" => crate::models::ProcessingStatus::Completed,
+                        "max_tokens" => crate::models::ProcessingStatus::Stopped,
+                        "stop_sequence" => crate::models::ProcessingStatus::Stopped,
+                        "tool_use" => crate::models::ProcessingStatus::Completed,
+                        _ => crate::models::ProcessingStatus::Error,
+                    },
+                    None => crate::models::ProcessingStatus::Processing,
+                };
+
                 ClaudeMessage::Assistant {
                     uuid,
                     parent_uuid,
@@ -319,6 +355,8 @@ impl ClaudeDataManager {
                     content,
                     cwd,
                     git_branch,
+                    processing_status,
+                    stop_reason,
                 }
             }
             Some("summary") => {

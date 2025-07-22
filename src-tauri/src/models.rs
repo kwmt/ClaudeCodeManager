@@ -21,6 +21,16 @@ pub struct ClaudeSession {
     pub git_branch: Option<String>,
     pub latest_content_preview: Option<String>,
     pub ide_info: Option<IdeInfo>,
+    pub is_processing: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ProcessingStatus {
+    Processing,
+    Completed,
+    Stopped,
+    Error,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,6 +45,7 @@ pub enum ClaudeMessage {
         content: MessageContent,
         cwd: String,
         git_branch: Option<String>,
+        processing_status: ProcessingStatus,
     },
     #[serde(rename = "assistant")]
     Assistant {
@@ -45,6 +56,8 @@ pub enum ClaudeMessage {
         content: MessageContent,
         cwd: String,
         git_branch: Option<String>,
+        processing_status: ProcessingStatus,
+        stop_reason: Option<String>,
     },
     #[serde(rename = "summary")]
     Summary {

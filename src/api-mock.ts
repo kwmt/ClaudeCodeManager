@@ -18,6 +18,7 @@ const mockSessions: ClaudeSession[] = [
     updated_at: "2025-07-20T11:30:00Z",
     message_count: 15,
     git_branch: "main",
+    is_processing: false,
   },
   {
     session_id: "session-2",
@@ -26,6 +27,7 @@ const mockSessions: ClaudeSession[] = [
     updated_at: "2025-07-19T16:45:00Z",
     message_count: 8,
     git_branch: "feature/ui-updates",
+    is_processing: true,
   },
   {
     session_id: "session-3",
@@ -34,6 +36,7 @@ const mockSessions: ClaudeSession[] = [
     updated_at: "2025-07-18T12:15:00Z",
     message_count: 12,
     git_branch: "develop",
+    is_processing: false,
   },
 ];
 
@@ -49,6 +52,7 @@ const mockMessages: ClaudeMessage[] = [
     },
     cwd: "/Users/developer/projects/web-app",
     git_branch: "main",
+    processing_status: "completed",
   },
   {
     uuid: "msg-2",
@@ -66,6 +70,8 @@ const mockMessages: ClaudeMessage[] = [
     },
     cwd: "/Users/developer/projects/web-app",
     git_branch: "main",
+    processing_status: "completed",
+    stop_reason: "end_turn",
   },
 ];
 

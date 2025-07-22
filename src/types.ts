@@ -16,7 +16,10 @@ export interface ClaudeSession {
   git_branch?: string;
   latest_content_preview?: string;
   ide_info?: IdeInfo;
+  is_processing: boolean;
 }
+
+export type ProcessingStatus = "processing" | "completed" | "stopped" | "error";
 
 export type ClaudeMessage =
   | {
@@ -24,10 +27,23 @@ export type ClaudeMessage =
       parent_uuid?: string;
       session_id: string;
       timestamp: string;
-      message_type: "user" | "assistant";
+      message_type: "user";
       content: MessageContent;
       cwd: string;
       git_branch?: string;
+      processing_status: ProcessingStatus;
+    }
+  | {
+      uuid: string;
+      parent_uuid?: string;
+      session_id: string;
+      timestamp: string;
+      message_type: "assistant";
+      content: MessageContent;
+      cwd: string;
+      git_branch?: string;
+      processing_status: ProcessingStatus;
+      stop_reason?: string;
     }
   | {
       message_type: "summary";

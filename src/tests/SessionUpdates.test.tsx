@@ -103,6 +103,7 @@ describe("Session Updates Optimization", () => {
         updated_at: "2025-07-20T11:30:00Z",
         message_count: 15,
         git_branch: "main",
+        is_processing: false,
       },
     ];
     vi.mocked(api.getAllSessions).mockResolvedValueOnce(mockSessions);
