@@ -7,6 +7,7 @@ import type {
   ProjectSummary,
   SessionStats,
   IdeInfo,
+  ProjectClaudeDirectory,
 } from "./types";
 
 // Check if we're running in Tauri environment
@@ -131,6 +132,14 @@ export const api = {
     // Mock API doesn't support file operations
     console.log(`Would open JSONL file for session: ${sessionId}`);
     return Promise.resolve();
+  },
+
+  // Project .claude directories
+  async getProjectClaudeDirectories(): Promise<ProjectClaudeDirectory[]> {
+    if (isTauri && tauriApi) {
+      return tauriApi.invoke("get_project_claude_directories");
+    }
+    return mockApi.getProjectClaudeDirectories();
   },
 
   // Real-time monitoring

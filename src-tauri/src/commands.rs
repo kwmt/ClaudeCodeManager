@@ -153,6 +153,16 @@ pub async fn activate_ide_window(
 // pub async fn start_file_watcher(...) -> Result<(), String> { ... }
 
 #[tauri::command]
+pub async fn get_project_claude_directories(
+    data_manager: State<'_, Arc<ClaudeDataManager>>,
+) -> Result<Vec<ProjectClaudeDirectory>, String> {
+    data_manager
+        .get_project_claude_directories()
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn open_session_file(
     session_id: String,
     data_manager: State<'_, Arc<ClaudeDataManager>>,

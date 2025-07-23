@@ -175,3 +175,35 @@ pub struct SessionStats {
     pub active_projects: usize,
     pub pending_todos: usize,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClaudeProjectInfo {
+    pub project_path: String,
+    pub has_claude_dir: bool,
+    pub commands: Vec<String>,
+    pub settings_local: Option<serde_json::Value>,
+    pub settings: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProjectClaudeDirectory {
+    pub project_path: String,
+    pub claude_dir_path: String,
+    pub exists: bool,
+    pub commands_dir: Option<CommandsDirectory>,
+    pub settings_local: Option<serde_json::Value>,
+    pub settings: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandsDirectory {
+    pub path: String,
+    pub commands: Vec<CommandFile>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandFile {
+    pub name: String,
+    pub path: String,
+    pub content: String,
+}

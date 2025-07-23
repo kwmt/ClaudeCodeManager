@@ -7,6 +7,7 @@ import type {
   ClaudeSettings,
   ProjectSummary,
   SessionStats,
+  ProjectClaudeDirectory,
 } from "./types";
 
 // Mock data for demonstration
@@ -245,5 +246,73 @@ export const mockApi = {
       return msg.session_id === sessionId;
     });
     return JSON.stringify(messages, null, 2);
+  },
+
+  async getProjectClaudeDirectories(): Promise<ProjectClaudeDirectory[]> {
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    return [
+      {
+        project_path: "/Users/developer/projects/web-app",
+        claude_dir_path: "/Users/developer/projects/web-app/.claude",
+        exists: true,
+        commands_dir: {
+          path: "/Users/developer/projects/web-app/.claude/commands",
+          commands: [
+            {
+              name: "build.md",
+              path: "/Users/developer/projects/web-app/.claude/commands/build.md",
+              content:
+                "# Build Command\n\nThis command builds the React application.\n\n```bash\nnpm run build\n```",
+            },
+            {
+              name: "test.md",
+              path: "/Users/developer/projects/web-app/.claude/commands/test.md",
+              content:
+                "# Test Command\n\nRuns all tests in the project.\n\n```bash\nnpm test\n```",
+            },
+          ],
+        },
+        settings_local: {
+          permissions: {
+            defaultMode: "accept",
+            allow: ["*"],
+            deny: [],
+          },
+        },
+        settings: {
+          hooks: {
+            PreToolUse: [],
+          },
+        },
+      },
+      {
+        project_path: "/Users/developer/projects/mobile-app",
+        claude_dir_path: "/Users/developer/projects/mobile-app/.claude",
+        exists: true,
+        commands_dir: {
+          path: "/Users/developer/projects/mobile-app/.claude/commands",
+          commands: [
+            {
+              name: "deploy.md",
+              path: "/Users/developer/projects/mobile-app/.claude/commands/deploy.md",
+              content:
+                "# Deploy Command\n\nDeploys the mobile app to staging.\n\n```bash\nreact-native run-android\n```",
+            },
+          ],
+        },
+        settings: {
+          permissions: {
+            defaultMode: "prompt",
+            allow: ["Read", "Write"],
+            deny: ["Bash"],
+          },
+        },
+      },
+      {
+        project_path: "/Users/developer/projects/api-server",
+        claude_dir_path: "/Users/developer/projects/api-server/.claude",
+        exists: false,
+      },
+    ];
   },
 };

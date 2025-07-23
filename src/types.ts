@@ -113,3 +113,31 @@ export interface SessionStats {
   active_projects: number;
   pending_todos: number;
 }
+
+export interface ClaudeProjectInfo {
+  project_path: string;
+  has_claude_dir: boolean;
+  commands: string[];
+  settings_local?: any;
+  settings?: any;
+}
+
+export interface ProjectClaudeDirectory {
+  project_path: string;
+  claude_dir_path: string;
+  exists: boolean;
+  commands_dir?: CommandsDirectory;
+  settings_local?: any;
+  settings?: any;
+}
+
+export interface CommandsDirectory {
+  path: string;
+  commands: CommandFile[];
+}
+
+export interface CommandFile {
+  name: string;
+  path: string;
+  content: string;
+}

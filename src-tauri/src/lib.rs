@@ -30,6 +30,7 @@ pub fn run() {
             search_commands,
             export_session_data,
             activate_ide_window,
+            get_project_claude_directories,
             open_session_file
         ])
         .run(tauri::generate_context!())

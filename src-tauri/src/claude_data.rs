@@ -820,4 +820,93 @@ impl ClaudeDataManager {
 
         Ok(())
     }
+
+    pub async fn get_project_claude_directories(
+        &self,
+    ) -> Result<Vec<ProjectClaudeDirectory>, Box<dyn std::error::Error>> {
+        let sessions = self.get_all_sessions().await?;
+        let mut project_dirs = Vec::new();
+        let mut seen_projects = std::collections::HashSet::new();
+
+        for session in sessions {
+            if seen_projects.contains(&session.project_path) {
+                continue;
+            }
+            seen_projects.insert(session.project_path.clone());
+
+            let claude_dir_path = format!("{}/.claude", &session.project_path);
+            let claude_dir = Path::new(&claude_dir_path);
+            let exists = claude_dir.exists();
+
+            let mut commands_dir = None;
+            let mut settings_local = None;
+            let mut settings = None;
+
+            if exists {
+                // Read commands directory
+                let commands_path = claude_dir.join("commands");
+                if commands_path.exists() && commands_path.is_dir() {
+                    commands_dir = self.read_commands_directory(&commands_path).await.ok();
+                }
+
+                // Read settings.local.json
+                let settings_local_file = claude_dir.join("settings.local.json");
+                if settings_local_file.exists() {
+                    if let Ok(content) = fs::read_to_string(&settings_local_file) {
+                        settings_local = serde_json::from_str(&content).ok();
+                    }
+                }
+
+                // Read settings.json
+                let settings_file = claude_dir.join("settings.json");
+                if settings_file.exists() {
+                    if let Ok(content) = fs::read_to_string(&settings_file) {
+                        settings = serde_json::from_str(&content).ok();
+                    }
+                }
+            }
+
+            project_dirs.push(ProjectClaudeDirectory {
+                project_path: session.project_path.clone(),
+                claude_dir_path,
+                exists,
+                commands_dir,
+                settings_local,
+                settings,
+            });
+        }
+
+        Ok(project_dirs)
+    }
+
+    async fn read_commands_directory(
+        &self,
+        commands_path: &Path,
+    ) -> Result<CommandsDirectory, Box<dyn std::error::Error>> {
+        let mut commands = Vec::new();
+
+        for entry in fs::read_dir(commands_path)? {
+            let entry = entry?;
+            let path = entry.path();
+
+            if path.is_file() {
+                if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
+                    if file_name.ends_with(".md") {
+                        let content = fs::read_to_string(&path)
+                            .unwrap_or_else(|_| "Error reading file".to_string());
+                        commands.push(CommandFile {
+                            name: file_name.to_string(),
+                            path: path.to_string_lossy().to_string(),
+                            content,
+                        });
+                    }
+                }
+            }
+        }
+
+        Ok(CommandsDirectory {
+            path: commands_path.to_string_lossy().to_string(),
+            commands,
+        })
+    }
 }

@@ -5,8 +5,15 @@ import { SessionBrowser } from "./components/SessionBrowser";
 import { CommandHistory } from "./components/CommandHistory";
 import { TodoManager } from "./components/TodoManager";
 import { SettingsEditor } from "./components/SettingsEditor";
+import ProjectClaudeDirectories from "./components/ProjectClaudeDirectories";
 
-type Tab = "dashboard" | "sessions" | "commands" | "todos" | "settings";
+type Tab =
+  | "dashboard"
+  | "sessions"
+  | "commands"
+  | "todos"
+  | "settings"
+  | "claude-dirs";
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
@@ -35,6 +42,8 @@ function App() {
         return <TodoManager />;
       case "settings":
         return <SettingsEditor />;
+      case "claude-dirs":
+        return <ProjectClaudeDirectories />;
       default:
         return <Dashboard onProjectClick={navigateToSessionsWithProject} />;
     }
@@ -74,6 +83,12 @@ function App() {
             onClick={() => setActiveTab("settings")}
           >
             Settings
+          </button>
+          <button
+            className={activeTab === "claude-dirs" ? "active" : ""}
+            onClick={() => setActiveTab("claude-dirs")}
+          >
+            .claude Dirs
           </button>
         </div>
       </nav>

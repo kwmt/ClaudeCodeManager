@@ -1294,4 +1294,119 @@ mod tests {
             panic!("Expected Assistant message variant");
         }
     }
+
+    #[tokio::test]
+    async fn test_get_project_claude_directories_with_mock_projects() {
+        let temp_dir = create_test_claude_dir();
+        let claude_dir = temp_dir.path().join(".claude");
+
+        // Create mock projects with sessions to trigger project discovery
+        let project1_dir = claude_dir.join("projects").join("project1");
+        let project2_dir = claude_dir.join("projects").join("project2");
+        fs::create_dir_all(&project1_dir).unwrap();
+        fs::create_dir_all(&project2_dir).unwrap();
+
+        // Create mock session files (the project path comes from the directory name, not cwd)
+        fs::write(project1_dir.join("session1.jsonl"), r#"{"type":"user","message":{"role":"user","content":"test"},"uuid":"1","timestamp":"2025-07-20T22:56:38.702Z","sessionId":"s1","cwd":"/Users/test/project1","gitBranch":"main"}"#).unwrap();
+        fs::write(project2_dir.join("session2.jsonl"), r#"{"type":"user","message":{"role":"user","content":"test"},"uuid":"2","timestamp":"2025-07-20T22:56:38.702Z","sessionId":"s2","cwd":"/Users/test/project2","gitBranch":"main"}"#).unwrap();
+
+        // Create actual .claude directories in some projects
+        let project1_claude = Path::new("/tmp/test-project1/.claude");
+        fs::create_dir_all(project1_claude).unwrap();
+        fs::create_dir_all(project1_claude.join("commands")).unwrap();
+
+        // Create test command files
+        fs::write(
+            project1_claude.join("commands").join("test.md"),
+            "# Test Command\n\nThis is a test command.\n\n```bash\necho 'test'\n```",
+        )
+        .unwrap();
+
+        // Create test settings files
+        fs::write(
+            project1_claude.join("settings.local.json"),
+            r#"{"permissions": {"defaultMode": "accept", "allow": ["*"], "deny": []}}"#,
+        )
+        .unwrap();
+        fs::write(
+            project1_claude.join("settings.json"),
+            r#"{"hooks": {"PreToolUse": []}}"#,
+        )
+        .unwrap();
+
+        let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
+
+        // Test the basic functionality - this will look for .claude dirs in the project paths
+        // Since our mock projects use paths like "/Users/test/project1", the .claude dir lookup
+        // will fail for those paths, but we can test the basic structure
+        let result = manager.get_project_claude_directories().await;
+        assert!(result.is_ok());
+
+        let directories = result.unwrap();
+        assert_eq!(directories.len(), 2);
+
+        // Both projects should be found, but .claude directories won't exist at the expected paths
+        let project_paths: Vec<&str> = directories
+            .iter()
+            .map(|d| d.project_path.as_str())
+            .collect();
+        assert!(project_paths.contains(&"project1"));
+        assert!(project_paths.contains(&"project2"));
+
+        // All should show exists=false since the mock project paths don't have .claude dirs
+        for dir in &directories {
+            assert!(!dir.exists);
+            assert!(dir.commands_dir.is_none());
+            assert!(dir.settings_local.is_none());
+            assert!(dir.settings.is_none());
+        }
+    }
+
+    #[tokio::test]
+    async fn test_get_project_claude_directories_empty() {
+        let temp_dir = create_test_claude_dir();
+        let claude_dir = temp_dir.path().join(".claude");
+
+        let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
+        let result = manager.get_project_claude_directories().await;
+
+        assert!(result.is_ok());
+        let directories = result.unwrap();
+        assert_eq!(directories.len(), 0);
+    }
+
+    #[test]
+    fn test_project_claude_directory_serialization() {
+        use crate::models::{CommandFile, CommandsDirectory, ProjectClaudeDirectory};
+
+        let dir = ProjectClaudeDirectory {
+            project_path: "/test/project".to_string(),
+            claude_dir_path: "/test/project/.claude".to_string(),
+            exists: true,
+            commands_dir: Some(CommandsDirectory {
+                path: "/test/project/.claude/commands".to_string(),
+                commands: vec![CommandFile {
+                    name: "test.md".to_string(),
+                    path: "/test/project/.claude/commands/test.md".to_string(),
+                    content: "# Test\n\nContent here".to_string(),
+                }],
+            }),
+            settings_local: Some(serde_json::json!({"test": "value"})),
+            settings: None,
+        };
+
+        let serialized = serde_json::to_string(&dir);
+        assert!(serialized.is_ok());
+
+        let deserialized: Result<ProjectClaudeDirectory, _> =
+            serde_json::from_str(&serialized.unwrap());
+        assert!(deserialized.is_ok());
+
+        let deserialized_dir = deserialized.unwrap();
+        assert_eq!(deserialized_dir.project_path, "/test/project");
+        assert_eq!(deserialized_dir.exists, true);
+        assert!(deserialized_dir.commands_dir.is_some());
+        assert!(deserialized_dir.settings_local.is_some());
+        assert!(deserialized_dir.settings.is_none());
+    }
 }
