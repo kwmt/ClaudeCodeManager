@@ -2,33 +2,50 @@ import { useState } from "react";
 import "./App.css";
 import { Dashboard } from "./components/Dashboard";
 import { SessionBrowser } from "./components/SessionBrowser";
+import { ProjectScreen } from "./components/ProjectScreen";
 import { CommandHistory } from "./components/CommandHistory";
 import { TodoManager } from "./components/TodoManager";
 import { SettingsEditor } from "./components/SettingsEditor";
 
-type Tab = "dashboard" | "sessions" | "commands" | "todos" | "settings";
+type Tab =
+  | "dashboard"
+  | "sessions"
+  | "commands"
+  | "todos"
+  | "settings"
+  | "project";
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
-  const [sessionProjectFilter, setSessionProjectFilter] =
-    useState<string>("all");
+  const [selectedProjectPath, setSelectedProjectPath] = useState<string>("");
 
   // File watcher and real-time updates disabled
   // useEffect(() => {
   //   // File watcher functionality removed
   // }, []);
 
-  const navigateToSessionsWithProject = (projectPath: string) => {
-    setSessionProjectFilter(projectPath);
-    setActiveTab("sessions");
+  const navigateToProject = (projectPath: string) => {
+    setSelectedProjectPath(projectPath);
+    setActiveTab("project");
+  };
+
+  const navigateBackToDashboard = () => {
+    setActiveTab("dashboard");
   };
 
   const renderActiveTab = () => {
     switch (activeTab) {
       case "dashboard":
-        return <Dashboard onProjectClick={navigateToSessionsWithProject} />;
+        return <Dashboard onProjectClick={navigateToProject} />;
       case "sessions":
-        return <SessionBrowser initialProjectFilter={sessionProjectFilter} />;
+        return <SessionBrowser />;
+      case "project":
+        return (
+          <ProjectScreen
+            projectPath={selectedProjectPath}
+            onBack={navigateBackToDashboard}
+          />
+        );
       case "commands":
         return <CommandHistory />;
       case "todos":
@@ -36,7 +53,7 @@ function App() {
       case "settings":
         return <SettingsEditor />;
       default:
-        return <Dashboard onProjectClick={navigateToSessionsWithProject} />;
+        return <Dashboard onProjectClick={navigateToProject} />;
     }
   };
 
