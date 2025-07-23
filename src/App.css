@@ -1231,8 +1231,7 @@ button:hover:not(:disabled) {
   padding: 1.5rem;
   overflow-y: auto;
   height: 100%;
-  max-width: 800px;
-  margin: 0 auto;
+  width: 100%;
 }
 
 .claude-directory-panel h3 {
@@ -1274,10 +1273,6 @@ button:hover:not(:disabled) {
 
   .project-directory-content {
     padding: 1rem;
-  }
-  
-  .claude-directory-panel {
-    max-width: none;
   }
 
   .stats-grid {
