@@ -1218,9 +1218,6 @@ button:hover:not(:disabled) {
 
 /* Project directory content layout */
 .project-directory-content {
-  display: grid;
-  grid-template-columns: minmax(400px, 1fr) minmax(500px, 2fr);
-  gap: 1.5rem;
   flex: 1;
   padding: 1.5rem;
   overflow: hidden;
@@ -1234,6 +1231,8 @@ button:hover:not(:disabled) {
   padding: 1.5rem;
   overflow-y: auto;
   height: 100%;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
 .claude-directory-panel h3 {
@@ -1248,20 +1247,6 @@ button:hover:not(:disabled) {
   font-size: 1.1rem;
 }
 
-.directory-details-panel {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  padding: 1.5rem;
-  overflow-y: auto;
-  height: 100%;
-}
-
-.directory-details-panel h3 {
-  margin: 0 0 1rem 0;
-  color: #2c3e50;
-  font-size: 1.2rem;
-}
 
 /* Responsive design */
 @media (max-width: 768px) {
@@ -1288,10 +1273,11 @@ button:hover:not(:disabled) {
   }
 
   .project-directory-content {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto;
-    gap: 1rem;
     padding: 1rem;
+  }
+  
+  .claude-directory-panel {
+    max-width: none;
   }
 
   .stats-grid {

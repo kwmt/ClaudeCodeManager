@@ -606,13 +606,6 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
               </pre>
             </div>
           </div>
-          <div className="directory-details-panel">
-            <h3>Directory Details</h3>
-            <p>
-              This is where additional directory information and statistics can
-              be displayed.
-            </p>
-          </div>
         </div>
       )}
     </div>
