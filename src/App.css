@@ -1219,7 +1219,7 @@ button:hover:not(:disabled) {
 /* Project directory content layout */
 .project-directory-content {
   flex: 1;
-  padding: 1.5rem;
+  padding: 1.5rem 0;
   overflow: hidden;
   background: #f5f7fa;
 }
@@ -1272,7 +1272,7 @@ button:hover:not(:disabled) {
   }
 
   .project-directory-content {
-    padding: 1rem;
+    padding: 1rem 0;
   }
 
   .stats-grid {
