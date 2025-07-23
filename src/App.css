@@ -1147,6 +1147,88 @@ button:hover:not(:disabled) {
   height: 100%;
 }
 
+/* Project tabs */
+.project-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid #e9ecef;
+}
+
+.tab-button {
+  background: none;
+  border: none;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  color: #6c757d;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.2s;
+}
+
+.tab-button:hover {
+  color: #495057;
+}
+
+.tab-button.active {
+  color: #007bff;
+  border-bottom-color: #007bff;
+  font-weight: 600;
+}
+
+/* Claude directory content */
+.claude-directory-content {
+  padding: 1rem 0;
+}
+
+.claude-directory-content h4 {
+  margin: 1.5rem 0 1rem 0;
+  color: #2c3e50;
+  font-size: 1.1rem;
+}
+
+.claude-directory-content h4:first-child {
+  margin-top: 0;
+}
+
+.directory-info-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem;
+  background: #f8f9fa;
+  border-radius: 4px;
+}
+
+.info-label {
+  font-weight: 600;
+  color: #495057;
+  margin-right: 1rem;
+  min-width: 150px;
+}
+
+.info-value {
+  color: #6c757d;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.9rem;
+}
+
+.directory-structure {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+
+.directory-structure pre {
+  margin: 0;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: #495057;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .nav {

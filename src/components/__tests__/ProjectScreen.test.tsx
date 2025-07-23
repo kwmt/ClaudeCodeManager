@@ -91,7 +91,7 @@ describe("ProjectScreen", () => {
     expect(screen.getByText("2 TODOs")).toBeInTheDocument();
   });
 
-  it("should display .claude directory information", async () => {
+  it("should display .claude directory information when tab is clicked", async () => {
     render(
       <ProjectScreen
         projectPath="-Users-john-documents-test-project"
@@ -100,15 +100,20 @@ describe("ProjectScreen", () => {
     );
 
     await waitFor(() => {
-      expect(
-        screen.getByText(".claude Directory Information"),
-      ).toBeInTheDocument();
+      expect(screen.getByText(".claude Directory")).toBeInTheDocument();
+    });
+
+    // Click on .claude Directory tab
+    fireEvent.click(screen.getByText(".claude Directory"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Directory Information")).toBeInTheDocument();
     });
 
     expect(
-      screen.getByText("Path: /Users/john/documents/test/project/.claude"),
+      screen.getByText("/Users/john/documents/test/project/.claude"),
     ).toBeInTheDocument();
-    expect(screen.getByText("In Home Directory: Yes")).toBeInTheDocument();
+    expect(screen.getByText("Yes")).toBeInTheDocument();
   });
 
   it("should render sessions list", async () => {
@@ -120,7 +125,9 @@ describe("ProjectScreen", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Sessions (2)")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Sessions \(2\)/ }),
+      ).toBeInTheDocument();
     });
 
     expect(screen.getAllByText(/Session session-.../)).toHaveLength(2);
@@ -137,7 +144,9 @@ describe("ProjectScreen", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Sessions (2)")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Sessions \(2\)/ }),
+      ).toBeInTheDocument();
     });
 
     const sessionItems = screen.getAllByText(/Session session-.../);

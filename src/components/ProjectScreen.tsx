@@ -33,6 +33,9 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
   const [loading, setLoading] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"sessions" | "directory">(
+    "sessions",
+  );
 
   const [messageSearchQuery, setMessageSearchQuery] = useState("");
   const [selectedMessageType, setSelectedMessageType] = useState<string>("all");
@@ -381,61 +384,104 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
               </>
             )}
           </div>
-          <div className="claude-directory-info">
-            <h4>.claude Directory Information</h4>
-            <p>Path: {normalizedPath}/.claude</p>
-            <p>In Home Directory: {inHomeDirectory ? "Yes" : "No"}</p>
-          </div>
         </div>
       </div>
 
       <div className="project-sessions-content">
         <div className="project-sessions-list">
-          <h3>Sessions ({sessions.length})</h3>
-          {sessions.length === 0 ? (
-            <div className="no-sessions">
-              No sessions found for this project
-            </div>
-          ) : (
-            sessions.map((session) => (
-              <div
-                key={session.session_id}
-                className={`session-item ${selectedSession?.session_id === session.session_id ? "selected" : ""}`}
-                onClick={() => loadSessionMessages(session)}
-              >
-                <div className="session-header">
-                  <h4>
-                    Session {session.session_id.substring(0, 8)}...
-                    <span
-                      className={`session-status-indicator ${session.is_processing ? "status-processing" : "status-completed"}`}
-                      title={
-                        session.is_processing
-                          ? "Session has sequences still processing"
-                          : "Session completed"
-                      }
-                    >
-                      <span className="status-dot"></span>
-                    </span>
-                  </h4>
-                </div>
-                {session.latest_content_preview && (
-                  <div className="session-preview">
-                    <p className="preview-text">
-                      {session.latest_content_preview}
-                    </p>
-                  </div>
-                )}
-                <div className="session-meta">
-                  <span>{session.message_count} messages</span>
-                  {session.git_branch && (
-                    <span>Branch: {session.git_branch}</span>
-                  )}
-                  <span>
-                    Updated: {new Date(session.updated_at).toLocaleDateString()}
-                  </span>
-                </div>
+          <div className="project-tabs">
+            <button
+              className={`tab-button ${activeTab === "sessions" ? "active" : ""}`}
+              onClick={() => setActiveTab("sessions")}
+            >
+              Sessions ({sessions.length})
+            </button>
+            <button
+              className={`tab-button ${activeTab === "directory" ? "active" : ""}`}
+              onClick={() => setActiveTab("directory")}
+            >
+              .claude Directory
+            </button>
+          </div>
+
+          {activeTab === "sessions" ? (
+            sessions.length === 0 ? (
+              <div className="no-sessions">
+                No sessions found for this project
               </div>
-            ))
+            ) : (
+              sessions.map((session) => (
+                <div
+                  key={session.session_id}
+                  className={`session-item ${selectedSession?.session_id === session.session_id ? "selected" : ""}`}
+                  onClick={() => loadSessionMessages(session)}
+                >
+                  <div className="session-header">
+                    <h4>
+                      Session {session.session_id.substring(0, 8)}...
+                      <span
+                        className={`session-status-indicator ${session.is_processing ? "status-processing" : "status-completed"}`}
+                        title={
+                          session.is_processing
+                            ? "Session has sequences still processing"
+                            : "Session completed"
+                        }
+                      >
+                        <span className="status-dot"></span>
+                      </span>
+                    </h4>
+                  </div>
+                  {session.latest_content_preview && (
+                    <div className="session-preview">
+                      <p className="preview-text">
+                        {session.latest_content_preview}
+                      </p>
+                    </div>
+                  )}
+                  <div className="session-meta">
+                    <span>{session.message_count} messages</span>
+                    {session.git_branch && (
+                      <span>Branch: {session.git_branch}</span>
+                    )}
+                    <span>
+                      Updated:{" "}
+                      {new Date(session.updated_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )
+          ) : (
+            <div className="claude-directory-content">
+              <h4>Directory Information</h4>
+              <div className="directory-info-item">
+                <span className="info-label">Path:</span>
+                <span className="info-value">{normalizedPath}/.claude</span>
+              </div>
+              <div className="directory-info-item">
+                <span className="info-label">In Home Directory:</span>
+                <span className="info-value">
+                  {inHomeDirectory ? "Yes" : "No"}
+                </span>
+              </div>
+              <div className="directory-info-item">
+                <span className="info-label">Project Root:</span>
+                <span className="info-value">{normalizedPath}</span>
+              </div>
+              <h4>Directory Structure</h4>
+              <div className="directory-structure">
+                <pre>
+                  {`.claude/
+├── projects/
+│   └── ${projectPath}/
+│       └── *.jsonl (session files)
+├── todos/
+│   └── ${projectPath}.json
+├── command_history.log
+└── settings.json`}
+                </pre>
+              </div>
+            </div>
           )}
         </div>
 
