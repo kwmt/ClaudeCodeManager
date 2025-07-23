@@ -1048,6 +1048,105 @@ button:hover:not(:disabled) {
   transform: translateY(-1px);
 }
 
+/* Project Screen Styles */
+.project-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.project-header {
+  padding: 1.5rem;
+  background: white;
+  border-bottom: 1px solid #e9ecef;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.back-button {
+  background: none;
+  border: 1px solid #dee2e6;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #495057;
+  margin-bottom: 1rem;
+  transition: all 0.2s;
+}
+
+.back-button:hover {
+  background: #f8f9fa;
+  border-color: #adb5bd;
+}
+
+.project-info h2 {
+  margin: 0 0 0.5rem 0;
+  color: #2c3e50;
+}
+
+.project-path {
+  color: #6c757d;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  font-family: "Courier New", Courier, monospace;
+}
+
+.claude-directory-info {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-top: 1rem;
+}
+
+.claude-directory-info h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  color: #495057;
+}
+
+.claude-directory-info p {
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+  color: #6c757d;
+}
+
+/* Project sessions layout - Similar to session browser */
+.project-sessions-content {
+  display: grid;
+  grid-template-columns: minmax(300px, 1fr) minmax(500px, 2fr);
+  gap: 1.5rem;
+  flex: 1;
+  padding: 1.5rem;
+  overflow: hidden;
+  background: #f5f7fa;
+}
+
+.project-sessions-list {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow-y: auto;
+  height: 100%;
+  padding: 1.5rem;
+}
+
+.project-sessions-list h3 {
+  margin: 0 0 1rem 0;
+  color: #2c3e50;
+  font-size: 1.2rem;
+}
+
+.project-messages-panel {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .nav {
@@ -1063,6 +1162,13 @@ button:hover:not(:disabled) {
   .session-browser-content {
     grid-template-columns: 1fr;
     grid-template-rows: auto 1fr;
+  }
+
+  .project-sessions-content {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(300px, 1fr) minmax(400px, 2fr);
+    gap: 1rem;
+    padding: 1rem;
   }
 
   .stats-grid {

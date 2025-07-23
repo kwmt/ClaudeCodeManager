@@ -389,60 +389,57 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
         </div>
       </div>
 
-      <div className="project-content">
-        <div className="sessions-section">
+      <div className="project-sessions-content">
+        <div className="project-sessions-list">
           <h3>Sessions ({sessions.length})</h3>
-          <div className="sessions-list">
-            {sessions.length === 0 ? (
-              <div className="no-sessions">
-                No sessions found for this project
-              </div>
-            ) : (
-              sessions.map((session) => (
-                <div
-                  key={session.session_id}
-                  className={`session-item ${selectedSession?.session_id === session.session_id ? "selected" : ""}`}
-                  onClick={() => loadSessionMessages(session)}
-                >
-                  <div className="session-header">
-                    <h4>
-                      Session {session.session_id.substring(0, 8)}...
-                      <span
-                        className={`session-status-indicator ${session.is_processing ? "status-processing" : "status-completed"}`}
-                        title={
-                          session.is_processing
-                            ? "Session has sequences still processing"
-                            : "Session completed"
-                        }
-                      >
-                        <span className="status-dot"></span>
-                      </span>
-                    </h4>
-                  </div>
-                  {session.latest_content_preview && (
-                    <div className="session-preview">
-                      <p className="preview-text">
-                        {session.latest_content_preview}
-                      </p>
-                    </div>
-                  )}
-                  <div className="session-meta">
-                    <span>{session.message_count} messages</span>
-                    {session.git_branch && (
-                      <span>Branch: {session.git_branch}</span>
-                    )}
-                    <span>
-                      Updated:{" "}
-                      {new Date(session.updated_at).toLocaleDateString()}
+          {sessions.length === 0 ? (
+            <div className="no-sessions">
+              No sessions found for this project
+            </div>
+          ) : (
+            sessions.map((session) => (
+              <div
+                key={session.session_id}
+                className={`session-item ${selectedSession?.session_id === session.session_id ? "selected" : ""}`}
+                onClick={() => loadSessionMessages(session)}
+              >
+                <div className="session-header">
+                  <h4>
+                    Session {session.session_id.substring(0, 8)}...
+                    <span
+                      className={`session-status-indicator ${session.is_processing ? "status-processing" : "status-completed"}`}
+                      title={
+                        session.is_processing
+                          ? "Session has sequences still processing"
+                          : "Session completed"
+                      }
+                    >
+                      <span className="status-dot"></span>
                     </span>
-                  </div>
+                  </h4>
                 </div>
-              ))
-            )}
-          </div>
+                {session.latest_content_preview && (
+                  <div className="session-preview">
+                    <p className="preview-text">
+                      {session.latest_content_preview}
+                    </p>
+                  </div>
+                )}
+                <div className="session-meta">
+                  <span>{session.message_count} messages</span>
+                  {session.git_branch && (
+                    <span>Branch: {session.git_branch}</span>
+                  )}
+                  <span>
+                    Updated: {new Date(session.updated_at).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+            ))
+          )}
         </div>
 
-        <div className="messages-section">
+        <div className="project-messages-panel">
           {selectedSession ? (
             <>
               <div className="messages-header">
