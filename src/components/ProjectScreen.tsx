@@ -387,25 +387,25 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
         </div>
       </div>
 
-      <div className="project-sessions-content">
-        <div className="project-sessions-list">
-          <div className="project-tabs">
-            <button
-              className={`tab-button ${activeTab === "sessions" ? "active" : ""}`}
-              onClick={() => setActiveTab("sessions")}
-            >
-              Sessions ({sessions.length})
-            </button>
-            <button
-              className={`tab-button ${activeTab === "directory" ? "active" : ""}`}
-              onClick={() => setActiveTab("directory")}
-            >
-              .claude Directory
-            </button>
-          </div>
+      <div className="project-tabs">
+        <button
+          className={`tab-button ${activeTab === "sessions" ? "active" : ""}`}
+          onClick={() => setActiveTab("sessions")}
+        >
+          Sessions ({sessions.length})
+        </button>
+        <button
+          className={`tab-button ${activeTab === "directory" ? "active" : ""}`}
+          onClick={() => setActiveTab("directory")}
+        >
+          .claude Directory
+        </button>
+      </div>
 
-          {activeTab === "sessions" ? (
-            sessions.length === 0 ? (
+      {activeTab === "sessions" ? (
+        <div className="project-sessions-content">
+          <div className="project-sessions-list">
+            {sessions.length === 0 ? (
               <div className="no-sessions">
                 No sessions found for this project
               </div>
@@ -450,28 +450,152 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
                   </div>
                 </div>
               ))
-            )
-          ) : (
-            <div className="claude-directory-content">
-              <h4>Directory Information</h4>
-              <div className="directory-info-item">
-                <span className="info-label">Path:</span>
-                <span className="info-value">{normalizedPath}/.claude</span>
+            )}
+          </div>
+
+          <div className="project-messages-panel">
+            {selectedSession ? (
+              <>
+                <div className="messages-header">
+                  <div className="messages-title">
+                    <h3>
+                      Messages for Session{" "}
+                      {selectedSession.session_id.substring(0, 8)}...
+                    </h3>
+                    <div className="session-id-container">
+                      <p>Session ID: {selectedSession.session_id}</p>
+                      <button
+                        className="open-file-button"
+                        onClick={() =>
+                          api.openSessionFile(selectedSession.session_id)
+                        }
+                        title="Open JSONL file in Finder"
+                      >
+                        📂
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="message-controls">
+                    <div className="message-search">
+                      <input
+                        type="text"
+                        placeholder="Search messages..."
+                        value={messageSearchQuery}
+                        onChange={(e) => setMessageSearchQuery(e.target.value)}
+                        className="message-search-input"
+                      />
+                    </div>
+
+                    <div className="message-type-filter">
+                      <select
+                        value={selectedMessageType}
+                        onChange={(e) => setSelectedMessageType(e.target.value)}
+                        className="message-type-select"
+                      >
+                        <option value="all">All Types</option>
+                        <option value="user">User</option>
+                        <option value="assistant">Assistant</option>
+                        <option value="summary">Summary</option>
+                      </select>
+                    </div>
+
+                    <div className="markdown-toggle">
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={renderAsMarkdown}
+                          onChange={(e) =>
+                            setRenderAsMarkdown(e.target.checked)
+                          }
+                        />
+                        Markdown
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {loadingMessages ? (
+                  <div className="loading">Loading messages...</div>
+                ) : filteredMessages.length === 0 ? (
+                  <div className="no-messages">
+                    {messageSearchQuery || selectedMessageType !== "all"
+                      ? "No messages match the current filters"
+                      : "No messages found"}
+                  </div>
+                ) : (
+                  <div className="messages-list" ref={messageListRef}>
+                    {filteredMessages.map((message, index) => {
+                      const messageId =
+                        message.message_type === "summary"
+                          ? `summary-${index}`
+                          : message.uuid;
+                      return (
+                        <div
+                          key={messageId}
+                          id={`message-${messageId}`}
+                          className={`message ${message.message_type.toLowerCase()}`}
+                        >
+                          <div className="message-header">
+                            <span className="message-type">
+                              {message.message_type}
+                              {message.message_type !== "summary" && (
+                                <span
+                                  className={`status-indicator status-${message.processing_status}`}
+                                  title={`Status: ${message.processing_status}${message.message_type === "assistant" && message.stop_reason ? ` (${message.stop_reason})` : ""}`}
+                                >
+                                  <span className="status-dot"></span>
+                                </span>
+                              )}
+                            </span>
+                            <span className="message-time">
+                              {message.message_type === "summary"
+                                ? ""
+                                : new Date(message.timestamp).toLocaleString()}
+                            </span>
+                          </div>
+                          {renderMessageContent(message)}
+                          {message.message_type !== "summary" &&
+                            message.cwd && (
+                              <div className="message-meta">
+                                CWD: {message.cwd}
+                              </div>
+                            )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="no-session-selected">
+                Select a session to view its messages
               </div>
-              <div className="directory-info-item">
-                <span className="info-label">In Home Directory:</span>
-                <span className="info-value">
-                  {inHomeDirectory ? "Yes" : "No"}
-                </span>
-              </div>
-              <div className="directory-info-item">
-                <span className="info-label">Project Root:</span>
-                <span className="info-value">{normalizedPath}</span>
-              </div>
-              <h4>Directory Structure</h4>
-              <div className="directory-structure">
-                <pre>
-                  {`.claude/
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="project-directory-content">
+          <div className="claude-directory-panel">
+            <h3>Directory Information</h3>
+            <div className="directory-info-item">
+              <span className="info-label">Path:</span>
+              <span className="info-value">{normalizedPath}/.claude</span>
+            </div>
+            <div className="directory-info-item">
+              <span className="info-label">In Home Directory:</span>
+              <span className="info-value">
+                {inHomeDirectory ? "Yes" : "No"}
+              </span>
+            </div>
+            <div className="directory-info-item">
+              <span className="info-label">Project Root:</span>
+              <span className="info-value">{normalizedPath}</span>
+            </div>
+            <h4>Directory Structure</h4>
+            <div className="directory-structure">
+              <pre>
+                {`.claude/
 ├── projects/
 │   └── ${projectPath}/
 │       └── *.jsonl (session files)
@@ -479,128 +603,18 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
 │   └── ${projectPath}.json
 ├── command_history.log
 └── settings.json`}
-                </pre>
-              </div>
+              </pre>
             </div>
-          )}
+          </div>
+          <div className="directory-details-panel">
+            <h3>Directory Details</h3>
+            <p>
+              This is where additional directory information and statistics can
+              be displayed.
+            </p>
+          </div>
         </div>
-
-        <div className="project-messages-panel">
-          {selectedSession ? (
-            <>
-              <div className="messages-header">
-                <div className="messages-title">
-                  <h3>
-                    Messages for Session{" "}
-                    {selectedSession.session_id.substring(0, 8)}...
-                  </h3>
-                  <div className="session-id-container">
-                    <p>Session ID: {selectedSession.session_id}</p>
-                    <button
-                      className="open-file-button"
-                      onClick={() =>
-                        api.openSessionFile(selectedSession.session_id)
-                      }
-                      title="Open JSONL file in Finder"
-                    >
-                      📂
-                    </button>
-                  </div>
-                </div>
-
-                <div className="message-controls">
-                  <div className="message-search">
-                    <input
-                      type="text"
-                      placeholder="Search messages..."
-                      value={messageSearchQuery}
-                      onChange={(e) => setMessageSearchQuery(e.target.value)}
-                      className="message-search-input"
-                    />
-                  </div>
-
-                  <div className="message-type-filter">
-                    <select
-                      value={selectedMessageType}
-                      onChange={(e) => setSelectedMessageType(e.target.value)}
-                      className="message-type-select"
-                    >
-                      <option value="all">All Types</option>
-                      <option value="user">User</option>
-                      <option value="assistant">Assistant</option>
-                      <option value="summary">Summary</option>
-                    </select>
-                  </div>
-
-                  <div className="markdown-toggle">
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={renderAsMarkdown}
-                        onChange={(e) => setRenderAsMarkdown(e.target.checked)}
-                      />
-                      Markdown
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              {loadingMessages ? (
-                <div className="loading">Loading messages...</div>
-              ) : filteredMessages.length === 0 ? (
-                <div className="no-messages">
-                  {messageSearchQuery || selectedMessageType !== "all"
-                    ? "No messages match the current filters"
-                    : "No messages found"}
-                </div>
-              ) : (
-                <div className="messages-list" ref={messageListRef}>
-                  {filteredMessages.map((message, index) => {
-                    const messageId =
-                      message.message_type === "summary"
-                        ? `summary-${index}`
-                        : message.uuid;
-                    return (
-                      <div
-                        key={messageId}
-                        id={`message-${messageId}`}
-                        className={`message ${message.message_type.toLowerCase()}`}
-                      >
-                        <div className="message-header">
-                          <span className="message-type">
-                            {message.message_type}
-                            {message.message_type !== "summary" && (
-                              <span
-                                className={`status-indicator status-${message.processing_status}`}
-                                title={`Status: ${message.processing_status}${message.message_type === "assistant" && message.stop_reason ? ` (${message.stop_reason})` : ""}`}
-                              >
-                                <span className="status-dot"></span>
-                              </span>
-                            )}
-                          </span>
-                          <span className="message-time">
-                            {message.message_type === "summary"
-                              ? ""
-                              : new Date(message.timestamp).toLocaleString()}
-                          </span>
-                        </div>
-                        {renderMessageContent(message)}
-                        {message.message_type !== "summary" && message.cwd && (
-                          <div className="message-meta">CWD: {message.cwd}</div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="no-session-selected">
-              Select a session to view its messages
-            </div>
-          )}
-        </div>
-      </div>
+      )}
     </div>
   );
 };

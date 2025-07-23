@@ -107,7 +107,9 @@ describe("ProjectScreen", () => {
     fireEvent.click(screen.getByText(".claude Directory"));
 
     await waitFor(() => {
-      expect(screen.getByText("Directory Information")).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "Directory Information" }),
+      ).toBeInTheDocument();
     });
 
     expect(

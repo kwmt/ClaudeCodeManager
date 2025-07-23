@@ -1151,7 +1151,8 @@ button:hover:not(:disabled) {
 .project-tabs {
   display: flex;
   gap: 0.5rem;
-  margin-bottom: 1.5rem;
+  padding: 0 1.5rem;
+  background: white;
   border-bottom: 2px solid #e9ecef;
 }
 
@@ -1177,20 +1178,6 @@ button:hover:not(:disabled) {
   font-weight: 600;
 }
 
-/* Claude directory content */
-.claude-directory-content {
-  padding: 1rem 0;
-}
-
-.claude-directory-content h4 {
-  margin: 1.5rem 0 1rem 0;
-  color: #2c3e50;
-  font-size: 1.1rem;
-}
-
-.claude-directory-content h4:first-child {
-  margin-top: 0;
-}
 
 .directory-info-item {
   display: flex;
@@ -1229,6 +1216,53 @@ button:hover:not(:disabled) {
   color: #495057;
 }
 
+/* Project directory content layout */
+.project-directory-content {
+  display: grid;
+  grid-template-columns: minmax(400px, 1fr) minmax(500px, 2fr);
+  gap: 1.5rem;
+  flex: 1;
+  padding: 1.5rem;
+  overflow: hidden;
+  background: #f5f7fa;
+}
+
+.claude-directory-panel {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.claude-directory-panel h3 {
+  margin: 0 0 1.5rem 0;
+  color: #2c3e50;
+  font-size: 1.2rem;
+}
+
+.claude-directory-panel h4 {
+  margin: 2rem 0 1rem 0;
+  color: #2c3e50;
+  font-size: 1.1rem;
+}
+
+.directory-details-panel {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.directory-details-panel h3 {
+  margin: 0 0 1rem 0;
+  color: #2c3e50;
+  font-size: 1.2rem;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .nav {
@@ -1249,6 +1283,13 @@ button:hover:not(:disabled) {
   .project-sessions-content {
     grid-template-columns: 1fr;
     grid-template-rows: minmax(300px, 1fr) minmax(400px, 2fr);
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .project-directory-content {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
     gap: 1rem;
     padding: 1rem;
   }
