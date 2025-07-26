@@ -221,6 +221,7 @@ mod tests {
             last_activity: chrono::Utc::now(),
             total_messages: 100,
             active_todos: 3,
+            ide_info: None,
         };
 
         assert_eq!(summary.session_count, 5);

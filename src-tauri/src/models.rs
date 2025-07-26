@@ -165,6 +165,7 @@ pub struct ProjectSummary {
     pub last_activity: DateTime<Utc>,
     pub total_messages: usize,
     pub active_todos: usize,
+    pub ide_info: Option<IdeInfo>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

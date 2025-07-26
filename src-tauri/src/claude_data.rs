@@ -620,14 +620,19 @@ impl ClaudeDataManager {
         let mut project_map: HashMap<String, ProjectSummary> = HashMap::new();
 
         for session in sessions {
+            // Use the session's project_path as-is since it's already been processed
+            // in parse_session_file to prefer CWD over encoded directory names
+            let project_path = &session.project_path;
+
             let entry = project_map
-                .entry(session.project_path.clone())
+                .entry(project_path.clone())
                 .or_insert_with(|| ProjectSummary {
-                    project_path: session.project_path.clone(),
+                    project_path: project_path.clone(),
                     session_count: 0,
                     last_activity: session.file_modified_time,
                     total_messages: 0,
                     active_todos: 0,
+                    ide_info: None,
                 });
 
             entry.session_count += 1;
@@ -636,6 +641,11 @@ impl ClaudeDataManager {
             // Update last_activity to the latest file_modified_time
             if session.file_modified_time > entry.last_activity {
                 entry.last_activity = session.file_modified_time;
+            }
+
+            // Update IDE info if this session has it and we don't have it yet
+            if entry.ide_info.is_none() && session.ide_info.is_some() {
+                entry.ide_info = session.ide_info.clone();
             }
         }
 

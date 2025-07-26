@@ -138,11 +138,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onProjectClick }) => {
                   <span>{project.session_count} sessions</span>
                   <span>{project.total_messages} messages</span>
                   <span>{project.active_todos} TODOs</span>
+                  {project.ide_info && <span>PID: {project.ide_info.pid}</span>}
                 </div>
                 <p className="last-activity">
                   Last activity:{" "}
                   {new Date(project.last_activity).toLocaleString()}
                 </p>
+                {project.ide_info && (
+                  <div className="ide-info">
+                    <p className="ide-name">IDE: {project.ide_info.ide_name}</p>
+                  </div>
+                )}
               </div>
             ))}
           </div>
