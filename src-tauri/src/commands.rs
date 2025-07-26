@@ -1,5 +1,6 @@
 use crate::claude_data::ClaudeDataManager;
 use crate::models::*;
+use std::collections::HashMap;
 use std::sync::Arc;
 use tauri::State;
 
@@ -219,4 +220,21 @@ pub async fn open_session_file(
     }
 
     Ok(())
+}
+
+#[tauri::command]
+pub async fn get_project_path_mapping(
+    data_manager: State<'_, Arc<ClaudeDataManager>>,
+) -> Result<HashMap<String, String>, String> {
+    data_manager
+        .get_project_path_mapping()
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_home_directory() -> Result<String, String> {
+    dirs::home_dir()
+        .ok_or_else(|| "Could not find home directory".to_string())
+        .map(|path| path.to_string_lossy().to_string())
 }

@@ -99,11 +99,11 @@ describe("Session Updates Optimization", () => {
       {
         session_id: "session-1",
         project_path: "/Users/developer/projects/web-app",
-        created_at: "2025-07-20T10:00:00Z",
-        updated_at: "2025-07-20T11:30:00Z",
+        timestamp: "2025-07-20T10:00:00Z",
         message_count: 15,
         git_branch: "main",
         is_processing: false,
+        file_modified_time: "2025-07-20T10:30:00Z",
       },
     ];
     vi.mocked(api.getAllSessions).mockResolvedValueOnce(mockSessions);

@@ -15,13 +15,13 @@ pub struct IdeInfo {
 pub struct ClaudeSession {
     pub session_id: String,
     pub project_path: String,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub timestamp: DateTime<Utc>,
     pub message_count: usize,
     pub git_branch: Option<String>,
     pub latest_content_preview: Option<String>,
     pub ide_info: Option<IdeInfo>,
     pub is_processing: bool,
+    pub file_modified_time: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -165,6 +165,7 @@ pub struct ProjectSummary {
     pub last_activity: DateTime<Utc>,
     pub total_messages: usize,
     pub active_todos: usize,
+    pub ide_info: Option<IdeInfo>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

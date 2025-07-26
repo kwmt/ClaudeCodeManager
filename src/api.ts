@@ -133,6 +133,24 @@ export const api = {
     return Promise.resolve();
   },
 
+  // Path mapping
+  async getProjectPathMapping(): Promise<Record<string, string>> {
+    if (isTauri && tauriApi) {
+      return tauriApi.invoke("get_project_path_mapping");
+    }
+    // Mock API returns empty mapping
+    return {};
+  },
+
+  // Home directory
+  async getHomeDirectory(): Promise<string> {
+    if (isTauri && tauriApi) {
+      return tauriApi.invoke("get_home_directory");
+    }
+    // Mock API returns a default home directory
+    return "/Users/user";
+  },
+
   // Real-time monitoring
   async startFileWatcher(): Promise<void> {
     if (isTauri && tauriApi) {

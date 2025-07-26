@@ -2,8 +2,10 @@
 mod tests {
     use crate::claude_data::ClaudeDataManager;
     use crate::models::*;
+    use chrono::{DateTime, Utc};
     use std::fs;
     use std::path::Path;
+    use std::time::SystemTime;
     use tempfile::TempDir;
 
     fn create_test_claude_dir() -> TempDir {
@@ -168,24 +170,24 @@ mod tests {
             ClaudeSession {
                 session_id: "s1".to_string(),
                 project_path: "/project1".to_string(),
-                created_at: chrono::Utc::now(),
-                updated_at: chrono::Utc::now(),
+                timestamp: chrono::Utc::now(),
                 message_count: 10,
                 git_branch: Some("main".to_string()),
                 latest_content_preview: Some("Test session 1 content preview".to_string()),
                 ide_info: None,
                 is_processing: false,
+                file_modified_time: chrono::Utc::now(),
             },
             ClaudeSession {
                 session_id: "s2".to_string(),
                 project_path: "/project2".to_string(),
-                created_at: chrono::Utc::now(),
-                updated_at: chrono::Utc::now(),
+                timestamp: chrono::Utc::now(),
                 message_count: 5,
                 git_branch: Some("dev".to_string()),
                 latest_content_preview: Some("Test session 2 content preview".to_string()),
                 ide_info: None,
                 is_processing: false,
+                file_modified_time: chrono::Utc::now(),
             },
         ];
 
@@ -219,6 +221,7 @@ mod tests {
             last_activity: chrono::Utc::now(),
             total_messages: 100,
             active_todos: 3,
+            ide_info: None,
         };
 
         assert_eq!(summary.session_count, 5);
@@ -1293,5 +1296,153 @@ mod tests {
         } else {
             panic!("Expected Assistant message variant");
         }
+    }
+
+    #[tokio::test]
+    async fn test_file_modified_time_in_sessions() {
+        let temp_dir = create_test_claude_dir();
+        let claude_dir = temp_dir.path().join(".claude");
+
+        let project_dir = claude_dir.join("projects").join("time-test-project");
+        fs::create_dir_all(&project_dir).unwrap();
+
+        // Create a test session file
+        let session_content = r#"{"type":"user","message":{"role":"user","content":"Test message"},"uuid":"test-user","timestamp":"2025-07-20T22:56:38.702Z","sessionId":"time-test","cwd":"/test/path","gitBranch":"main"}"#;
+        let session_file = project_dir.join("time-test.jsonl");
+        fs::write(&session_file, session_content).unwrap();
+
+        // Get the file's modification time before parsing
+        let expected_mod_time = fs::metadata(&session_file).unwrap().modified().unwrap();
+        let expected_datetime = DateTime::<Utc>::from(expected_mod_time);
+
+        let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
+        let sessions = manager.get_all_sessions().await.unwrap();
+
+        assert_eq!(sessions.len(), 1);
+        let session = &sessions[0];
+
+        // Verify that file_modified_time is set correctly
+        assert_eq!(session.session_id, "time-test");
+        assert_eq!(session.project_path, "/test/path");
+
+        // The file_modified_time should be close to when we created the file
+        let time_diff = (session.file_modified_time - expected_datetime)
+            .num_seconds()
+            .abs();
+        assert!(
+            time_diff <= 2,
+            "File modification time should be within 2 seconds of expected time"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_project_summary_last_activity_from_file_modified_time() {
+        let temp_dir = create_test_claude_dir();
+        let claude_dir = temp_dir.path().join(".claude");
+
+        // Create two projects with different modification times
+        let project1_dir = claude_dir.join("projects").join("project1");
+        let project2_dir = claude_dir.join("projects").join("project2");
+        fs::create_dir_all(&project1_dir).unwrap();
+        fs::create_dir_all(&project2_dir).unwrap();
+
+        // Create session files with some delay between them
+        let session1_content = r#"{"type":"user","message":{"role":"user","content":"Project 1 message"},"uuid":"test-user-1","timestamp":"2025-07-20T22:56:38.702Z","sessionId":"session1","cwd":"/test/project1","gitBranch":"main"}"#;
+        let session1_file = project1_dir.join("session1.jsonl");
+        fs::write(&session1_file, session1_content).unwrap();
+
+        // Sleep to ensure different modification times
+        std::thread::sleep(std::time::Duration::from_millis(100));
+
+        let session2_content = r#"{"type":"user","message":{"role":"user","content":"Project 2 message"},"uuid":"test-user-2","timestamp":"2025-07-20T22:56:40.702Z","sessionId":"session2","cwd":"/test/project2","gitBranch":"main"}"#;
+        let session2_file = project2_dir.join("session2.jsonl");
+        fs::write(&session2_file, session2_content).unwrap();
+
+        // Add another session to project1 with later modification time
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        let session1b_content = r#"{"type":"user","message":{"role":"user","content":"Project 1 later message"},"uuid":"test-user-1b","timestamp":"2025-07-20T22:56:42.702Z","sessionId":"session1b","cwd":"/test/project1","gitBranch":"main"}"#;
+        let session1b_file = project1_dir.join("session1b.jsonl");
+        fs::write(&session1b_file, session1b_content).unwrap();
+
+        let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
+        let project_summaries = manager.get_project_summary().await.unwrap();
+
+        // Should have 2 projects
+        assert_eq!(project_summaries.len(), 2);
+
+        // Projects should be sorted by last_activity (most recent first)
+        let first_project = &project_summaries[0];
+        let second_project = &project_summaries[1];
+
+        // Project1 should be first because session1b was created last
+        assert_eq!(first_project.project_path, "/test/project1");
+        assert_eq!(first_project.session_count, 2);
+        assert_eq!(second_project.project_path, "/test/project2");
+        assert_eq!(second_project.session_count, 1);
+
+        // Verify that last_activity is based on file modification time, not content timestamp
+        // Project1's last_activity should be later than Project2's
+        assert!(first_project.last_activity > second_project.last_activity);
+    }
+
+    #[tokio::test]
+    async fn test_multiple_sessions_in_same_project_last_activity() {
+        let temp_dir = create_test_claude_dir();
+        let claude_dir = temp_dir.path().join(".claude");
+
+        let project_dir = claude_dir.join("projects").join("multi-session-project");
+        fs::create_dir_all(&project_dir).unwrap();
+
+        // Create multiple session files with different modification times
+        let sessions = vec![
+            ("session_old.jsonl", "2025-07-20T10:00:00.000Z"),
+            ("session_middle.jsonl", "2025-07-20T12:00:00.000Z"),
+            ("session_new.jsonl", "2025-07-20T14:00:00.000Z"),
+        ];
+
+        let mut latest_file_time: Option<SystemTime> = None;
+
+        for (i, (filename, timestamp)) in sessions.iter().enumerate() {
+            let content = format!(
+                r#"{{"type":"user","message":{{"role":"user","content":"Message {}"}},"uuid":"test-user-{}","timestamp":"{}","sessionId":"session-{}","cwd":"/test/multi-project","gitBranch":"main"}}"#,
+                i + 1,
+                i + 1,
+                timestamp,
+                i + 1
+            );
+            let session_file = project_dir.join(filename);
+            fs::write(&session_file, content).unwrap();
+
+            // Add a small delay to ensure different modification times
+            if i < sessions.len() - 1 {
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
+
+            // Track the latest file modification time
+            let file_time = fs::metadata(&session_file).unwrap().modified().unwrap();
+            if latest_file_time.is_none() || file_time > latest_file_time.unwrap() {
+                latest_file_time = Some(file_time);
+            }
+        }
+
+        let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
+        let project_summaries = manager.get_project_summary().await.unwrap();
+
+        assert_eq!(project_summaries.len(), 1);
+        let project = &project_summaries[0];
+
+        assert_eq!(project.project_path, "/test/multi-project");
+        assert_eq!(project.session_count, 3);
+        assert_eq!(project.total_messages, 3);
+
+        // Verify that last_activity matches the latest file modification time
+        let expected_datetime = DateTime::<Utc>::from(latest_file_time.unwrap());
+        let time_diff = (project.last_activity - expected_datetime)
+            .num_seconds()
+            .abs();
+        assert!(
+            time_diff <= 2,
+            "Project last_activity should match the latest file modification time"
+        );
     }
 }

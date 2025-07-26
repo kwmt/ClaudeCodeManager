@@ -29,16 +29,14 @@ describe("SessionBrowser", () => {
     {
       session_id: "session1",
       project_path: "/test/project1",
-      created_at: "2025-07-20T10:00:00Z",
-      updated_at: "2025-07-20T11:00:00Z",
+      timestamp: "2025-07-20T10:00:00Z",
       message_count: 5,
       git_branch: "main",
     },
     {
       session_id: "session2",
       project_path: "/test/project2",
-      created_at: "2025-07-19T10:00:00Z",
-      updated_at: "2025-07-19T11:00:00Z",
+      timestamp: "2025-07-19T10:00:00Z",
       message_count: 3,
       git_branch: "develop",
     },

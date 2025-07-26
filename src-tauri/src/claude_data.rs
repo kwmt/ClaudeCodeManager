@@ -106,7 +106,7 @@ impl ClaudeDataManager {
             }
         }
 
-        sessions.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+        sessions.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
         Ok(sessions)
     }
 
@@ -116,16 +116,18 @@ impl ClaudeDataManager {
         session_id: &str,
         project_path: &str,
     ) -> Result<ClaudeSession, Box<dyn std::error::Error>> {
+        // Get file modification time first
+        let file_modified_time = self.get_file_modified_time(file_path).await?;
         let file = fs::File::open(file_path)?;
         let reader = BufReader::new(file);
 
         let mut message_count = 0;
-        let mut created_at: Option<DateTime<Utc>> = None;
-        let mut updated_at: Option<DateTime<Utc>> = None;
+        let mut first_timestamp: Option<DateTime<Utc>> = None;
         let mut git_branch: Option<String> = None;
         let mut latest_content_preview: Option<String> = None;
         let mut latest_timestamp: Option<DateTime<Utc>> = None;
         let mut has_incomplete_sequence = false;
+        let mut actual_project_path: Option<String> = None;
 
         for line in reader.lines() {
             let line = line?;
@@ -134,11 +136,9 @@ impl ClaudeDataManager {
 
                 if let Some(timestamp_str) = message.get("timestamp").and_then(|t| t.as_str()) {
                     if let Ok(timestamp) = timestamp_str.parse::<DateTime<Utc>>() {
-                        if created_at.is_none() || timestamp < created_at.unwrap() {
-                            created_at = Some(timestamp);
-                        }
-                        if updated_at.is_none() || timestamp > updated_at.unwrap() {
-                            updated_at = Some(timestamp);
+                        // Keep the first timestamp we encounter
+                        if first_timestamp.is_none() {
+                            first_timestamp = Some(timestamp);
                         }
 
                         // Extract latest content for preview
@@ -157,6 +157,15 @@ impl ClaudeDataManager {
                     }
                 }
 
+                // Get the actual project path from cwd
+                if actual_project_path.is_none() {
+                    if let Some(cwd) = message.get("cwd").and_then(|c| c.as_str()) {
+                        if !cwd.is_empty() {
+                            actual_project_path = Some(cwd.to_string());
+                        }
+                    }
+                }
+
                 // Check for incomplete sequences (assistant messages without stop_reason)
                 if message.get("type").and_then(|t| t.as_str()) == Some("assistant") {
                     let has_stop_reason = message
@@ -171,18 +180,21 @@ impl ClaudeDataManager {
             }
         }
 
-        let ide_info = self.find_ide_info_for_project(project_path).await;
+        // Use actual project path from cwd if available, otherwise fall back to encoded path
+        let display_project_path = actual_project_path.unwrap_or_else(|| project_path.to_string());
+
+        let ide_info = self.find_ide_info_for_project(&display_project_path).await;
 
         Ok(ClaudeSession {
             session_id: session_id.to_string(),
-            project_path: project_path.to_string(),
-            created_at: created_at.unwrap_or_else(Utc::now),
-            updated_at: updated_at.unwrap_or_else(Utc::now),
+            project_path: display_project_path,
+            timestamp: first_timestamp.unwrap_or_else(Utc::now),
             message_count,
             git_branch,
             latest_content_preview,
             ide_info,
             is_processing: has_incomplete_sequence,
+            file_modified_time,
         })
     }
 
@@ -608,24 +620,39 @@ impl ClaudeDataManager {
         let mut project_map: HashMap<String, ProjectSummary> = HashMap::new();
 
         for session in sessions {
+            // Use the session's project_path as-is since it's already been processed
+            // in parse_session_file to prefer CWD over encoded directory names
+            let project_path = &session.project_path;
+
             let entry = project_map
-                .entry(session.project_path.clone())
+                .entry(project_path.clone())
                 .or_insert_with(|| ProjectSummary {
-                    project_path: session.project_path.clone(),
+                    project_path: project_path.clone(),
                     session_count: 0,
-                    last_activity: session.updated_at,
+                    last_activity: session.file_modified_time,
                     total_messages: 0,
                     active_todos: 0,
+                    ide_info: None,
                 });
 
             entry.session_count += 1;
             entry.total_messages += session.message_count;
-            if session.updated_at > entry.last_activity {
-                entry.last_activity = session.updated_at;
+
+            // Update last_activity to the latest file_modified_time
+            if session.file_modified_time > entry.last_activity {
+                entry.last_activity = session.file_modified_time;
+            }
+
+            // Update IDE info if this session has it and we don't have it yet
+            if entry.ide_info.is_none() && session.ide_info.is_some() {
+                entry.ide_info = session.ide_info.clone();
             }
         }
 
-        Ok(project_map.into_values().collect())
+        let mut projects: Vec<ProjectSummary> = project_map.into_values().collect();
+        // Sort by last_activity in descending order (most recent first)
+        projects.sort_by(|a, b| b.last_activity.cmp(&a.last_activity));
+        Ok(projects)
     }
 
     pub async fn get_session_stats(&self) -> Result<SessionStats, Box<dyn std::error::Error>> {
@@ -711,7 +738,7 @@ impl ClaudeDataManager {
             }
         }
 
-        changed_sessions.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+        changed_sessions.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
         Ok(changed_sessions)
     }
 
@@ -819,5 +846,71 @@ impl ClaudeDataManager {
         }
 
         Ok(())
+    }
+
+    pub async fn get_project_path_mapping(
+        &self,
+    ) -> Result<HashMap<String, String>, Box<dyn std::error::Error>> {
+        let mut mapping = HashMap::new();
+        let projects_dir = self.claude_dir.join("projects");
+
+        if !projects_dir.exists() {
+            return Ok(mapping);
+        }
+
+        for entry in fs::read_dir(&projects_dir)? {
+            let entry = entry?;
+            let encoded_path = entry.file_name().to_string_lossy().to_string();
+
+            if !encoded_path.starts_with("-Users-") {
+                continue;
+            }
+
+            // Try to read the first few messages from any session file to get the cwd
+            let session_dir = entry.path();
+            if let Ok(session_files) = fs::read_dir(&session_dir) {
+                for file in session_files.flatten() {
+                    let file_path = file.path();
+                    if file_path.extension().is_some_and(|ext| ext == "jsonl") {
+                        if let Some(actual_path) =
+                            self.extract_cwd_from_session_file(&file_path).await?
+                        {
+                            mapping.insert(encoded_path.clone(), actual_path);
+                            break; // Found one, move to next project
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(mapping)
+    }
+
+    async fn extract_cwd_from_session_file(
+        &self,
+        file_path: &Path,
+    ) -> Result<Option<String>, Box<dyn std::error::Error>> {
+        let file = fs::File::open(file_path)?;
+        let reader = BufReader::new(file);
+        let mut lines = reader.lines();
+
+        // Read only the first few lines to avoid parsing entire large files
+        for _ in 0..10 {
+            if let Some(line) = lines.next() {
+                let line = line?;
+                if let Ok(message) = serde_json::from_str::<serde_json::Value>(&line) {
+                    // Extract cwd field directly from JSON
+                    if let Some(cwd) = message.get("cwd").and_then(|c| c.as_str()) {
+                        if !cwd.is_empty() {
+                            return Ok(Some(cwd.to_string()));
+                        }
+                    }
+                }
+            } else {
+                break;
+            }
+        }
+
+        Ok(None)
     }
 }
