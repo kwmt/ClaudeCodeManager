@@ -869,16 +869,14 @@ impl ClaudeDataManager {
             // Try to read the first few messages from any session file to get the cwd
             let session_dir = entry.path();
             if let Ok(session_files) = fs::read_dir(&session_dir) {
-                for session_file in session_files {
-                    if let Ok(file) = session_file {
-                        let file_path = file.path();
-                        if file_path.extension().map_or(false, |ext| ext == "jsonl") {
-                            if let Some(actual_path) =
-                                self.extract_cwd_from_session_file(&file_path).await?
-                            {
-                                mapping.insert(encoded_path.clone(), actual_path);
-                                break; // Found one, move to next project
-                            }
+                for file in session_files.flatten() {
+                    let file_path = file.path();
+                    if file_path.extension().is_some_and(|ext| ext == "jsonl") {
+                        if let Some(actual_path) =
+                            self.extract_cwd_from_session_file(&file_path).await?
+                        {
+                            mapping.insert(encoded_path.clone(), actual_path);
+                            break; // Found one, move to next project
                         }
                     }
                 }
