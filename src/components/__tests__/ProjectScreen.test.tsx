@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { ProjectScreen } from "../ProjectScreen";
 import { api } from "../../api";
+import { setPathMappingCache, setHomeDirCache } from "../../utils/pathUtils";
 
 vi.mock("../../api");
 const mockApi = vi.mocked(api);
@@ -18,22 +19,22 @@ const mockSessions = [
   {
     session_id: "session-123",
     project_path: "-Users-john-documents-test-project",
-    created_at: "2024-01-15T09:00:00Z",
-    updated_at: "2024-01-15T10:00:00Z",
+    timestamp: "2024-01-15T09:00:00Z",
     message_count: 10,
     git_branch: "main",
     latest_content_preview: "Test preview content",
     is_processing: false,
+    file_modified_time: "2024-01-15T10:30:00Z",
   },
   {
     session_id: "session-456",
     project_path: "-Users-john-documents-test-project",
-    created_at: "2024-01-14T09:00:00Z",
-    updated_at: "2024-01-14T11:00:00Z",
+    timestamp: "2024-01-14T09:00:00Z",
     message_count: 15,
     git_branch: "feature/test",
     latest_content_preview: "Another preview",
     is_processing: true,
+    file_modified_time: "2024-01-14T11:15:00Z",
   },
 ];
 
@@ -66,6 +67,15 @@ describe("ProjectScreen", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Set up path mapping cache for tests
+    setPathMappingCache({
+      "-Users-john-documents-test-project":
+        "/Users/john.documents_test/project",
+    });
+
+    // Set up home directory cache for tests
+    setHomeDirCache("/Users/john.documents_test");
     mockApi.getAllSessions.mockResolvedValue(mockSessions);
     mockApi.getProjectSummary.mockResolvedValue([mockProjectSummary]);
     mockApi.getSessionMessages.mockResolvedValue(mockMessages);
@@ -84,7 +94,7 @@ describe("ProjectScreen", () => {
     });
 
     expect(
-      screen.getByText("/Users/john/documents/test/project"),
+      screen.getByText("/Users/john.documents_test/project"),
     ).toBeInTheDocument();
     expect(screen.getByText("3 sessions")).toBeInTheDocument();
     expect(screen.getByText("25 messages")).toBeInTheDocument();
@@ -113,7 +123,7 @@ describe("ProjectScreen", () => {
     });
 
     expect(
-      screen.getByText("/Users/john/documents/test/project/.claude"),
+      screen.getByText("/Users/john.documents_test/project/.claude"),
     ).toBeInTheDocument();
     expect(screen.getByText("Yes")).toBeInTheDocument();
   });

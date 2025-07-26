@@ -1115,9 +1115,9 @@ button:hover:not(:disabled) {
 .project-sessions-content {
   display: grid;
   grid-template-columns: minmax(300px, 1fr) minmax(500px, 2fr);
-  gap: 1.5rem;
+  gap: 0;
   flex: 1;
-  padding: 1.5rem;
+  padding: 1.5rem 0;
   overflow: hidden;
   background: #f5f7fa;
 }
@@ -1128,7 +1128,8 @@ button:hover:not(:disabled) {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   overflow-y: auto;
   height: 100%;
-  padding: 1.5rem;
+  padding: 1.5rem 0;
+  margin: 0;
 }
 
 .project-sessions-list h3 {
@@ -1145,6 +1146,7 @@ button:hover:not(:disabled) {
   display: flex;
   flex-direction: column;
   height: 100%;
+  margin: 0 1.5rem;
 }
 
 /* Project tabs */
@@ -1232,6 +1234,7 @@ button:hover:not(:disabled) {
   overflow-y: auto;
   height: 100%;
   width: 100%;
+  margin: 0;
 }
 
 .claude-directory-panel h3 {

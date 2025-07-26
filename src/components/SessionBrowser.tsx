@@ -798,7 +798,7 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = ({
                     <span>Branch: {session.git_branch}</span>
                   )}
                   <span>
-                    Updated: {new Date(session.updated_at).toLocaleDateString()}
+                    Updated: {new Date(session.timestamp).toLocaleDateString()}
                   </span>
                 </div>
               </div>

@@ -30,7 +30,9 @@ pub fn run() {
             search_commands,
             export_session_data,
             activate_ide_window,
-            open_session_file
+            open_session_file,
+            get_project_path_mapping,
+            get_home_directory
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

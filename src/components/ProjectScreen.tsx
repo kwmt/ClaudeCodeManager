@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { marked } from "marked";
 import { api } from "../api";
 import {
-  normalizeProjectPath,
+  normalizeProjectPathSync,
   getProjectDisplayName,
   isPathInHomeDirectory,
 } from "../utils/pathUtils";
@@ -36,6 +36,7 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
   const [activeTab, setActiveTab] = useState<"sessions" | "directory">(
     "sessions",
   );
+  const [knownProjectPaths, setKnownProjectPaths] = useState<string[]>([]);
 
   const [messageSearchQuery, setMessageSearchQuery] = useState("");
   const [selectedMessageType, setSelectedMessageType] = useState<string>("all");
@@ -43,7 +44,10 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
   const [renderAsMarkdown, setRenderAsMarkdown] = useState(false);
   const messageListRef = useRef<HTMLDivElement>(null);
 
-  const normalizedPath = normalizeProjectPath(projectPath);
+  const normalizedPath = normalizeProjectPathSync(
+    projectPath,
+    knownProjectPaths,
+  );
   const displayName = getProjectDisplayName(projectPath);
   const inHomeDirectory = isPathInHomeDirectory(projectPath);
 
@@ -57,7 +61,10 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
       return;
     }
 
-    let filtered = messages;
+    // First, filter out summary messages
+    let filtered = messages.filter(
+      (message) => message.message_type !== "summary",
+    );
 
     if (selectedMessageType !== "all") {
       filtered = filtered.filter(
@@ -71,14 +78,9 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
         const content = getMessageTextContent(message);
         if (content.toLowerCase().includes(query)) return true;
 
-        if (
-          message.message_type !== "summary" &&
-          message.uuid.toLowerCase().includes(query)
-        )
-          return true;
+        if (message.uuid.toLowerCase().includes(query)) return true;
 
         if (
-          message.message_type !== "summary" &&
           new Date(message.timestamp)
             .toLocaleString()
             .toLowerCase()
@@ -102,6 +104,14 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
         api.getAllSessions(),
         api.getProjectSummary(),
       ]);
+
+      // Extract all known project paths for better normalization
+      const allProjectPaths = [
+        ...allSessions.map((s) => s.project_path),
+        ...projectSummaries.map((p) => p.project_path),
+      ];
+      const uniqueProjectPaths = [...new Set(allProjectPaths)];
+      setKnownProjectPaths(uniqueProjectPaths);
 
       const projectSessions = allSessions.filter(
         (session) => session.project_path === projectPath,
@@ -127,7 +137,9 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
       setSelectedSession(session);
       const data = await api.getSessionMessages(session.session_id);
       setMessages(data);
-      setFilteredMessages(data);
+      setFilteredMessages(
+        data.filter((message) => message.message_type !== "summary"),
+      );
 
       if (data.length > 0 && session.latest_content_preview) {
         setTimeout(() => {
@@ -445,7 +457,7 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
                     )}
                     <span>
                       Updated:{" "}
-                      {new Date(session.updated_at).toLocaleDateString()}
+                      {new Date(session.timestamp).toLocaleDateString()}
                     </span>
                   </div>
                 </div>
@@ -496,7 +508,6 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
                         <option value="all">All Types</option>
                         <option value="user">User</option>
                         <option value="assistant">Assistant</option>
-                        <option value="summary">Summary</option>
                       </select>
                     </div>
 

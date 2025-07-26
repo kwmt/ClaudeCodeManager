@@ -10,13 +10,13 @@ export interface IdeInfo {
 export interface ClaudeSession {
   session_id: string;
   project_path: string;
-  created_at: string;
-  updated_at: string;
+  timestamp: string;
   message_count: number;
   git_branch?: string;
   latest_content_preview?: string;
   ide_info?: IdeInfo;
   is_processing: boolean;
+  file_modified_time: string;
 }
 
 export type ProcessingStatus = "processing" | "completed" | "stopped" | "error";

@@ -25,6 +25,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onProjectClick }) => {
         api.getSessionStats(),
         api.getProjectSummary(),
       ]);
+      console.log("Initial data loaded:", { statsData, projectsData });
 
       setStats(statsData);
       setProjects(projectsData);
@@ -140,7 +141,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onProjectClick }) => {
                 </div>
                 <p className="last-activity">
                   Last activity:{" "}
-                  {new Date(project.last_activity).toLocaleDateString()}
+                  {new Date(project.last_activity).toLocaleString()}
                 </p>
               </div>
             ))}
