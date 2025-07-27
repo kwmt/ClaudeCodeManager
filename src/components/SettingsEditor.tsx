@@ -1,19 +1,13 @@
-import React, { useEffect, useState } from "react";
+import { type FC, useCallback, useEffect, useState } from "react";
 import { api } from "../api";
 import type { ClaudeSettings } from "../types";
 
-interface SettingsEditorProps {}
-
-export const SettingsEditor: React.FC<SettingsEditorProps> = () => {
+export const SettingsEditor: FC = () => {
   const [settings, setSettings] = useState<ClaudeSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -24,7 +18,11 @@ export const SettingsEditor: React.FC<SettingsEditorProps> = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
 
   const exportSettings = async () => {
     if (!settings) return;
@@ -52,7 +50,9 @@ export const SettingsEditor: React.FC<SettingsEditorProps> = () => {
       <div className="settings-editor-error">
         <h3>Error</h3>
         <p>{error}</p>
-        <button onClick={loadSettings}>Retry</button>
+        <button type="button" onClick={loadSettings}>
+          Retry
+        </button>
       </div>
     );
   }
@@ -62,7 +62,11 @@ export const SettingsEditor: React.FC<SettingsEditorProps> = () => {
       <div className="settings-editor-header">
         <h2>Settings Editor</h2>
         <div className="header-actions">
-          <button onClick={exportSettings} className="export-button">
+          <button
+            type="button"
+            onClick={exportSettings}
+            className="export-button"
+          >
             Export Settings
           </button>
         </div>
@@ -77,7 +81,7 @@ export const SettingsEditor: React.FC<SettingsEditorProps> = () => {
           <div className="settings-section">
             <h3>Permissions</h3>
             <div className="permission-item">
-              <label>Default Mode:</label>
+              <span className="permission-label">Default Mode:</span>
               <span className="permission-value">
                 {settings.permissions.defaultMode}
               </span>
@@ -89,8 +93,8 @@ export const SettingsEditor: React.FC<SettingsEditorProps> = () => {
                 <p className="empty-list">No allowed commands specified</p>
               ) : (
                 <ul className="permission-list">
-                  {settings.permissions.allow.map((item, index) => (
-                    <li key={index} className="permission-list-item allow">
+                  {settings.permissions.allow.map((item) => (
+                    <li key={item} className="permission-list-item allow">
                       <code>{item}</code>
                     </li>
                   ))}
@@ -104,8 +108,8 @@ export const SettingsEditor: React.FC<SettingsEditorProps> = () => {
                 <p className="empty-list">No denied commands specified</p>
               ) : (
                 <ul className="permission-list">
-                  {settings.permissions.deny.map((item, index) => (
-                    <li key={index} className="permission-list-item deny">
+                  {settings.permissions.deny.map((item) => (
+                    <li key={item} className="permission-list-item deny">
                       <code>{item}</code>
                     </li>
                   ))}
@@ -122,14 +126,17 @@ export const SettingsEditor: React.FC<SettingsEditorProps> = () => {
                 <p className="empty-list">No pre-tool use hooks configured</p>
               ) : (
                 <div className="hooks-list">
-                  {settings.hooks.PreToolUse.map((matcher, index) => (
-                    <div key={index} className="hook-matcher">
+                  {settings.hooks.PreToolUse.map((matcher) => (
+                    <div key={matcher.matcher} className="hook-matcher">
                       <h5>
                         Matcher: <code>{matcher.matcher}</code>
                       </h5>
                       <div className="hook-commands">
-                        {matcher.hooks.map((hook, hookIndex) => (
-                          <div key={hookIndex} className="hook-command">
+                        {matcher.hooks.map((hook) => (
+                          <div
+                            key={`${hook.type}-${hook.command}`}
+                            className="hook-command"
+                          >
                             <div className="hook-type">Type: {hook.type}</div>
                             <div className="hook-command-text">
                               <code>{hook.command}</code>
