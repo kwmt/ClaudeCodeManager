@@ -1917,4 +1917,197 @@ mod tests {
         assert!(project_paths.contains(&"-Users-no-cwd"));
         assert!(project_paths.contains(&"/normal/mixed"));
     }
+
+    #[tokio::test]
+    async fn test_claude_directory_info() {
+        let temp_dir = create_test_claude_dir();
+        let claude_dir = temp_dir.path().join(".claude");
+
+        // Create a test project with .claude directory
+        let project_path = temp_dir.path().join("test-project");
+        fs::create_dir_all(&project_path).unwrap();
+
+        let project_claude_dir = project_path.join(".claude");
+        fs::create_dir_all(&project_claude_dir).unwrap();
+
+        // Create test files in .claude directory
+        fs::write(
+            project_claude_dir.join("settings.json"),
+            r#"{"test": true}"#,
+        )
+        .unwrap();
+        fs::write(
+            project_claude_dir.join("workspace.json"),
+            r#"{"workspace": "test"}"#,
+        )
+        .unwrap();
+
+        // Create a subdirectory with a file
+        let hooks_dir = project_claude_dir.join("hooks");
+        fs::create_dir_all(&hooks_dir).unwrap();
+        fs::write(hooks_dir.join("pre-commit.sh"), "#!/bin/bash\necho test").unwrap();
+
+        let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
+        let dir_info = manager
+            .get_claude_directory_info(project_path.to_str().unwrap())
+            .await
+            .unwrap();
+
+        assert!(dir_info.exists);
+        assert_eq!(dir_info.path, project_claude_dir.to_string_lossy());
+
+        // Should have 4 entries: 3 files + 1 directory
+        assert_eq!(dir_info.files.len(), 4);
+
+        // Check for specific files
+        let file_names: Vec<&str> = dir_info.files.iter().map(|f| f.name.as_str()).collect();
+        assert!(file_names.contains(&"settings.json"));
+        assert!(file_names.contains(&"workspace.json"));
+        assert!(file_names.contains(&"hooks"));
+        assert!(file_names.contains(&"hooks/pre-commit.sh"));
+
+        // Check file properties
+        let settings_file = dir_info
+            .files
+            .iter()
+            .find(|f| f.name == "settings.json")
+            .unwrap();
+        assert!(!settings_file.is_directory);
+        assert_eq!(settings_file.size, 14); // {"test": true}
+
+        let hooks_dir_entry = dir_info.files.iter().find(|f| f.name == "hooks").unwrap();
+        assert!(hooks_dir_entry.is_directory);
+    }
+
+    #[tokio::test]
+    async fn test_claude_directory_not_exists() {
+        let temp_dir = create_test_claude_dir();
+        let claude_dir = temp_dir.path().join(".claude");
+
+        // Create a project without .claude directory
+        let project_path = temp_dir.path().join("no-claude-project");
+        fs::create_dir_all(&project_path).unwrap();
+
+        let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
+        let dir_info = manager
+            .get_claude_directory_info(project_path.to_str().unwrap())
+            .await
+            .unwrap();
+
+        assert!(!dir_info.exists);
+        assert_eq!(dir_info.files.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_read_claude_file() {
+        let temp_dir = create_test_claude_dir();
+        let claude_dir = temp_dir.path().join(".claude");
+
+        // Create a test project with .claude directory
+        let project_path = temp_dir.path().join("test-project");
+        let project_claude_dir = project_path.join(".claude");
+        fs::create_dir_all(&project_claude_dir).unwrap();
+
+        let test_content = "test file content";
+        let test_file = project_claude_dir.join("test.txt");
+        fs::write(&test_file, test_content).unwrap();
+
+        let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
+        let content = manager
+            .read_claude_file(test_file.to_str().unwrap())
+            .await
+            .unwrap();
+
+        assert_eq!(content, test_content);
+    }
+
+    #[tokio::test]
+    async fn test_read_claude_file_security() {
+        let temp_dir = create_test_claude_dir();
+        let claude_dir = temp_dir.path().join(".claude");
+
+        // Create a file outside .claude directory
+        let bad_file = temp_dir.path().join("bad-file.txt");
+        fs::write(&bad_file, "should not read").unwrap();
+
+        let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
+        let result = manager.read_claude_file(bad_file.to_str().unwrap()).await;
+
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("must be within a .claude directory"));
+    }
+
+    #[tokio::test]
+    async fn test_write_claude_file() {
+        let temp_dir = create_test_claude_dir();
+        let claude_dir = temp_dir.path().join(".claude");
+
+        // Create a test project with .claude directory
+        let project_path = temp_dir.path().join("test-project");
+        let project_claude_dir = project_path.join(".claude");
+        fs::create_dir_all(&project_claude_dir).unwrap();
+
+        let test_file = project_claude_dir.join("new-file.txt");
+        let test_content = "new file content";
+
+        let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
+        manager
+            .write_claude_file(test_file.to_str().unwrap(), test_content)
+            .await
+            .unwrap();
+
+        // Verify file was written
+        let written_content = fs::read_to_string(&test_file).unwrap();
+        assert_eq!(written_content, test_content);
+    }
+
+    #[tokio::test]
+    async fn test_write_claude_file_creates_directories() {
+        let temp_dir = create_test_claude_dir();
+        let claude_dir = temp_dir.path().join(".claude");
+
+        // Create a test project with .claude directory
+        let project_path = temp_dir.path().join("test-project");
+        let project_claude_dir = project_path.join(".claude");
+        fs::create_dir_all(&project_claude_dir).unwrap();
+
+        // Try to write to a subdirectory that doesn't exist
+        let test_file = project_claude_dir.join("new-dir").join("new-file.txt");
+        let test_content = "nested file content";
+
+        let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
+        manager
+            .write_claude_file(test_file.to_str().unwrap(), test_content)
+            .await
+            .unwrap();
+
+        // Verify file and directory were created
+        assert!(test_file.exists());
+        let written_content = fs::read_to_string(&test_file).unwrap();
+        assert_eq!(written_content, test_content);
+    }
+
+    #[tokio::test]
+    async fn test_write_claude_file_security() {
+        let temp_dir = create_test_claude_dir();
+        let claude_dir = temp_dir.path().join(".claude");
+
+        // Try to write outside .claude directory
+        let bad_file = temp_dir.path().join("bad-file.txt");
+
+        let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
+        let result = manager
+            .write_claude_file(bad_file.to_str().unwrap(), "should not write")
+            .await;
+
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("must be within a .claude directory"));
+        assert!(!bad_file.exists());
+    }
 }

@@ -966,4 +966,117 @@ impl ClaudeDataManager {
 
         Ok(None)
     }
+
+    pub async fn get_claude_directory_info(
+        &self,
+        project_path: &str,
+    ) -> Result<ClaudeDirectoryInfo, Box<dyn std::error::Error>> {
+        let claude_dir_path = PathBuf::from(project_path).join(".claude");
+        let exists = claude_dir_path.exists() && claude_dir_path.is_dir();
+
+        let mut files = Vec::new();
+
+        if exists {
+            Self::read_directory_recursive(&claude_dir_path, &claude_dir_path, &mut files)?;
+        }
+
+        Ok(ClaudeDirectoryInfo {
+            path: claude_dir_path.to_string_lossy().to_string(),
+            exists,
+            files,
+        })
+    }
+
+    fn read_directory_recursive(
+        base_path: &Path,
+        current_path: &Path,
+        files: &mut Vec<ClaudeDirectoryFile>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        if let Ok(entries) = fs::read_dir(current_path) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                let metadata = entry.metadata()?;
+
+                // Get relative path from the base .claude directory
+                let relative_path = path
+                    .strip_prefix(base_path)
+                    .unwrap_or(&path)
+                    .to_string_lossy()
+                    .to_string();
+
+                let file_info = ClaudeDirectoryFile {
+                    name: relative_path,
+                    path: path.to_string_lossy().to_string(),
+                    size: metadata.len(),
+                    modified: DateTime::<Utc>::from(metadata.modified()?),
+                    is_directory: metadata.is_dir(),
+                };
+
+                files.push(file_info);
+
+                // Recursively read subdirectories
+                if metadata.is_dir() {
+                    Self::read_directory_recursive(base_path, &path, files)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    pub async fn read_claude_file(
+        &self,
+        file_path: &str,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        let path = PathBuf::from(file_path);
+
+        // Security check: ensure the file is within a .claude directory
+        let mut current = path.as_path();
+        let mut is_in_claude_dir = false;
+
+        while let Some(parent) = current.parent() {
+            if current.file_name() == Some(std::ffi::OsStr::new(".claude")) {
+                is_in_claude_dir = true;
+                break;
+            }
+            current = parent;
+        }
+
+        if !is_in_claude_dir {
+            return Err("File must be within a .claude directory".into());
+        }
+
+        fs::read_to_string(&path).map_err(|e| e.into())
+    }
+
+    pub async fn write_claude_file(
+        &self,
+        file_path: &str,
+        content: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let path = PathBuf::from(file_path);
+
+        // Security check: ensure the file is within a .claude directory
+        let mut current = path.as_path();
+        let mut is_in_claude_dir = false;
+
+        while let Some(parent) = current.parent() {
+            if current.file_name() == Some(std::ffi::OsStr::new(".claude")) {
+                is_in_claude_dir = true;
+                break;
+            }
+            current = parent;
+        }
+
+        if !is_in_claude_dir {
+            return Err("File must be within a .claude directory".into());
+        }
+
+        // Create parent directories if they don't exist
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+
+        fs::write(&path, content).map_err(|e| e.into())
+    }
 }
