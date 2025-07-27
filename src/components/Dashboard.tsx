@@ -6,6 +6,163 @@ interface DashboardProps {
   onProjectClick?: (projectPath: string) => void;
 }
 
+const StatCard: React.FC<{
+  title: string;
+  value: number;
+  variant?: "primary" | "secondary" | "tertiary" | "warning";
+  actionable?: boolean;
+}> = ({ title, value, variant = "primary", actionable = false }) => {
+  return (
+    <div
+      className={`stat-card stat-card--${variant} ${actionable ? "stat-card--actionable" : ""}`}
+      role={actionable ? "button" : undefined}
+      tabIndex={actionable ? 0 : undefined}
+      aria-label={`${title}: ${value}`}
+    >
+      <div className="stat-card__content">
+        <h3 className="stat-card__title">{title}</h3>
+        <div className="stat-card__value">
+          <span className="stat-card__number">{value.toLocaleString()}</span>
+        </div>
+      </div>
+      {actionable && (
+        <div className="stat-card__action" aria-hidden="true">
+          →
+        </div>
+      )}
+    </div>
+  );
+};
+
+const ProjectCard: React.FC<{
+  project: ProjectSummary;
+  onClick: () => void;
+}> = ({ project, onClick }) => {
+  const projectName =
+    project.project_path.split("/").pop() || project.project_path;
+  const isActive = project.ide_info?.pid;
+
+  const formatRelativeTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return `${diffDays} days ago`;
+    return date.toLocaleDateString();
+  };
+
+  return (
+    <article
+      className={`project-card ${isActive ? "project-card--active" : ""}`}
+      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      aria-label={`Open project ${projectName}`}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+    >
+      <header className="project-card__header">
+        <div className="project-card__title-group">
+          <h3 className="project-card__title">{projectName}</h3>
+          {isActive && (
+            <span
+              className="project-card__status"
+              aria-label="Project is active"
+            >
+              <span className="active-dot" aria-hidden="true"></span>
+              Active
+            </span>
+          )}
+        </div>
+      </header>
+
+      <div className="project-card__path" title={project.project_path}>
+        {project.project_path}
+      </div>
+
+      <div className="project-card__metrics">
+        <div className="metric-item">
+          <span className="metric-label">Sessions</span>
+          <span className="metric-value">{project.session_count}</span>
+        </div>
+        <div className="metric-item">
+          <span className="metric-label">Messages</span>
+          <span className="metric-value">{project.total_messages}</span>
+        </div>
+        {project.active_todos > 0 && (
+          <div className="metric-item metric-item--warning">
+            <span className="metric-label">TODOs</span>
+            <span className="metric-value">{project.active_todos}</span>
+          </div>
+        )}
+      </div>
+
+      <footer className="project-card__footer">
+        <time
+          className="project-card__last-activity"
+          dateTime={project.last_activity}
+          title={`Last activity: ${new Date(project.last_activity).toLocaleString()}`}
+        >
+          {formatRelativeTime(project.last_activity)}
+        </time>
+        {project.ide_info && (
+          <span className="project-card__ide">{project.ide_info.ide_name}</span>
+        )}
+      </footer>
+    </article>
+  );
+};
+
+const EmptyState: React.FC<{
+  title: string;
+  description: string;
+  action?: React.ReactNode;
+}> = ({ title, description, action }) => (
+  <div className="empty-state">
+    <div className="empty-state__icon" aria-hidden="true">
+      📁
+    </div>
+    <h3 className="empty-state__title">{title}</h3>
+    <p className="empty-state__description">{description}</p>
+    {action && <div className="empty-state__action">{action}</div>}
+  </div>
+);
+
+const LoadingSkeleton: React.FC = () => (
+  <div className="dashboard" aria-label="Loading dashboard data">
+    <div className="dashboard-header">
+      <div className="skeleton skeleton--title"></div>
+      <div className="skeleton skeleton--subtitle"></div>
+      <div className="skeleton skeleton--actions"></div>
+    </div>
+
+    <div className="stats-section">
+      <div className="skeleton skeleton--section-title"></div>
+      <div className="stats-grid">
+        {Array.from({ length: 4 }, (_, i) => (
+          <div key={i} className="skeleton skeleton--stat-card"></div>
+        ))}
+      </div>
+    </div>
+
+    <div className="projects-section">
+      <div className="skeleton skeleton--section-title"></div>
+      <div className="projects-grid">
+        {Array.from({ length: 6 }, (_, i) => (
+          <div key={i} className="skeleton skeleton--project-card"></div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
 export const Dashboard: React.FC<DashboardProps> = ({ onProjectClick }) => {
   const [stats, setStats] = useState<SessionStats | null>(null);
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
@@ -25,7 +182,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onProjectClick }) => {
         api.getSessionStats(),
         api.getProjectSummary(),
       ]);
-      console.log("Initial data loaded:", { statsData, projectsData });
 
       setStats(statsData);
       setProjects(projectsData);
@@ -66,94 +222,141 @@ export const Dashboard: React.FC<DashboardProps> = ({ onProjectClick }) => {
     }
   }, [updating.projects]);
 
+  const refreshAllData = useCallback(async () => {
+    await Promise.all([updateStats(), updateProjects()]);
+  }, [updateStats, updateProjects]);
+
   useEffect(() => {
     loadInitialData();
-
-    // File change events disabled - real-time updates removed
-  }, [loadInitialData, updateStats, updateProjects]);
+  }, [loadInitialData]);
 
   if (loading) {
-    return <div className="dashboard-loading">Loading dashboard...</div>;
+    return <LoadingSkeleton />;
   }
 
   if (error) {
     return (
       <div className="dashboard-error">
-        <h3>Error loading dashboard</h3>
-        <p>{error}</p>
-        <button onClick={loadInitialData}>Retry</button>
+        <div className="error-content">
+          <h3 className="error-title">Error loading dashboard</h3>
+          <p className="error-message">{error}</p>
+          <button className="btn-primary" onClick={loadInitialData}>
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="dashboard">
-      <h2>Claude Code Manager Dashboard</h2>
-
-      {stats && (
-        <div className={`stats-grid ${updating.stats ? "updating" : ""}`}>
-          <div className="stat-card">
-            <h3>Total Sessions</h3>
-            <p className="stat-value">{stats.total_sessions}</p>
-          </div>
-          <div className="stat-card">
-            <h3>Total Messages</h3>
-            <p className="stat-value">{stats.total_messages}</p>
-          </div>
-          <div className="stat-card">
-            <h3>Commands Executed</h3>
-            <p className="stat-value">{stats.total_commands}</p>
-          </div>
-          <div className="stat-card">
-            <h3>Active Projects</h3>
-            <p className="stat-value">{stats.active_projects}</p>
-          </div>
-          <div className="stat-card">
-            <h3>Pending TODOs</h3>
-            <p className="stat-value">{stats.pending_todos}</p>
+    <div
+      className="dashboard"
+      role="main"
+      aria-label="Claude Code Manager Dashboard"
+    >
+      <header className="dashboard-header">
+        <div className="hero-content">
+          <h1 className="dashboard-title">
+            Welcome back to Claude Code Manager
+          </h1>
+          <p className="dashboard-subtitle">
+            Manage your Claude Code sessions and track your development progress
+          </p>
+          <div className="quick-actions">
+            <button
+              className="btn-primary"
+              onClick={() => onProjectClick?.("")}
+              aria-label="Start a new Claude Code session"
+            >
+              + Start New Session
+            </button>
+            <button
+              className="btn-secondary"
+              onClick={refreshAllData}
+              aria-label="Refresh all dashboard data"
+            >
+              ↻ Refresh Data
+            </button>
           </div>
         </div>
-      )}
+      </header>
 
-      <div
-        className={`projects-section ${updating.projects ? "updating" : ""}`}
-      >
-        <h3>Recent Projects</h3>
+      <section className="stats-section" aria-labelledby="stats-heading">
+        <h2 id="stats-heading" className="section-title">
+          Activity Overview
+        </h2>
+        {stats && (
+          <div className={`stats-grid ${updating.stats ? "updating" : ""}`}>
+            <StatCard
+              title="Total Sessions"
+              value={stats.total_sessions}
+              variant="primary"
+            />
+            <StatCard
+              title="Total Messages"
+              value={stats.total_messages}
+              variant="secondary"
+            />
+            <StatCard
+              title="Commands Executed"
+              value={stats.total_commands}
+              variant="tertiary"
+            />
+            <StatCard
+              title="Active Projects"
+              value={stats.active_projects}
+              variant="secondary"
+            />
+            <StatCard
+              title="Pending TODOs"
+              value={stats.pending_todos}
+              variant={stats.pending_todos > 0 ? "warning" : "tertiary"}
+              actionable={stats.pending_todos > 0}
+            />
+          </div>
+        )}
+      </section>
+
+      <section className="projects-section" aria-labelledby="projects-heading">
+        <div className="section-header">
+          <h2 id="projects-heading" className="section-title">
+            Recent Projects
+          </h2>
+          <div className="section-controls">
+            <span className="project-count">
+              {projects.length} {projects.length === 1 ? "project" : "projects"}
+            </span>
+          </div>
+        </div>
+
         {projects.length === 0 ? (
-          <p>No projects found</p>
-        ) : (
-          <div className="projects-list">
-            {projects.slice(0, 10).map((project) => (
-              <div
-                key={project.project_path}
-                className="project-card clickable"
-                onClick={() => onProjectClick?.(project.project_path)}
+          <EmptyState
+            title="No projects found"
+            description="Start by creating your first Claude Code session"
+            action={
+              <button
+                className="btn-primary"
+                onClick={() => onProjectClick?.("")}
+                aria-label="Create your first project"
               >
-                <h4>
-                  {project.project_path.split("/").pop() ||
-                    project.project_path}
-                </h4>
-                <p className="project-path">{project.project_path}</p>
-                <div className="project-stats">
-                  <span>{project.session_count} sessions</span>
-                  <span>{project.total_messages} messages</span>
-                  <span>{project.active_todos} TODOs</span>
-                  {project.ide_info && <span>PID: {project.ide_info.pid}</span>}
-                </div>
-                <p className="last-activity">
-                  Last activity:{" "}
-                  {new Date(project.last_activity).toLocaleString()}
-                </p>
-                {project.ide_info && (
-                  <div className="ide-info">
-                    <p className="ide-name">IDE: {project.ide_info.ide_name}</p>
-                  </div>
-                )}
-              </div>
+                Create First Project
+              </button>
+            }
+          />
+        ) : (
+          <div
+            className={`projects-grid ${updating.projects ? "updating" : ""}`}
+          >
+            {projects.slice(0, 6).map((project) => (
+              <ProjectCard
+                key={project.project_path}
+                project={project}
+                onClick={() => onProjectClick?.(project.project_path)}
+              />
             ))}
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 };
