@@ -230,6 +230,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ onProjectClick }) => {
     loadInitialData();
   }, [loadInitialData]);
 
+  // Handle Cmd+R / Ctrl+R for refresh
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === "r") {
+        event.preventDefault();
+        refreshAllData();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [refreshAllData]);
+
   if (loading) {
     return <LoadingSkeleton />;
   }
@@ -262,29 +275,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ onProjectClick }) => {
           <p className="dashboard-subtitle">
             Manage your Claude Code sessions and track your development progress
           </p>
-          <div className="quick-actions">
-            <button
-              className="btn-primary"
-              onClick={() => onProjectClick?.("")}
-              aria-label="Start a new Claude Code session"
-            >
-              + Start New Session
-            </button>
-            <button
-              className="btn-secondary"
-              onClick={refreshAllData}
-              aria-label="Refresh all dashboard data"
-            >
-              ↻ Refresh Data
-            </button>
-          </div>
         </div>
       </header>
 
       <section className="stats-section" aria-labelledby="stats-heading">
-        <h2 id="stats-heading" className="section-title">
-          Activity Overview
-        </h2>
+        <div className="section-header">
+          <h2 id="stats-heading" className="section-title">
+            Activity Overview
+          </h2>
+          <button
+            className="refresh-button"
+            onClick={refreshAllData}
+            aria-label="Refresh dashboard data (Cmd+R)"
+            title="Refresh data (Cmd+R)"
+          >
+            ↻
+          </button>
+        </div>
         {stats && (
           <div className={`stats-grid ${updating.stats ? "updating" : ""}`}>
             <StatCard
@@ -332,16 +339,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onProjectClick }) => {
         {projects.length === 0 ? (
           <EmptyState
             title="No projects found"
-            description="Start by creating your first Claude Code session"
-            action={
-              <button
-                className="btn-primary"
-                onClick={() => onProjectClick?.("")}
-                aria-label="Create your first project"
-              >
-                Create First Project
-              </button>
-            }
+            description="No Claude Code projects have been created yet"
           />
         ) : (
           <div
