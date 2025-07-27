@@ -32,7 +32,10 @@ pub fn run() {
             activate_ide_window,
             open_session_file,
             get_project_path_mapping,
-            get_home_directory
+            get_home_directory,
+            get_claude_directory_info,
+            read_claude_file,
+            write_claude_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

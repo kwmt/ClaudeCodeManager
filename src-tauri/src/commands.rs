@@ -238,3 +238,37 @@ pub async fn get_home_directory() -> Result<String, String> {
         .ok_or_else(|| "Could not find home directory".to_string())
         .map(|path| path.to_string_lossy().to_string())
 }
+
+#[tauri::command]
+pub async fn get_claude_directory_info(
+    project_path: String,
+    data_manager: State<'_, Arc<ClaudeDataManager>>,
+) -> Result<ClaudeDirectoryInfo, String> {
+    data_manager
+        .get_claude_directory_info(&project_path)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn read_claude_file(
+    file_path: String,
+    data_manager: State<'_, Arc<ClaudeDataManager>>,
+) -> Result<String, String> {
+    data_manager
+        .read_claude_file(&file_path)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn write_claude_file(
+    file_path: String,
+    content: String,
+    data_manager: State<'_, Arc<ClaudeDataManager>>,
+) -> Result<(), String> {
+    data_manager
+        .write_claude_file(&file_path, &content)
+        .await
+        .map_err(|e| e.to_string())
+}
