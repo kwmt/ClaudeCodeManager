@@ -7,6 +7,7 @@ import type {
   ProjectSummary,
   SessionStats,
   IdeInfo,
+  ClaudeDirectoryInfo,
 } from "./types";
 
 // Check if we're running in Tauri environment
@@ -158,5 +159,29 @@ export const api = {
     }
     // Mock API doesn't need file watching
     return Promise.resolve();
+  },
+
+  // .claude directory management
+  async getClaudeDirectoryInfo(
+    projectPath: string,
+  ): Promise<ClaudeDirectoryInfo> {
+    if (isTauri && tauriApi) {
+      return tauriApi.invoke("get_claude_directory_info", { projectPath });
+    }
+    return mockApi.getClaudeDirectoryInfo(projectPath);
+  },
+
+  async readClaudeFile(filePath: string): Promise<string> {
+    if (isTauri && tauriApi) {
+      return tauriApi.invoke("read_claude_file", { filePath });
+    }
+    return mockApi.readClaudeFile(filePath);
+  },
+
+  async writeClaudeFile(filePath: string, content: string): Promise<void> {
+    if (isTauri && tauriApi) {
+      return tauriApi.invoke("write_claude_file", { filePath, content });
+    }
+    return mockApi.writeClaudeFile(filePath, content);
   },
 };

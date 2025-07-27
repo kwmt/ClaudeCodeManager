@@ -114,3 +114,17 @@ export interface SessionStats {
   active_projects: number;
   pending_todos: number;
 }
+
+export interface ClaudeDirectoryInfo {
+  path: string;
+  exists: boolean;
+  files: ClaudeDirectoryFile[];
+}
+
+export interface ClaudeDirectoryFile {
+  name: string;
+  path: string;
+  size: number;
+  modified: string;
+  is_directory: boolean;
+}
