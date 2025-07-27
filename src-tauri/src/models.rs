@@ -176,3 +176,19 @@ pub struct SessionStats {
     pub active_projects: usize,
     pub pending_todos: usize,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClaudeDirectoryInfo {
+    pub path: String,
+    pub exists: bool,
+    pub files: Vec<ClaudeDirectoryFile>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClaudeDirectoryFile {
+    pub name: String,
+    pub path: String,
+    pub size: u64,
+    pub modified: DateTime<Utc>,
+    pub is_directory: bool,
+}

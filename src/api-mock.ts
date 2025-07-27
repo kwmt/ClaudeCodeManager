@@ -246,4 +246,92 @@ export const mockApi = {
     });
     return JSON.stringify(messages, null, 2);
   },
+
+  async getClaudeDirectoryInfo(projectPath: string): Promise<any> {
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    return {
+      path: `${projectPath}/.claude`,
+      exists: projectPath === "/Users/user/projects/claude-app",
+      files:
+        projectPath === "/Users/user/projects/claude-app"
+          ? [
+              {
+                name: "settings.json",
+                path: `${projectPath}/.claude/settings.json`,
+                size: 512,
+                modified: new Date().toISOString(),
+                is_directory: false,
+              },
+              {
+                name: "workspace.json",
+                path: `${projectPath}/.claude/workspace.json`,
+                size: 1024,
+                modified: new Date(Date.now() - 86400000).toISOString(),
+                is_directory: false,
+              },
+              {
+                name: "hooks",
+                path: `${projectPath}/.claude/hooks`,
+                size: 0,
+                modified: new Date(Date.now() - 172800000).toISOString(),
+                is_directory: true,
+              },
+              {
+                name: "hooks/pre-commit.sh",
+                path: `${projectPath}/.claude/hooks/pre-commit.sh`,
+                size: 256,
+                modified: new Date(Date.now() - 172800000).toISOString(),
+                is_directory: false,
+              },
+            ]
+          : [],
+    };
+  },
+
+  async readClaudeFile(filePath: string): Promise<string> {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    if (filePath.endsWith("settings.json")) {
+      return JSON.stringify(
+        {
+          permissions: {
+            defaultMode: "allow",
+            allow: ["*"],
+            deny: [],
+          },
+          features: {
+            autoComplete: true,
+            contextSize: 8192,
+          },
+        },
+        null,
+        2,
+      );
+    }
+
+    if (filePath.endsWith("workspace.json")) {
+      return JSON.stringify(
+        {
+          lastSession: "session-123",
+          openFiles: ["src/main.ts", "README.md"],
+          settings: {
+            theme: "dark",
+          },
+        },
+        null,
+        2,
+      );
+    }
+
+    if (filePath.endsWith("pre-commit.sh")) {
+      return '#!/bin/bash\n# Pre-commit hook for Claude Code\necho "Running pre-commit checks..."\nnpm run lint\nnpm test';
+    }
+
+    return "# Mock file content";
+  },
+
+  async writeClaudeFile(filePath: string, content: string): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    console.log(`Mock: Would write to ${filePath}:`, content);
+  },
 };

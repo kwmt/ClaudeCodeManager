@@ -4,13 +4,15 @@ import { api } from "../api";
 import {
   normalizeProjectPathSync,
   getProjectDisplayName,
-  isPathInHomeDirectory,
 } from "../utils/pathUtils";
+import { useToast, ToastContainer } from "./Toast";
 import type {
   ClaudeSession,
   ClaudeMessage,
   ContentBlock,
   ProjectSummary,
+  ClaudeDirectoryInfo,
+  ClaudeDirectoryFile,
 } from "../types";
 
 interface ProjectScreenProps {
@@ -37,6 +39,23 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
     "sessions",
   );
   const [knownProjectPaths, setKnownProjectPaths] = useState<string[]>([]);
+  const [claudeDirectoryInfo, setClaudeDirectoryInfo] =
+    useState<ClaudeDirectoryInfo | null>(null);
+  const [selectedFile, setSelectedFile] = useState<ClaudeDirectoryFile | null>(
+    null,
+  );
+  const [fileContent, setFileContent] = useState<string>("");
+  const [isEditingFile, setIsEditingFile] = useState(false);
+  const [editedContent, setEditedContent] = useState<string>("");
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [cursorPosition, setCursorPosition] = useState({ line: 1, column: 1 });
+  const [isLoading, setIsLoading] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved">(
+    "saved",
+  );
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const autoSaveTimeoutRef = useRef<number | null>(null);
 
   const [messageSearchQuery, setMessageSearchQuery] = useState("");
   const [selectedMessageType, setSelectedMessageType] = useState<string>("all");
@@ -44,16 +63,112 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
   const [renderAsMarkdown, setRenderAsMarkdown] = useState(false);
   const messageListRef = useRef<HTMLDivElement>(null);
 
+  // Toast notifications
+  const toast = useToast();
+
   const normalizedPath = normalizeProjectPathSync(
     projectPath,
     knownProjectPaths,
   );
   const displayName = getProjectDisplayName(projectPath);
-  const inHomeDirectory = isPathInHomeDirectory(projectPath);
+
+  // Helper function to detect file type
+  const getFileType = (filename: string): string => {
+    const ext = filename.split(".").pop()?.toLowerCase();
+    switch (ext) {
+      case "js":
+      case "jsx":
+        return "javascript";
+      case "ts":
+      case "tsx":
+        return "typescript";
+      case "json":
+        return "json";
+      case "py":
+        return "python";
+      case "sh":
+      case "bash":
+        return "shell";
+      case "md":
+        return "markdown";
+      case "css":
+        return "css";
+      case "html":
+        return "html";
+      case "yaml":
+      case "yml":
+        return "yaml";
+      case "toml":
+        return "toml";
+      case "xml":
+        return "xml";
+      default:
+        return "text";
+    }
+  };
+
+  // Helper function to update cursor position
+  const updateCursorPosition = (textarea: HTMLTextAreaElement) => {
+    const lines = textarea.value
+      .substring(0, textarea.selectionStart)
+      .split("\n");
+    const line = lines.length;
+    const column = lines[lines.length - 1].length + 1;
+    setCursorPosition({ line, column });
+  };
 
   useEffect(() => {
     loadProjectData();
   }, [projectPath]);
+
+  useEffect(() => {
+    if (activeTab === "directory") {
+      loadClaudeDirectoryInfo();
+    }
+  }, [activeTab, normalizedPath]);
+
+  useEffect(() => {
+    if (isEditingFile && textareaRef.current) {
+      // Focus the textarea and move cursor to end
+      textareaRef.current.focus();
+      const length = textareaRef.current.value.length;
+      textareaRef.current.setSelectionRange(length, length);
+      updateCursorPosition(textareaRef.current);
+    }
+  }, [isEditingFile]);
+
+  // Track unsaved changes and handle auto-save
+  useEffect(() => {
+    const hasChanges = editedContent !== fileContent;
+    setHasUnsavedChanges(hasChanges);
+    setSaveStatus(hasChanges ? "unsaved" : "saved");
+
+    // Auto-save functionality
+    if (hasChanges && autoSaveEnabled && selectedFile && isEditingFile) {
+      // Clear existing timeout
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+
+      // Set new timeout for auto-save (3 seconds after last change)
+      autoSaveTimeoutRef.current = setTimeout(() => {
+        saveFileContent();
+      }, 3000);
+    }
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [
+    editedContent,
+    fileContent,
+    autoSaveEnabled,
+    selectedFile,
+    isEditingFile,
+  ]);
 
   useEffect(() => {
     if (!messages.length) {
@@ -129,6 +244,131 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadClaudeDirectoryInfo = async () => {
+    try {
+      const info = await api.getClaudeDirectoryInfo(normalizedPath);
+      setClaudeDirectoryInfo(info);
+    } catch (err) {
+      console.error("Failed to load .claude directory info:", err);
+    }
+  };
+
+  const loadFileContent = async (file: ClaudeDirectoryFile) => {
+    try {
+      setIsLoading(true);
+      setSelectedFile(file);
+      const content = await api.readClaudeFile(file.path);
+      setFileContent(content);
+      setEditedContent(content);
+      setIsEditingFile(false);
+      setHasUnsavedChanges(false);
+      setSaveStatus("saved");
+      setCursorPosition({ line: 1, column: 1 });
+    } catch (err) {
+      console.error("Failed to load file content:", err);
+      setFileContent("Error loading file content");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const saveFileContent = async () => {
+    if (!selectedFile) return;
+
+    try {
+      setSaveStatus("saving");
+      await api.writeClaudeFile(selectedFile.path, editedContent);
+      setFileContent(editedContent);
+      setIsEditingFile(false);
+      setHasUnsavedChanges(false);
+      setSaveStatus("saved");
+
+      // Show success toast
+      toast.success(
+        "File saved successfully",
+        `${selectedFile.name} has been saved`,
+        3000,
+      );
+
+      // Reload directory info to update modification times
+      await loadClaudeDirectoryInfo();
+    } catch (err) {
+      console.error("Failed to save file:", err);
+      setSaveStatus("unsaved");
+      toast.error(
+        "Failed to save file",
+        err instanceof Error ? err.message : "Unknown error occurred",
+        5000,
+      );
+    }
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  };
+
+  const handleEditorKeyDown = (e: React.KeyboardEvent) => {
+    // Update cursor position on key events
+    if (textareaRef.current) {
+      setTimeout(() => updateCursorPosition(textareaRef.current!), 0);
+    }
+
+    // Ctrl+S または Cmd+S で保存
+    if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+      e.preventDefault();
+      saveFileContent();
+    }
+    // Escキーでキャンセル
+    if (e.key === "Escape") {
+      if (hasUnsavedChanges) {
+        const confirmDiscard = window.confirm(
+          "未保存の変更があります。破棄しますか？",
+        );
+        if (!confirmDiscard) return;
+      }
+      setIsEditingFile(false);
+      setEditedContent(fileContent);
+    }
+    // Tab key handling for proper indentation
+    if (e.key === "Tab") {
+      e.preventDefault();
+      const textarea = e.currentTarget as HTMLTextAreaElement;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const spaces = "  "; // 2 spaces for indentation
+
+      const newValue =
+        editedContent.substring(0, start) +
+        spaces +
+        editedContent.substring(end);
+      setEditedContent(newValue);
+
+      // Set cursor position after the inserted spaces
+      setTimeout(() => {
+        textarea.selectionStart = textarea.selectionEnd = start + spaces.length;
+      }, 0);
+    }
+  };
+
+  const handleEditorChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setEditedContent(e.target.value);
+    updateCursorPosition(e.target);
+  };
+
+  const handleEditorClick = (e: React.MouseEvent<HTMLTextAreaElement>) => {
+    updateCursorPosition(e.currentTarget);
+  };
+
+  const handleEditorSelection = (
+    e: React.SyntheticEvent<HTMLTextAreaElement>,
+  ) => {
+    updateCursorPosition(e.currentTarget);
   };
 
   const loadSessionMessages = async (session: ClaudeSession) => {
@@ -587,38 +827,192 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
         </div>
       ) : (
         <div className="project-directory-content">
-          <div className="claude-directory-panel">
-            <h3>Directory Information</h3>
-            <div className="directory-info-item">
-              <span className="info-label">Path:</span>
-              <span className="info-value">{normalizedPath}/.claude</span>
-            </div>
-            <div className="directory-info-item">
-              <span className="info-label">In Home Directory:</span>
-              <span className="info-value">
-                {inHomeDirectory ? "Yes" : "No"}
-              </span>
-            </div>
-            <div className="directory-info-item">
-              <span className="info-label">Project Root:</span>
-              <span className="info-value">{normalizedPath}</span>
-            </div>
-            <h4>Directory Structure</h4>
-            <div className="directory-structure">
-              <pre>
-                {`.claude/
-├── projects/
-│   └── ${projectPath}/
-│       └── *.jsonl (session files)
-├── todos/
-│   └── ${projectPath}.json
-├── command_history.log
-└── settings.json`}
-              </pre>
-            </div>
+          <div className="claude-directory-files">
+            <h3>.claude Directory</h3>
+            {claudeDirectoryInfo?.exists === false ? (
+              <div className="no-claude-directory">
+                <p>No .claude directory found in this project.</p>
+                <p className="directory-path">
+                  Expected at: {normalizedPath}/.claude
+                </p>
+              </div>
+            ) : claudeDirectoryInfo?.files.length === 0 ? (
+              <div className="empty-claude-directory">
+                <p>.claude directory exists but is empty.</p>
+              </div>
+            ) : (
+              <div className="files-list">
+                {claudeDirectoryInfo?.files
+                  .filter((file) => !file.is_directory)
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((file) => (
+                    <div
+                      key={file.path}
+                      className={`file-item ${selectedFile?.path === file.path ? "selected" : ""}`}
+                      onClick={() => loadFileContent(file)}
+                    >
+                      <div className="file-info">
+                        <span className="file-name">{file.name}</span>
+                        <span className="file-size">
+                          {formatFileSize(file.size)}
+                        </span>
+                        <span className="file-modified">
+                          {new Date(file.modified).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
           </div>
+
+          {selectedFile && (
+            <div
+              className={`claude-file-viewer ${isEditingFile ? "edit-mode" : "view-mode"}`}
+            >
+              <div className="file-viewer-header">
+                <div className="file-header-left">
+                  <h4>{selectedFile.name}</h4>
+                  <span
+                    className={`mode-indicator ${isEditingFile ? "editing" : "viewing"}`}
+                  >
+                    {isEditingFile ? "編集中" : "ビューア"}
+                  </span>
+                  {hasUnsavedChanges && (
+                    <span
+                      className="unsaved-indicator"
+                      title="未保存の変更があります"
+                    >
+                      ●
+                    </span>
+                  )}
+                  {isEditingFile && (
+                    <label className="auto-save-toggle">
+                      <input
+                        type="checkbox"
+                        checked={autoSaveEnabled}
+                        onChange={(e) => setAutoSaveEnabled(e.target.checked)}
+                        aria-label="Auto-save enabled"
+                      />
+                      Auto-save
+                    </label>
+                  )}
+                </div>
+                <div className="file-actions">
+                  {isEditingFile ? (
+                    <>
+                      <button
+                        onClick={saveFileContent}
+                        className="save-button"
+                        disabled={!hasUnsavedChanges || saveStatus === "saving"}
+                        aria-label="Save file (Ctrl+S)"
+                        title="Save the current changes to the file"
+                      >
+                        {saveStatus === "saving" ? "Saving..." : "Save"}
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (hasUnsavedChanges) {
+                            const confirmDiscard = window.confirm(
+                              "未保存の変更があります。破棄しますか？",
+                            );
+                            if (!confirmDiscard) return;
+                          }
+                          setIsEditingFile(false);
+                          setEditedContent(fileContent);
+                        }}
+                        className="cancel-button"
+                        aria-label="Cancel editing (Esc)"
+                        title="Discard changes and exit edit mode"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => setIsEditingFile(true)}
+                      className="edit-button"
+                      aria-label="Edit file"
+                      title="Edit this file (Ctrl+S to save, Esc to cancel)"
+                    >
+                      Edit
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="file-content">
+                {isLoading ? (
+                  <div className="loading">Loading file content...</div>
+                ) : isEditingFile ? (
+                  <textarea
+                    ref={textareaRef}
+                    value={editedContent}
+                    onChange={handleEditorChange}
+                    onKeyDown={handleEditorKeyDown}
+                    onClick={handleEditorClick}
+                    onSelect={handleEditorSelection}
+                    className={`file-editor ${hasUnsavedChanges ? "has-changes" : ""}`}
+                    spellCheck={false}
+                    placeholder="ファイルの内容を編集してください... (Ctrl+S で保存、Esc でキャンセル)"
+                    aria-label={`Editing ${selectedFile.name}`}
+                    aria-describedby="editor-status"
+                    rows={20}
+                  />
+                ) : (
+                  <pre className="file-viewer">{fileContent}</pre>
+                )}
+              </div>
+              {isEditingFile && (
+                <div
+                  id="editor-status"
+                  className="file-editor-status"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <div className="status-left">
+                    <span
+                      className="file-type-indicator"
+                      aria-label={`File type: ${getFileType(selectedFile.name)}`}
+                    >
+                      {getFileType(selectedFile.name)}
+                    </span>
+                    <span
+                      className={`changes-indicator ${saveStatus === "saved" ? "saved" : ""}`}
+                      aria-label="Save status"
+                    >
+                      <span className="changes-dot" aria-hidden="true"></span>
+                      {saveStatus === "saving"
+                        ? "Saving..."
+                        : saveStatus === "unsaved"
+                          ? autoSaveEnabled
+                            ? "Auto-saving soon..."
+                            : "Unsaved changes"
+                          : "All changes saved"}
+                    </span>
+                  </div>
+                  <div className="status-right">
+                    <span
+                      className="cursor-position"
+                      aria-label="Cursor position"
+                    >
+                      Ln {cursorPosition.line}, Col {cursorPosition.column}
+                    </span>
+                    <span
+                      className="keyboard-shortcuts-hint"
+                      aria-label="Keyboard shortcuts"
+                    >
+                      Ctrl+S to save • Esc to cancel
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
+
+      {/* Toast notifications */}
+      <ToastContainer toasts={toast.toasts} onDismiss={toast.dismissToast} />
     </div>
   );
 };

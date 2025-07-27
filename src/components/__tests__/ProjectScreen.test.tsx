@@ -79,6 +79,11 @@ describe("ProjectScreen", () => {
     mockApi.getAllSessions.mockResolvedValue(mockSessions);
     mockApi.getProjectSummary.mockResolvedValue([mockProjectSummary]);
     mockApi.getSessionMessages.mockResolvedValue(mockMessages);
+    mockApi.getClaudeDirectoryInfo.mockResolvedValue({
+      path: "/Users/john.documents_test/project/.claude",
+      exists: true,
+      files: [],
+    });
   });
 
   it("should render project information correctly", async () => {
@@ -118,14 +123,14 @@ describe("ProjectScreen", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("heading", { name: "Directory Information" }),
+        screen.getByRole("heading", { name: ".claude Directory" }),
       ).toBeInTheDocument();
     });
 
+    // Verify that the empty directory message is shown since we mocked an empty directory
     expect(
-      screen.getByText("/Users/john.documents_test/project/.claude"),
+      screen.getByText(".claude directory exists but is empty."),
     ).toBeInTheDocument();
-    expect(screen.getByText("Yes")).toBeInTheDocument();
   });
 
   it("should render sessions list", async () => {
