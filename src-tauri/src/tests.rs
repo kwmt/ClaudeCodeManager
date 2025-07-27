@@ -1628,6 +1628,94 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_project_path_mapping_with_dot_directories() {
+        let temp_dir = create_test_claude_dir();
+        let claude_dir = temp_dir.path().join(".claude");
+
+        // Create encoded project directories for paths containing dot directories
+        let encoded_project1 = claude_dir.join("projects").join("-Users-test-.claude");
+        let encoded_project2 = claude_dir.join("projects").join("-home-user-.config-nvim");
+        let encoded_project3 = claude_dir
+            .join("projects")
+            .join("-Users-dev-.vscode-extensions");
+
+        fs::create_dir_all(&encoded_project1).unwrap();
+        fs::create_dir_all(&encoded_project2).unwrap();
+        fs::create_dir_all(&encoded_project3).unwrap();
+
+        // Create session files with CWD paths containing dot directories
+        let session1_content = r#"{"type":"user","message":{"role":"user","content":"Working in .claude directory"},"uuid":"user-1","timestamp":"2025-07-20T22:56:38.702Z","sessionId":"session1","cwd":"/Users/test/.claude","gitBranch":"main"}"#;
+        let session2_content = r#"{"type":"user","message":{"role":"user","content":"Neovim config"},"uuid":"user-2","timestamp":"2025-07-20T22:56:38.702Z","sessionId":"session2","cwd":"/home/user/.config/nvim","gitBranch":"main"}"#;
+        let session3_content = r#"{"type":"user","message":{"role":"user","content":"VSCode extensions"},"uuid":"user-3","timestamp":"2025-07-20T22:56:38.702Z","sessionId":"session3","cwd":"/Users/dev/.vscode/extensions","gitBranch":"main"}"#;
+
+        fs::write(encoded_project1.join("session1.jsonl"), session1_content).unwrap();
+        fs::write(encoded_project2.join("session2.jsonl"), session2_content).unwrap();
+        fs::write(encoded_project3.join("session3.jsonl"), session3_content).unwrap();
+
+        let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
+        let mapping = manager.get_project_path_mapping().await.unwrap();
+
+        // Verify the mapping for paths with dot directories
+        assert_eq!(
+            mapping.len(),
+            3,
+            "Should map all encoded paths with dot directories"
+        );
+        assert_eq!(
+            mapping.get("-Users-test-.claude").unwrap(),
+            "/Users/test/.claude"
+        );
+        assert_eq!(
+            mapping.get("-home-user-.config-nvim").unwrap(),
+            "/home/user/.config/nvim"
+        );
+        assert_eq!(
+            mapping.get("-Users-dev-.vscode-extensions").unwrap(),
+            "/Users/dev/.vscode/extensions"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_project_path_mapping_with_hidden_files() {
+        let temp_dir = create_test_claude_dir();
+        let claude_dir = temp_dir.path().join(".claude");
+
+        // Create encoded project directories for various hidden directories and files
+        let encoded_project1 = claude_dir.join("projects").join("-Users-work-.git");
+        let encoded_project2 = claude_dir.join("projects").join("-home-user-.ssh");
+        let encoded_project3 = claude_dir.join("projects").join("-Users-config-.bashrc");
+
+        fs::create_dir_all(&encoded_project1).unwrap();
+        fs::create_dir_all(&encoded_project2).unwrap();
+        fs::create_dir_all(&encoded_project3).unwrap();
+
+        // Create session files with CWD paths for hidden directories/files
+        let session1_content = r#"{"type":"user","message":{"role":"user","content":"Git repository work"},"uuid":"user-1","timestamp":"2025-07-20T22:56:38.702Z","sessionId":"session1","cwd":"/Users/work/.git","gitBranch":"main"}"#;
+        let session2_content = r#"{"type":"user","message":{"role":"user","content":"SSH configuration"},"uuid":"user-2","timestamp":"2025-07-20T22:56:38.702Z","sessionId":"session2","cwd":"/home/user/.ssh","gitBranch":"main"}"#;
+        let session3_content = r#"{"type":"user","message":{"role":"user","content":"Bash configuration"},"uuid":"user-3","timestamp":"2025-07-20T22:56:38.702Z","sessionId":"session3","cwd":"/Users/config/.bashrc","gitBranch":"main"}"#;
+
+        fs::write(encoded_project1.join("session1.jsonl"), session1_content).unwrap();
+        fs::write(encoded_project2.join("session2.jsonl"), session2_content).unwrap();
+        fs::write(encoded_project3.join("session3.jsonl"), session3_content).unwrap();
+
+        let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
+        let mapping = manager.get_project_path_mapping().await.unwrap();
+
+        // Verify the mapping for hidden directories and files
+        assert_eq!(
+            mapping.len(),
+            3,
+            "Should map all encoded paths with hidden directories"
+        );
+        assert_eq!(mapping.get("-Users-work-.git").unwrap(), "/Users/work/.git");
+        assert_eq!(mapping.get("-home-user-.ssh").unwrap(), "/home/user/.ssh");
+        assert_eq!(
+            mapping.get("-Users-config-.bashrc").unwrap(),
+            "/Users/config/.bashrc"
+        );
+    }
+
+    #[tokio::test]
     async fn test_project_path_consolidation_in_get_all_sessions() {
         let temp_dir = create_test_claude_dir();
         let claude_dir = temp_dir.path().join(".claude");
