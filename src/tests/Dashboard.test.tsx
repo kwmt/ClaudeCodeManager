@@ -23,7 +23,7 @@ describe("Dashboard", () => {
     mockApi.getProjectSummary.mockReturnValue(new Promise(() => {}));
 
     render(<Dashboard />);
-    expect(screen.getByText("Loading dashboard...")).toBeInTheDocument();
+    expect(screen.getByLabelText("Loading dashboard data")).toBeInTheDocument();
   });
 
   it("renders dashboard with stats and projects", async () => {
@@ -59,16 +59,16 @@ describe("Dashboard", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("Claude Code Manager Dashboard"),
+        screen.getByText("Welcome back to Claude Code Manager"),
       ).toBeInTheDocument();
     });
 
     // Check stats are displayed
-    expect(screen.getByText("10")).toBeInTheDocument(); // total_sessions
-    expect(screen.getByText("100")).toBeInTheDocument(); // total_messages
-    expect(screen.getByText("50")).toBeInTheDocument(); // total_commands
-    expect(screen.getByText("3")).toBeInTheDocument(); // active_projects
-    expect(screen.getByText("5")).toBeInTheDocument(); // pending_todos
+    expect(screen.getByLabelText("Total Sessions: 10")).toBeInTheDocument();
+    expect(screen.getByLabelText("Total Messages: 100")).toBeInTheDocument();
+    expect(screen.getByLabelText("Commands Executed: 50")).toBeInTheDocument();
+    expect(screen.getByLabelText("Active Projects: 3")).toBeInTheDocument();
+    expect(screen.getByLabelText("Pending TODOs: 5")).toBeInTheDocument();
 
     // Check projects are displayed
     expect(screen.getByText("project1")).toBeInTheDocument();
@@ -104,10 +104,10 @@ describe("Dashboard", () => {
     render(<Dashboard />);
 
     await waitFor(() => {
-      expect(screen.getByText("Retry")).toBeInTheDocument();
+      expect(screen.getByText("Try Again")).toBeInTheDocument();
     });
 
-    const retryButton = screen.getByText("Retry");
+    const retryButton = screen.getByText("Try Again");
 
     await act(async () => {
       retryButton.click();
@@ -115,7 +115,7 @@ describe("Dashboard", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("Claude Code Manager Dashboard"),
+        screen.getByText("Welcome back to Claude Code Manager"),
       ).toBeInTheDocument();
     });
 
