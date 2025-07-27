@@ -1445,4 +1445,288 @@ mod tests {
             "Project last_activity should match the latest file modification time"
         );
     }
+
+    #[tokio::test]
+    async fn test_get_project_path_mapping() {
+        let temp_dir = create_test_claude_dir();
+        let claude_dir = temp_dir.path().join(".claude");
+
+        // Create encoded project directories with session files
+        let encoded_project1 = claude_dir.join("projects").join("-Users-test-project1");
+        let encoded_project2 = claude_dir.join("projects").join("-Users-test-project2");
+        let normal_project = claude_dir.join("projects").join("normal-project");
+
+        fs::create_dir_all(&encoded_project1).unwrap();
+        fs::create_dir_all(&encoded_project2).unwrap();
+        fs::create_dir_all(&normal_project).unwrap();
+
+        // Create session files with CWD information
+        let session1_content = r#"{"type":"user","message":{"role":"user","content":"Test"},"uuid":"user-1","timestamp":"2025-07-20T22:56:38.702Z","sessionId":"session1","cwd":"/Users/test/project1","gitBranch":"main"}"#;
+        let session2_content = r#"{"type":"user","message":{"role":"user","content":"Test"},"uuid":"user-2","timestamp":"2025-07-20T22:56:38.702Z","sessionId":"session2","cwd":"/Users/test/project2","gitBranch":"main"}"#;
+        let session3_content = r#"{"type":"user","message":{"role":"user","content":"Test"},"uuid":"user-3","timestamp":"2025-07-20T22:56:38.702Z","sessionId":"session3","cwd":"/normal/project","gitBranch":"main"}"#;
+
+        fs::write(encoded_project1.join("session1.jsonl"), session1_content).unwrap();
+        fs::write(encoded_project2.join("session2.jsonl"), session2_content).unwrap();
+        fs::write(normal_project.join("session3.jsonl"), session3_content).unwrap();
+
+        let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
+        let mapping = manager.get_project_path_mapping().await.unwrap();
+
+        // Verify the mapping
+        assert_eq!(mapping.len(), 2, "Should only map encoded paths");
+        assert_eq!(
+            mapping.get("-Users-test-project1").unwrap(),
+            "/Users/test/project1"
+        );
+        assert_eq!(
+            mapping.get("-Users-test-project2").unwrap(),
+            "/Users/test/project2"
+        );
+        assert!(
+            !mapping.contains_key("normal-project"),
+            "Normal projects should not be in mapping"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_get_project_path_mapping_with_empty_sessions() {
+        let temp_dir = create_test_claude_dir();
+        let claude_dir = temp_dir.path().join(".claude");
+
+        // Create encoded project directory with empty session file
+        let encoded_project = claude_dir.join("projects").join("-Users-empty-project");
+        fs::create_dir_all(&encoded_project).unwrap();
+
+        // Create empty session file
+        fs::write(encoded_project.join("empty.jsonl"), "").unwrap();
+
+        let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
+        let mapping = manager.get_project_path_mapping().await.unwrap();
+
+        // Should handle empty files gracefully
+        assert_eq!(mapping.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_get_project_path_mapping_with_missing_cwd() {
+        let temp_dir = create_test_claude_dir();
+        let claude_dir = temp_dir.path().join(".claude");
+
+        // Create encoded project directory with session without CWD
+        let encoded_project = claude_dir.join("projects").join("-Users-no-cwd-project");
+        fs::create_dir_all(&encoded_project).unwrap();
+
+        // Create session file without cwd field
+        let session_content = r#"{"type":"user","message":{"role":"user","content":"Test"},"uuid":"user-1","timestamp":"2025-07-20T22:56:38.702Z","sessionId":"session1","gitBranch":"main"}"#;
+        fs::write(encoded_project.join("session1.jsonl"), session_content).unwrap();
+
+        let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
+        let mapping = manager.get_project_path_mapping().await.unwrap();
+
+        // Should handle missing CWD gracefully
+        assert_eq!(mapping.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_project_path_consolidation_in_get_all_sessions() {
+        let temp_dir = create_test_claude_dir();
+        let claude_dir = temp_dir.path().join(".claude");
+
+        // Create both encoded and normal project directories
+        let encoded_project = claude_dir.join("projects").join("-Users-test-consolidated");
+        let normal_project = claude_dir.join("projects").join("normal-consolidated");
+
+        fs::create_dir_all(&encoded_project).unwrap();
+        fs::create_dir_all(&normal_project).unwrap();
+
+        // Create session files
+        let encoded_session_content = r#"{"type":"user","message":{"role":"user","content":"Encoded project message"},"uuid":"user-encoded","timestamp":"2025-07-20T22:56:38.702Z","sessionId":"encoded-session","cwd":"/Users/test/consolidated","gitBranch":"main"}"#;
+        let normal_session_content = r#"{"type":"user","message":{"role":"user","content":"Normal project message"},"uuid":"user-normal","timestamp":"2025-07-20T22:56:38.702Z","sessionId":"normal-session","cwd":"/normal/consolidated","gitBranch":"main"}"#;
+
+        fs::write(
+            encoded_project.join("encoded-session.jsonl"),
+            encoded_session_content,
+        )
+        .unwrap();
+        fs::write(
+            normal_project.join("normal-session.jsonl"),
+            normal_session_content,
+        )
+        .unwrap();
+
+        let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
+        let sessions = manager.get_all_sessions().await.unwrap();
+
+        assert_eq!(sessions.len(), 2);
+
+        // Find the encoded session
+        let encoded_session = sessions
+            .iter()
+            .find(|s| s.session_id == "encoded-session")
+            .expect("Should find encoded session");
+
+        // Verify it uses the actual path from CWD, not the encoded directory name
+        assert_eq!(encoded_session.project_path, "/Users/test/consolidated");
+
+        // Find the normal session
+        let normal_session = sessions
+            .iter()
+            .find(|s| s.session_id == "normal-session")
+            .expect("Should find normal session");
+
+        // Normal projects should use their CWD from the session file
+        assert_eq!(normal_session.project_path, "/normal/consolidated");
+    }
+
+    #[tokio::test]
+    async fn test_project_summary_consolidation() {
+        let temp_dir = create_test_claude_dir();
+        let claude_dir = temp_dir.path().join(".claude");
+
+        // Create multiple encoded directories for the same actual project
+        let encoded_project1 = claude_dir.join("projects").join("-Users-shared-project");
+        let encoded_project2 = claude_dir
+            .join("projects")
+            .join("-Users-shared-project-backup");
+
+        fs::create_dir_all(&encoded_project1).unwrap();
+        fs::create_dir_all(&encoded_project2).unwrap();
+
+        // Both sessions point to the same actual project path
+        let session1_content = r#"{"type":"user","message":{"role":"user","content":"Session 1"},"uuid":"user-1","timestamp":"2025-07-20T22:56:38.702Z","sessionId":"session1","cwd":"/Users/shared/project","gitBranch":"main"}"#;
+        let session2_content = r#"{"type":"user","message":{"role":"user","content":"Session 2"},"uuid":"user-2","timestamp":"2025-07-20T22:56:39.702Z","sessionId":"session2","cwd":"/Users/shared/project","gitBranch":"main"}"#;
+
+        fs::write(encoded_project1.join("session1.jsonl"), session1_content).unwrap();
+
+        // Sleep to ensure different modification time
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        fs::write(encoded_project2.join("session2.jsonl"), session2_content).unwrap();
+
+        let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
+        let project_summaries = manager.get_project_summary().await.unwrap();
+
+        // Should consolidate both sessions under the same project
+        assert_eq!(project_summaries.len(), 1);
+        let project = &project_summaries[0];
+
+        assert_eq!(project.project_path, "/Users/shared/project");
+        assert_eq!(project.session_count, 2, "Should count both sessions");
+        assert_eq!(
+            project.total_messages, 2,
+            "Should sum messages from both sessions"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_extract_cwd_from_session_file() {
+        let temp_dir = create_test_claude_dir();
+        let claude_dir = temp_dir.path().join(".claude");
+
+        let project_dir = claude_dir.join("projects").join("cwd-test");
+        fs::create_dir_all(&project_dir).unwrap();
+
+        // Test various CWD extraction scenarios
+        let test_cases = vec![
+            // Normal case with CWD in first line
+            (
+                "first-line-cwd.jsonl",
+                r#"{"type":"user","message":{"role":"user","content":"Test"},"uuid":"user-1","timestamp":"2025-07-20T22:56:38.702Z","sessionId":"session1","cwd":"/test/first/line","gitBranch":"main"}"#,
+                Some("/test/first/line".to_string()),
+            ),
+            // CWD in later line
+            (
+                "later-line-cwd.jsonl",
+                r#"{"type":"user","message":{"role":"user","content":"Test"},"uuid":"user-1","timestamp":"2025-07-20T22:56:38.702Z","sessionId":"session1","gitBranch":"main"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Response"}]},"uuid":"assistant-1","timestamp":"2025-07-20T22:56:39.702Z","sessionId":"session1","cwd":"/test/later/line","gitBranch":"main"}"#,
+                Some("/test/later/line".to_string()),
+            ),
+            // No CWD field
+            (
+                "no-cwd.jsonl",
+                r#"{"type":"user","message":{"role":"user","content":"Test"},"uuid":"user-1","timestamp":"2025-07-20T22:56:38.702Z","sessionId":"session1","gitBranch":"main"}"#,
+                None,
+            ),
+            // Empty file
+            ("empty.jsonl", "", None),
+            // Malformed JSON
+            (
+                "malformed.jsonl",
+                r#"{"type":"user","message":{malformed json here"#,
+                None,
+            ),
+        ];
+
+        let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
+
+        for (filename, content, expected_cwd) in test_cases {
+            let file_path = project_dir.join(filename);
+            fs::write(&file_path, content).unwrap();
+
+            let result = manager
+                .extract_cwd_from_session_file(&file_path)
+                .await
+                .unwrap();
+            assert_eq!(result, expected_cwd, "Failed for file: {}", filename);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_project_path_consolidation_edge_cases() {
+        let temp_dir = create_test_claude_dir();
+        let claude_dir = temp_dir.path().join(".claude");
+
+        // Edge case 1: Encoded project with no valid session files
+        let encoded_no_sessions = claude_dir.join("projects").join("-Users-no-sessions");
+        fs::create_dir_all(&encoded_no_sessions).unwrap();
+        fs::write(
+            encoded_no_sessions.join("not-a-session.txt"),
+            "random content",
+        )
+        .unwrap();
+
+        // Edge case 2: Encoded project with session but no CWD
+        let encoded_no_cwd = claude_dir.join("projects").join("-Users-no-cwd");
+        fs::create_dir_all(&encoded_no_cwd).unwrap();
+        let no_cwd_content = r#"{"type":"user","message":{"role":"user","content":"No CWD"},"uuid":"user-1","timestamp":"2025-07-20T22:56:38.702Z","sessionId":"no-cwd-session"}"#;
+        fs::write(encoded_no_cwd.join("no-cwd.jsonl"), no_cwd_content).unwrap();
+
+        // Edge case 3: Mix of encoded and normal projects
+        let normal_project = claude_dir.join("projects").join("normal-mixed");
+        fs::create_dir_all(&normal_project).unwrap();
+        let normal_content = r#"{"type":"user","message":{"role":"user","content":"Normal"},"uuid":"user-2","timestamp":"2025-07-20T22:56:38.702Z","sessionId":"normal-session","cwd":"/normal/mixed","gitBranch":"main"}"#;
+        fs::write(normal_project.join("normal.jsonl"), normal_content).unwrap();
+
+        let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
+
+        // Test get_all_sessions
+        let sessions = manager.get_all_sessions().await.unwrap();
+
+        // Should have 2 sessions (no-cwd and normal)
+        assert_eq!(sessions.len(), 2);
+
+        // The no-cwd session should keep the encoded path since it can't be resolved
+        let no_cwd_session = sessions
+            .iter()
+            .find(|s| s.session_id == "no-cwd")
+            .expect("Should find no-cwd session");
+        assert_eq!(no_cwd_session.project_path, "-Users-no-cwd");
+
+        // Normal project should use CWD from session file
+        let normal_session = sessions
+            .iter()
+            .find(|s| s.session_id == "normal")
+            .expect("Should find normal session");
+        assert_eq!(normal_session.project_path, "/normal/mixed");
+
+        // Test get_project_summary
+        let summaries = manager.get_project_summary().await.unwrap();
+
+        // Should have 2 projects
+        assert_eq!(summaries.len(), 2);
+
+        // Verify project paths in summaries
+        let project_paths: Vec<&str> = summaries.iter().map(|s| s.project_path.as_str()).collect();
+        assert!(project_paths.contains(&"-Users-no-cwd"));
+        assert!(project_paths.contains(&"/normal/mixed"));
+    }
 }

@@ -939,7 +939,7 @@ impl ClaudeDataManager {
         Ok(mapping)
     }
 
-    async fn extract_cwd_from_session_file(
+    pub async fn extract_cwd_from_session_file(
         &self,
         file_path: &Path,
     ) -> Result<Option<String>, Box<dyn std::error::Error>> {
