@@ -71,11 +71,45 @@ impl ClaudeDataManager {
     pub async fn get_all_sessions(&self) -> Result<Vec<ClaudeSession>, Box<dyn std::error::Error>> {
         let projects_dir = self.claude_dir.join("projects");
         let mut sessions = Vec::new();
+        let mut project_path_map: HashMap<String, String> = HashMap::new();
 
         if !projects_dir.exists() {
             return Ok(sessions);
         }
 
+        // First, collect all sessions to build a complete mapping
+        for entry in fs::read_dir(&projects_dir)? {
+            let entry = entry?;
+            let project_path = entry.path();
+            if project_path.is_dir() {
+                let project_name = project_path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("")
+                    .to_string();
+
+                // Check if this is an encoded path
+                if project_name.starts_with('-') {
+                    // Try to get the actual path from the first session file
+                    if let Ok(session_files) = fs::read_dir(&project_path) {
+                        for file in session_files.flatten() {
+                            let file_path = file.path();
+                            if file_path.extension().is_some_and(|ext| ext == "jsonl") {
+                                if let Some(actual_path) =
+                                    self.extract_cwd_from_session_file(&file_path).await?
+                                {
+                                    project_path_map
+                                        .insert(project_name.clone(), actual_path.clone());
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Now process all sessions with the mapping
         for entry in fs::read_dir(&projects_dir)? {
             let entry = entry?;
             let project_path = entry.path();
@@ -97,8 +131,18 @@ impl ClaudeDataManager {
                             .unwrap_or("")
                             .to_string();
 
+                        // Use mapped path if available
+                        let effective_project_name = if project_name.starts_with('-') {
+                            project_path_map
+                                .get(&project_name)
+                                .cloned()
+                                .unwrap_or_else(|| project_name.clone())
+                        } else {
+                            project_name.clone()
+                        };
+
                         let session = self
-                            .parse_session_file(&file_path, &session_id, &project_name)
+                            .parse_session_file(&file_path, &session_id, &effective_project_name)
                             .await?;
                         sessions.push(session);
                     }
@@ -619,15 +663,24 @@ impl ClaudeDataManager {
         let sessions = self.get_all_sessions().await?;
         let mut project_map: HashMap<String, ProjectSummary> = HashMap::new();
 
+        // Create a mapping for project path normalization
+        let path_mapping = self.get_project_path_mapping().await?;
+
         for session in sessions {
-            // Use the session's project_path as-is since it's already been processed
-            // in parse_session_file to prefer CWD over encoded directory names
-            let project_path = &session.project_path;
+            // Normalize project path - if it's an encoded path, use the actual path from mapping
+            let normalized_path = if session.project_path.starts_with('-') {
+                path_mapping
+                    .get(&session.project_path)
+                    .cloned()
+                    .unwrap_or_else(|| session.project_path.clone())
+            } else {
+                session.project_path.clone()
+            };
 
             let entry = project_map
-                .entry(project_path.clone())
+                .entry(normalized_path.clone())
                 .or_insert_with(|| ProjectSummary {
-                    project_path: project_path.clone(),
+                    project_path: normalized_path.clone(),
                     session_count: 0,
                     last_activity: session.file_modified_time,
                     total_messages: 0,
@@ -862,7 +915,7 @@ impl ClaudeDataManager {
             let entry = entry?;
             let encoded_path = entry.file_name().to_string_lossy().to_string();
 
-            if !encoded_path.starts_with("-Users-") {
+            if !encoded_path.starts_with('-') {
                 continue;
             }
 
@@ -886,7 +939,7 @@ impl ClaudeDataManager {
         Ok(mapping)
     }
 
-    async fn extract_cwd_from_session_file(
+    pub async fn extract_cwd_from_session_file(
         &self,
         file_path: &Path,
     ) -> Result<Option<String>, Box<dyn std::error::Error>> {
