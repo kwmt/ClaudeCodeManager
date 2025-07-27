@@ -264,13 +264,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onProjectClick }) => {
           </p>
           <div className="quick-actions">
             <button
-              className="btn-primary"
-              onClick={() => onProjectClick?.("")}
-              aria-label="Start a new Claude Code session"
-            >
-              + Start New Session
-            </button>
-            <button
               className="btn-secondary"
               onClick={refreshAllData}
               aria-label="Refresh all dashboard data"
@@ -332,16 +325,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onProjectClick }) => {
         {projects.length === 0 ? (
           <EmptyState
             title="No projects found"
-            description="Start by creating your first Claude Code session"
-            action={
-              <button
-                className="btn-primary"
-                onClick={() => onProjectClick?.("")}
-                aria-label="Create your first project"
-              >
-                Create First Project
-              </button>
-            }
+            description="No Claude Code projects have been created yet"
           />
         ) : (
           <div
