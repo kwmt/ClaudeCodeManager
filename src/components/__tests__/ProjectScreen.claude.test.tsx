@@ -32,7 +32,6 @@ vi.mock("../../utils/pathUtils", () => ({
 
 describe("ProjectScreen - .claude Directory Tab", () => {
   const mockProjectPath = "/Users/test/projects/my-project";
-  const mockOnBack = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -76,7 +75,7 @@ describe("ProjectScreen - .claude Directory Tab", () => {
 
     vi.mocked(api.getClaudeDirectoryInfo).mockResolvedValue(mockDirectoryInfo);
 
-    render(<ProjectScreen projectPath={mockProjectPath} onBack={mockOnBack} />);
+    render(<ProjectScreen projectPath={mockProjectPath} />);
 
     // Wait for initial load
     await waitFor(() => {
@@ -107,7 +106,7 @@ describe("ProjectScreen - .claude Directory Tab", () => {
 
     vi.mocked(api.getClaudeDirectoryInfo).mockResolvedValue(mockDirectoryInfo);
 
-    render(<ProjectScreen projectPath={mockProjectPath} onBack={mockOnBack} />);
+    render(<ProjectScreen projectPath={mockProjectPath} />);
 
     await waitFor(() => {
       expect(screen.queryByText("Loading project...")).not.toBeInTheDocument();
@@ -145,7 +144,7 @@ describe("ProjectScreen - .claude Directory Tab", () => {
     vi.mocked(api.getClaudeDirectoryInfo).mockResolvedValue(mockDirectoryInfo);
     vi.mocked(api.readClaudeFile).mockResolvedValue(mockFileContent);
 
-    render(<ProjectScreen projectPath={mockProjectPath} onBack={mockOnBack} />);
+    render(<ProjectScreen projectPath={mockProjectPath} />);
 
     await waitFor(() => {
       expect(screen.queryByText("Loading project...")).not.toBeInTheDocument();
@@ -196,7 +195,7 @@ describe("ProjectScreen - .claude Directory Tab", () => {
     vi.mocked(api.readClaudeFile).mockResolvedValue(originalContent);
     vi.mocked(api.writeClaudeFile).mockResolvedValue(undefined);
 
-    render(<ProjectScreen projectPath={mockProjectPath} onBack={mockOnBack} />);
+    render(<ProjectScreen projectPath={mockProjectPath} />);
 
     await waitFor(() => {
       expect(screen.queryByText("Loading project...")).not.toBeInTheDocument();
@@ -256,7 +255,7 @@ describe("ProjectScreen - .claude Directory Tab", () => {
     vi.mocked(api.getClaudeDirectoryInfo).mockResolvedValue(mockDirectoryInfo);
     vi.mocked(api.readClaudeFile).mockResolvedValue(originalContent);
 
-    render(<ProjectScreen projectPath={mockProjectPath} onBack={mockOnBack} />);
+    render(<ProjectScreen projectPath={mockProjectPath} />);
 
     await waitFor(() => {
       expect(screen.queryByText("Loading project...")).not.toBeInTheDocument();
@@ -325,7 +324,7 @@ describe("ProjectScreen - .claude Directory Tab", () => {
 
     vi.mocked(api.getClaudeDirectoryInfo).mockResolvedValue(mockDirectoryInfo);
 
-    render(<ProjectScreen projectPath={mockProjectPath} onBack={mockOnBack} />);
+    render(<ProjectScreen projectPath={mockProjectPath} />);
 
     await waitFor(() => {
       expect(screen.queryByText("Loading project...")).not.toBeInTheDocument();

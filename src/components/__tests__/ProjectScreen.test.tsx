@@ -63,8 +63,6 @@ const mockMessages = [
 ];
 
 describe("ProjectScreen", () => {
-  const mockOnBack = vi.fn();
-
   beforeEach(() => {
     vi.clearAllMocks();
 
@@ -87,12 +85,7 @@ describe("ProjectScreen", () => {
   });
 
   it("should render project information correctly", async () => {
-    render(
-      <ProjectScreen
-        projectPath="-Users-john-documents-test-project"
-        onBack={mockOnBack}
-      />,
-    );
+    render(<ProjectScreen projectPath="-Users-john-documents-test-project" />);
 
     await waitFor(() => {
       expect(screen.getByText("project")).toBeInTheDocument();
@@ -101,18 +94,17 @@ describe("ProjectScreen", () => {
     expect(
       screen.getByText("/Users/john.documents_test/project"),
     ).toBeInTheDocument();
-    expect(screen.getByText("3 sessions")).toBeInTheDocument();
-    expect(screen.getByText("25 messages")).toBeInTheDocument();
-    expect(screen.getByText("2 TODOs")).toBeInTheDocument();
+    // Check for the stat cards
+    expect(screen.getByText("3")).toBeInTheDocument();
+    expect(screen.getAllByText("Sessions")).toHaveLength(2); // One in stat card, one in tab
+    expect(screen.getByText("25")).toBeInTheDocument();
+    expect(screen.getByText("Messages")).toBeInTheDocument();
+    expect(screen.getByText("2")).toBeInTheDocument();
+    expect(screen.getByText("TODOs")).toBeInTheDocument();
   });
 
   it("should display .claude directory information when tab is clicked", async () => {
-    render(
-      <ProjectScreen
-        projectPath="-Users-john-documents-test-project"
-        onBack={mockOnBack}
-      />,
-    );
+    render(<ProjectScreen projectPath="-Users-john-documents-test-project" />);
 
     await waitFor(() => {
       expect(screen.getByText(".claude Directory")).toBeInTheDocument();
@@ -134,17 +126,10 @@ describe("ProjectScreen", () => {
   });
 
   it("should render sessions list", async () => {
-    render(
-      <ProjectScreen
-        projectPath="-Users-john-documents-test-project"
-        onBack={mockOnBack}
-      />,
-    );
+    render(<ProjectScreen projectPath="-Users-john-documents-test-project" />);
 
     await waitFor(() => {
-      expect(
-        screen.getByRole("button", { name: /Sessions \(2\)/ }),
-      ).toBeInTheDocument();
+      expect(screen.getByText("2 conversations")).toBeInTheDocument();
     });
 
     expect(screen.getAllByText(/Session session-.../)).toHaveLength(2);
@@ -153,17 +138,10 @@ describe("ProjectScreen", () => {
   });
 
   it("should load messages when session is selected", async () => {
-    render(
-      <ProjectScreen
-        projectPath="-Users-john-documents-test-project"
-        onBack={mockOnBack}
-      />,
-    );
+    render(<ProjectScreen projectPath="-Users-john-documents-test-project" />);
 
     await waitFor(() => {
-      expect(
-        screen.getByRole("button", { name: /Sessions \(2\)/ }),
-      ).toBeInTheDocument();
+      expect(screen.getByText("2 conversations")).toBeInTheDocument();
     });
 
     const sessionItems = screen.getAllByText(/Session session-.../);
@@ -181,29 +159,8 @@ describe("ProjectScreen", () => {
     });
   });
 
-  it("should call onBack when back button is clicked", async () => {
-    render(
-      <ProjectScreen
-        projectPath="-Users-john-documents-test-project"
-        onBack={mockOnBack}
-      />,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText("← Back to Dashboard")).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText("← Back to Dashboard"));
-    expect(mockOnBack).toHaveBeenCalled();
-  });
-
   it("should handle loading and error states", async () => {
-    render(
-      <ProjectScreen
-        projectPath="-Users-john-documents-test-project"
-        onBack={mockOnBack}
-      />,
-    );
+    render(<ProjectScreen projectPath="-Users-john-documents-test-project" />);
 
     expect(screen.getByText("Loading project...")).toBeInTheDocument();
 
@@ -217,12 +174,7 @@ describe("ProjectScreen", () => {
       new Error("Failed to load sessions"),
     );
 
-    render(
-      <ProjectScreen
-        projectPath="-Users-john-documents-test-project"
-        onBack={mockOnBack}
-      />,
-    );
+    render(<ProjectScreen projectPath="-Users-john-documents-test-project" />);
 
     await waitFor(() => {
       expect(screen.getByText("Error loading project")).toBeInTheDocument();

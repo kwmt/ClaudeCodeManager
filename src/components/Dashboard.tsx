@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { api } from "../api";
+import { formatDateForContext } from "../utils/dateUtils";
 import type { SessionStats, ProjectSummary } from "../types";
 
 interface DashboardProps {
@@ -42,21 +43,21 @@ const ProjectCard: React.FC<{
     project.project_path.split("/").pop() || project.project_path;
   const isActive = project.ide_info?.pid;
 
-  const formatRelativeTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) return "Today";
-    if (diffDays === 1) return "Yesterday";
-    if (diffDays < 7) return `${diffDays} days ago`;
-    return date.toLocaleDateString();
-  };
+  // Generate a gradient based on project name for visual variety
+  const gradientIndex =
+    Math.abs(projectName.split("").reduce((a, b) => a + b.charCodeAt(0), 0)) %
+    5;
+  const gradients = [
+    "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+    "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+    "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
+    "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
+  ];
 
   return (
     <article
-      className={`project-card ${isActive ? "project-card--active" : ""}`}
+      className={`project-card-modern ${isActive ? "project-card-modern--active" : ""}`}
       onClick={onClick}
       role="button"
       tabIndex={0}
@@ -68,54 +69,74 @@ const ProjectCard: React.FC<{
         }
       }}
     >
-      <header className="project-card__header">
-        <div className="project-card__title-group">
-          <h3 className="project-card__title">{projectName}</h3>
-          {isActive && (
-            <span
-              className="project-card__status"
-              aria-label="Project is active"
-            >
-              <span className="active-dot" aria-hidden="true"></span>
-              Active
-            </span>
-          )}
+      <div
+        className="project-card-gradient"
+        style={{ background: gradients[gradientIndex] }}
+      >
+        <div className="project-card-pattern"></div>
+        <div className="project-card-overlay">
+          <span className="project-icon-large">📁</span>
         </div>
-      </header>
-
-      <div className="project-card__path" title={project.project_path}>
-        {project.project_path}
       </div>
 
-      <div className="project-card__metrics">
-        <div className="metric-item">
-          <span className="metric-label">Sessions</span>
-          <span className="metric-value">{project.session_count}</span>
-        </div>
-        <div className="metric-item">
-          <span className="metric-label">Messages</span>
-          <span className="metric-value">{project.total_messages}</span>
-        </div>
-        {project.active_todos > 0 && (
-          <div className="metric-item metric-item--warning">
-            <span className="metric-label">TODOs</span>
-            <span className="metric-value">{project.active_todos}</span>
+      <div className="project-card-content">
+        <header className="project-card-header-modern">
+          <div className="project-title-section">
+            <h3 className="project-title-modern">{projectName}</h3>
+            {isActive && (
+              <span className="active-badge">
+                <span className="active-pulse"></span>
+                Active
+              </span>
+            )}
           </div>
-        )}
-      </div>
+        </header>
 
-      <footer className="project-card__footer">
-        <time
-          className="project-card__last-activity"
-          dateTime={project.last_activity}
-          title={`Last activity: ${new Date(project.last_activity).toLocaleString()}`}
-        >
-          {formatRelativeTime(project.last_activity)}
-        </time>
-        {project.ide_info && (
-          <span className="project-card__ide">{project.ide_info.ide_name}</span>
-        )}
-      </footer>
+        <div className="project-path-modern" title={project.project_path}>
+          {project.project_path}
+        </div>
+
+        <div className="project-metrics-modern">
+          <div className="metric-grid">
+            <div className="metric-item-modern">
+              <span className="metric-number">{project.session_count}</span>
+              <span className="metric-label">Sessions</span>
+            </div>
+            <div className="metric-item-modern">
+              <span className="metric-number">{project.total_messages}</span>
+              <span className="metric-label">Messages</span>
+            </div>
+            {project.active_todos > 0 && (
+              <div className="metric-item-modern metric-warning">
+                <span className="metric-number">{project.active_todos}</span>
+                <span className="metric-label">TODOs</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <footer className="project-footer-modern">
+          <time
+            className="last-activity-modern"
+            dateTime={project.last_activity}
+            title={`Last activity: ${formatDateForContext(project.last_activity, "detail")}`}
+          >
+            {formatDateForContext(project.last_activity, "card")}
+          </time>
+          <div className="project-actions">
+            <button
+              className="action-btn primary"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClick();
+              }}
+            >
+              <span>Open</span>
+              <span className="action-arrow">→</span>
+            </button>
+          </div>
+        </footer>
+      </div>
     </article>
   );
 };
@@ -267,14 +288,54 @@ export const Dashboard: React.FC<DashboardProps> = ({ onProjectClick }) => {
       role="main"
       aria-label="Claude Code Manager Dashboard"
     >
-      <header className="dashboard-header">
-        <div className="hero-content">
-          <h1 className="dashboard-title">
-            Welcome back to Claude Code Manager
-          </h1>
-          <p className="dashboard-subtitle">
-            Manage your Claude Code sessions and track your development progress
-          </p>
+      <header className="dashboard-hero">
+        <div className="hero-background">
+          <div className="hero-pattern"></div>
+        </div>
+        <div className="hero-content-wrapper">
+          <div className="hero-text-section">
+            <div className="welcome-badge">
+              <span className="badge-icon">👋</span>
+              <span>Welcome back</span>
+            </div>
+            <h1 className="hero-title">Claude Code Manager</h1>
+            <p className="hero-subtitle">
+              Manage your Claude Code sessions, track development progress, and
+              boost your productivity
+            </p>
+            <div className="hero-actions">
+              <button className="btn-primary btn-large">
+                <span className="btn-icon">⚡</span>
+                Start New Session
+              </button>
+              <button className="btn-secondary btn-large">
+                <span className="btn-icon">📊</span>
+                View Analytics
+              </button>
+            </div>
+          </div>
+          <div className="hero-visual-section">
+            <div className="hero-illustration">
+              <div className="floating-card card-1">
+                <div className="card-content">
+                  <span className="card-icon">💻</span>
+                  <span className="card-text">Active Projects</span>
+                </div>
+              </div>
+              <div className="floating-card card-2">
+                <div className="card-content">
+                  <span className="card-icon">📝</span>
+                  <span className="card-text">Recent Sessions</span>
+                </div>
+              </div>
+              <div className="floating-card card-3">
+                <div className="card-content">
+                  <span className="card-icon">✅</span>
+                  <span className="card-text">Completed Tasks</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -325,12 +386,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onProjectClick }) => {
       </section>
 
       <section className="projects-section" aria-labelledby="projects-heading">
-        <div className="section-header">
-          <h2 id="projects-heading" className="section-title">
-            Recent Projects
-          </h2>
+        <div className="section-header-modern">
+          <div className="section-title-group">
+            <h2 id="projects-heading" className="section-title-modern">
+              Recent Projects
+            </h2>
+            <p className="section-subtitle">
+              Continue working on your latest Claude Code projects
+            </p>
+          </div>
           <div className="section-controls">
-            <span className="project-count">
+            <span className="project-count-modern">
               {projects.length} {projects.length === 1 ? "project" : "projects"}
             </span>
           </div>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { marked } from "marked";
 import { api } from "../api";
+import { formatDateTime, formatDateTooltip } from "../utils/dateUtils";
 import type { ClaudeSession, ClaudeMessage, ContentBlock } from "../types";
 
 interface SessionBrowserProps {
@@ -226,8 +227,7 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = ({
         // Search in timestamp
         if (
           message.message_type !== "summary" &&
-          new Date(message.timestamp)
-            .toLocaleString()
+          formatDateTime(message.timestamp, { style: "technical" })
             .toLowerCase()
             .includes(query)
         )
@@ -797,8 +797,12 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = ({
                   {session.git_branch && (
                     <span>Branch: {session.git_branch}</span>
                   )}
-                  <span>
-                    Updated: {new Date(session.timestamp).toLocaleDateString()}
+                  <span title={formatDateTooltip(session.timestamp)}>
+                    Updated:{" "}
+                    {formatDateTime(session.timestamp, {
+                      style: "compact",
+                      showRelative: true,
+                    })}
                   </span>
                 </div>
               </div>
@@ -899,10 +903,19 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = ({
                               </span>
                             )}
                           </span>
-                          <span className="message-time">
+                          <span
+                            className="message-time"
+                            title={
+                              message.message_type !== "summary"
+                                ? formatDateTooltip(message.timestamp)
+                                : undefined
+                            }
+                          >
                             {message.message_type === "summary"
                               ? ""
-                              : new Date(message.timestamp).toLocaleString()}
+                              : formatDateTime(message.timestamp, {
+                                  style: "technical",
+                                })}
                           </span>
                         </div>
                         {renderMessageContent(message)}
