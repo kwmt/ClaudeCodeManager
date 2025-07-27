@@ -1508,6 +1508,106 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_get_project_path_mapping_with_complex_paths() {
+        let temp_dir = create_test_claude_dir();
+        let claude_dir = temp_dir.path().join(".claude");
+
+        // Create encoded project directories with more complex real-world paths
+        let encoded_project1 = claude_dir
+            .join("projects")
+            .join("-Users-username-dev-myproject-hoge");
+        let encoded_project2 = claude_dir
+            .join("projects")
+            .join("-home-user-workspace-react-app");
+        let encoded_project3 = claude_dir
+            .join("projects")
+            .join("-opt-projects-claude-code-manager");
+
+        fs::create_dir_all(&encoded_project1).unwrap();
+        fs::create_dir_all(&encoded_project2).unwrap();
+        fs::create_dir_all(&encoded_project3).unwrap();
+
+        // Create session files with realistic complex CWD paths
+        let session1_content = r#"{"type":"user","message":{"role":"user","content":"Working on project with suffix"},"uuid":"user-1","timestamp":"2025-07-20T22:56:38.702Z","sessionId":"session1","cwd":"/Users/username/dev/myproject-hoge","gitBranch":"feature/new-feature"}"#;
+        let session2_content = r#"{"type":"user","message":{"role":"user","content":"React app development"},"uuid":"user-2","timestamp":"2025-07-20T22:56:38.702Z","sessionId":"session2","cwd":"/home/user/workspace/react-app","gitBranch":"main"}"#;
+        let session3_content = r#"{"type":"user","message":{"role":"user","content":"Claude Code Manager"},"uuid":"user-3","timestamp":"2025-07-20T22:56:38.702Z","sessionId":"session3","cwd":"/opt/projects/claude-code-manager","gitBranch":"develop"}"#;
+
+        fs::write(encoded_project1.join("session1.jsonl"), session1_content).unwrap();
+        fs::write(encoded_project2.join("session2.jsonl"), session2_content).unwrap();
+        fs::write(encoded_project3.join("session3.jsonl"), session3_content).unwrap();
+
+        let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
+        let mapping = manager.get_project_path_mapping().await.unwrap();
+
+        // Verify the mapping for complex paths
+        assert_eq!(mapping.len(), 3, "Should map all encoded paths");
+        assert_eq!(
+            mapping.get("-Users-username-dev-myproject-hoge").unwrap(),
+            "/Users/username/dev/myproject-hoge"
+        );
+        assert_eq!(
+            mapping.get("-home-user-workspace-react-app").unwrap(),
+            "/home/user/workspace/react-app"
+        );
+        assert_eq!(
+            mapping.get("-opt-projects-claude-code-manager").unwrap(),
+            "/opt/projects/claude-code-manager"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_project_path_mapping_with_special_characters() {
+        let temp_dir = create_test_claude_dir();
+        let claude_dir = temp_dir.path().join(".claude");
+
+        // Create encoded project directories with special characters and numbers
+        let encoded_project1 = claude_dir
+            .join("projects")
+            .join("-Users-dev-project-v2.1-final");
+        let encoded_project2 = claude_dir
+            .join("projects")
+            .join("-home-user-my_awesome_project");
+        let encoded_project3 = claude_dir
+            .join("projects")
+            .join("-Users-work-client-site-2024");
+
+        fs::create_dir_all(&encoded_project1).unwrap();
+        fs::create_dir_all(&encoded_project2).unwrap();
+        fs::create_dir_all(&encoded_project3).unwrap();
+
+        // Create session files with paths containing special characters
+        let session1_content = r#"{"type":"user","message":{"role":"user","content":"Version project"},"uuid":"user-1","timestamp":"2025-07-20T22:56:38.702Z","sessionId":"session1","cwd":"/Users/dev/project-v2.1-final","gitBranch":"main"}"#;
+        let session2_content = r#"{"type":"user","message":{"role":"user","content":"Underscore project"},"uuid":"user-2","timestamp":"2025-07-20T22:56:38.702Z","sessionId":"session2","cwd":"/home/user/my_awesome_project","gitBranch":"main"}"#;
+        let session3_content = r#"{"type":"user","message":{"role":"user","content":"Client work"},"uuid":"user-3","timestamp":"2025-07-20T22:56:38.702Z","sessionId":"session3","cwd":"/Users/work/client-site-2024","gitBranch":"production"}"#;
+
+        fs::write(encoded_project1.join("session1.jsonl"), session1_content).unwrap();
+        fs::write(encoded_project2.join("session2.jsonl"), session2_content).unwrap();
+        fs::write(encoded_project3.join("session3.jsonl"), session3_content).unwrap();
+
+        let manager = ClaudeDataManager::new_with_dir(&claude_dir).unwrap();
+        let mapping = manager.get_project_path_mapping().await.unwrap();
+
+        // Verify the mapping for paths with special characters
+        assert_eq!(
+            mapping.len(),
+            3,
+            "Should map all encoded paths with special characters"
+        );
+        assert_eq!(
+            mapping.get("-Users-dev-project-v2.1-final").unwrap(),
+            "/Users/dev/project-v2.1-final"
+        );
+        assert_eq!(
+            mapping.get("-home-user-my_awesome_project").unwrap(),
+            "/home/user/my_awesome_project"
+        );
+        assert_eq!(
+            mapping.get("-Users-work-client-site-2024").unwrap(),
+            "/Users/work/client-site-2024"
+        );
+    }
+
+    #[tokio::test]
     async fn test_get_project_path_mapping_with_missing_cwd() {
         let temp_dir = create_test_claude_dir();
         let claude_dir = temp_dir.path().join(".claude");

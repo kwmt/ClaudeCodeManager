@@ -915,7 +915,7 @@ impl ClaudeDataManager {
             let entry = entry?;
             let encoded_path = entry.file_name().to_string_lossy().to_string();
 
-            if !encoded_path.starts_with("-Users-") {
+            if !encoded_path.starts_with('-') {
                 continue;
             }
 
