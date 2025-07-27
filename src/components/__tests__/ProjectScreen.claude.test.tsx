@@ -4,6 +4,12 @@ import { ProjectScreen } from "../ProjectScreen";
 import { api } from "../../api";
 import type { ClaudeDirectoryInfo } from "../../types";
 
+// Mock window.confirm for JSDOM
+Object.defineProperty(window, "confirm", {
+  value: vi.fn(() => true),
+  writable: true,
+});
+
 // Mock the api module
 vi.mock("../../api", () => ({
   api: {
@@ -30,6 +36,8 @@ describe("ProjectScreen - .claude Directory Tab", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset window.confirm mock
+    (window.confirm as any).mockReturnValue(true);
 
     // Set up default mocks
     vi.mocked(api.getAllSessions).mockResolvedValue([]);
