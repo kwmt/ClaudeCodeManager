@@ -288,54 +288,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onProjectClick }) => {
       role="main"
       aria-label="Claude Code Manager Dashboard"
     >
-      <header className="dashboard-hero">
-        <div className="hero-background">
-          <div className="hero-pattern"></div>
-        </div>
-        <div className="hero-content-wrapper">
-          <div className="hero-text-section">
-            <div className="welcome-badge">
-              <span className="badge-icon">👋</span>
-              <span>Welcome back</span>
-            </div>
-            <h1 className="hero-title">Claude Code Manager</h1>
-            <p className="hero-subtitle">
-              Manage your Claude Code sessions, track development progress, and
-              boost your productivity
-            </p>
-            <div className="hero-actions">
-              <button className="btn-primary btn-large">
-                <span className="btn-icon">⚡</span>
-                Start New Session
-              </button>
-              <button className="btn-secondary btn-large">
-                <span className="btn-icon">📊</span>
-                View Analytics
-              </button>
-            </div>
-          </div>
-          <div className="hero-visual-section">
-            <div className="hero-illustration">
-              <div className="floating-card card-1">
-                <div className="card-content">
-                  <span className="card-icon">💻</span>
-                  <span className="card-text">Active Projects</span>
-                </div>
-              </div>
-              <div className="floating-card card-2">
-                <div className="card-content">
-                  <span className="card-icon">📝</span>
-                  <span className="card-text">Recent Sessions</span>
-                </div>
-              </div>
-              <div className="floating-card card-3">
-                <div className="card-content">
-                  <span className="card-icon">✅</span>
-                  <span className="card-text">Completed Tasks</span>
-                </div>
-              </div>
-            </div>
-          </div>
+      <header className="dashboard-header">
+        <div className="hero-content">
+          <h1 className="dashboard-title">
+            Welcome back to Claude Code Manager
+          </h1>
+          <p className="dashboard-subtitle">
+            Manage your Claude Code sessions and track your development progress
+          </p>
         </div>
       </header>
 

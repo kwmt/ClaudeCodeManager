@@ -151,156 +151,33 @@ body {
   color: #2c3e50;
 }
 
-/* Firebase-like Dashboard Hero Section */
-.dashboard-hero {
-  position: relative;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 4rem 2rem;
+/* Improved Dashboard Styles */
+.dashboard-header {
   margin-bottom: 3rem;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
+  text-align: center;
 }
 
-.hero-background {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  opacity: 0.1;
-}
-
-.hero-pattern {
-  background-image: 
-    radial-gradient(circle at 25% 25%, white 2px, transparent 2px),
-    radial-gradient(circle at 75% 75%, white 2px, transparent 2px);
-  background-size: 40px 40px;
-  height: 100%;
-  width: 100%;
-}
-
-.hero-content-wrapper {
-  position: relative;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 3rem;
-  align-items: center;
-  max-width: 1200px;
+.hero-content {
+  max-width: 800px;
   margin: 0 auto;
 }
 
-.welcome-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: rgba(255, 255, 255, 0.2);
-  padding: 0.5rem 1rem;
-  border-radius: 2rem;
-  font-size: 0.9rem;
-  font-weight: 500;
-  margin-bottom: 1.5rem;
-  backdrop-filter: blur(10px);
-}
-
-.hero-title {
-  font-size: 3.5rem;
-  font-weight: 800;
+.dashboard-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
   margin-bottom: 1rem;
-  background: linear-gradient(135deg, white, rgba(255, 255, 255, 0.8));
+  background: linear-gradient(135deg, #3498db, #2c3e50);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-.hero-subtitle {
-  font-size: 1.25rem;
-  margin-bottom: 2rem;
-  opacity: 0.9;
-  line-height: 1.6;
-}
-
-.hero-actions {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.btn-large {
-  padding: 1rem 2rem;
+.dashboard-subtitle {
   font-size: 1.1rem;
-  border-radius: var(--radius-lg);
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: 600;
-  transition: all var(--transition-normal);
-}
-
-.btn-icon {
-  font-size: 1.2rem;
-}
-
-.hero-visual-section {
-  position: relative;
-  height: 300px;
-}
-
-.floating-card {
-  position: absolute;
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: var(--radius-lg);
-  padding: 1.5rem;
-  animation: float 3s ease-in-out infinite;
-  transition: all var(--transition-normal);
-}
-
-.floating-card:hover {
-  background: rgba(255, 255, 255, 0.25);
-  transform: translateY(-5px);
-}
-
-.floating-card.card-1 {
-  top: 20%;
-  left: 10%;
-  animation-delay: 0s;
-}
-
-.floating-card.card-2 {
-  top: 50%;
-  right: 20%;
-  animation-delay: 1s;
-}
-
-.floating-card.card-3 {
-  bottom: 20%;
-  left: 30%;
-  animation-delay: 2s;
-}
-
-.card-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  text-align: center;
-}
-
-.card-icon {
-  font-size: 1.5rem;
-}
-
-.card-text {
-  font-size: 0.875rem;
-  font-weight: 500;
-  opacity: 0.9;
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
+  color: var(--text-secondary);
+  margin-bottom: 2rem;
+  line-height: 1.6;
 }
 
 .quick-actions {
@@ -2691,50 +2568,12 @@ button:hover:not(:disabled) {
     justify-content: center;
   }
 
-  /* Hero section responsive */
-  .dashboard-hero {
-    padding: 3rem 1.5rem;
+  .dashboard-title {
+    font-size: 2rem;
   }
 
-  .hero-content-wrapper {
-    grid-template-columns: 1fr;
-    gap: 2rem;
-    text-align: center;
-  }
-
-  .hero-title {
-    font-size: 2.5rem;
-  }
-
-  .hero-subtitle {
-    font-size: 1.1rem;
-  }
-
-  .hero-actions {
-    justify-content: center;
-  }
-
-  .hero-visual-section {
-    height: 200px;
-  }
-
-  .floating-card {
-    padding: 1rem;
-  }
-
-  .floating-card.card-1 {
-    top: 10%;
-    left: 5%;
-  }
-
-  .floating-card.card-2 {
-    top: 40%;
-    right: 10%;
-  }
-
-  .floating-card.card-3 {
-    bottom: 10%;
-    left: 20%;
+  .dashboard-subtitle {
+    font-size: 1rem;
   }
 
   /* Project cards responsive */
