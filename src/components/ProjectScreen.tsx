@@ -6,6 +6,7 @@ import {
   getProjectDisplayName,
 } from "../utils/pathUtils";
 import { useToast, ToastContainer } from "./Toast";
+import { formatDateTime, formatDateTooltip } from "../utils/dateUtils";
 import type {
   ClaudeSession,
   ClaudeMessage,
@@ -17,12 +18,10 @@ import type {
 
 interface ProjectScreenProps {
   projectPath: string;
-  onBack: () => void;
 }
 
 export const ProjectScreen: React.FC<ProjectScreenProps> = ({
   projectPath,
-  onBack,
 }) => {
   const [sessions, setSessions] = useState<ClaudeSession[]>([]);
   const [selectedSession, setSelectedSession] = useState<ClaudeSession | null>(
@@ -617,25 +616,60 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
   return (
     <div className="project-screen">
       <div className="project-header">
-        <button className="back-button" onClick={onBack}>
-          ← Back to Dashboard
-        </button>
-        <div className="project-info">
-          <h2>{displayName}</h2>
-          <p className="project-path">{normalizedPath}</p>
-          <div className="project-stats">
+        <div className="project-hero">
+          <div className="project-title-section">
+            <h1 className="project-title">{displayName}</h1>
+            <p className="project-path" title={normalizedPath}>
+              {normalizedPath}
+            </p>
             {projectSummary && (
-              <>
-                <span>{projectSummary.session_count} sessions</span>
-                <span>{projectSummary.total_messages} messages</span>
-                <span>{projectSummary.active_todos} TODOs</span>
-                <span>
-                  Last activity:{" "}
-                  {new Date(projectSummary.last_activity).toLocaleDateString()}
-                </span>
-              </>
+              <div
+                className="project-last-activity"
+                title={formatDateTooltip(projectSummary.last_activity)}
+              >
+                Last active{" "}
+                {formatDateTime(projectSummary.last_activity, {
+                  style: "compact",
+                  showRelative: true,
+                })}
+              </div>
             )}
           </div>
+          {projectSummary && (
+            <div className="project-stats-horizontal">
+              <div className="stat-card stat-card--sessions">
+                <div className="stat-icon">💬</div>
+                <div className="stat-content">
+                  <div className="stat-value">
+                    {projectSummary.session_count}
+                  </div>
+                  <div className="stat-label">Sessions</div>
+                </div>
+              </div>
+              <div className="stat-card stat-card--messages">
+                <div className="stat-icon">📝</div>
+                <div className="stat-content">
+                  <div className="stat-value">
+                    {projectSummary.total_messages}
+                  </div>
+                  <div className="stat-label">Messages</div>
+                </div>
+              </div>
+              <div
+                className={`stat-card stat-card--todos ${projectSummary.active_todos > 0 ? "stat-card--warning" : ""}`}
+              >
+                <div className="stat-icon">
+                  {projectSummary.active_todos > 0 ? "⚠️" : "✅"}
+                </div>
+                <div className="stat-content">
+                  <div className="stat-value">
+                    {projectSummary.active_todos}
+                  </div>
+                  <div className="stat-label">TODOs</div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -643,14 +677,24 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
         <button
           className={`tab-button ${activeTab === "sessions" ? "active" : ""}`}
           onClick={() => setActiveTab("sessions")}
+          aria-label={`View sessions (${sessions.length} sessions)`}
         >
-          Sessions ({sessions.length})
+          <div className="tab-icon">💬</div>
+          <div className="tab-content">
+            <div className="tab-title">Sessions</div>
+            <div className="tab-subtitle">{sessions.length} conversations</div>
+          </div>
         </button>
         <button
           className={`tab-button ${activeTab === "directory" ? "active" : ""}`}
           onClick={() => setActiveTab("directory")}
+          aria-label="View .claude directory files"
         >
-          .claude Directory
+          <div className="tab-icon">📁</div>
+          <div className="tab-content">
+            <div className="tab-title">.claude Directory</div>
+            <div className="tab-subtitle">Project configuration</div>
+          </div>
         </button>
       </div>
 
@@ -665,23 +709,34 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
               sessions.map((session) => (
                 <div
                   key={session.session_id}
-                  className={`session-item ${selectedSession?.session_id === session.session_id ? "selected" : ""}`}
+                  className={`session-card ${selectedSession?.session_id === session.session_id ? "selected" : ""}`}
                   onClick={() => loadSessionMessages(session)}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Open session ${session.session_id.substring(0, 8)} with ${session.message_count} messages`}
                 >
-                  <div className="session-header">
-                    <h4>
-                      Session {session.session_id.substring(0, 8)}...
+                  <div className="session-card-header">
+                    <div className="session-id-section">
+                      <h4 className="session-title">
+                        Session {session.session_id.substring(0, 8)}...
+                      </h4>
                       <span
-                        className={`session-status-indicator ${session.is_processing ? "status-processing" : "status-completed"}`}
+                        className={`session-status-badge ${session.is_processing ? "status-processing" : "status-completed"}`}
                         title={
                           session.is_processing
                             ? "Session has sequences still processing"
                             : "Session completed"
                         }
+                        aria-label={
+                          session.is_processing ? "Processing" : "Completed"
+                        }
                       >
-                        <span className="status-dot"></span>
+                        <span className="status-icon">
+                          {session.is_processing ? "⏳" : "✅"}
+                        </span>
+                        {session.is_processing ? "Processing" : "Complete"}
                       </span>
-                    </h4>
+                    </div>
                   </div>
                   {session.latest_content_preview && (
                     <div className="session-preview">
@@ -690,15 +745,34 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
                       </p>
                     </div>
                   )}
-                  <div className="session-meta">
-                    <span>{session.message_count} messages</span>
+                  <div className="session-card-meta">
+                    <div className="meta-item">
+                      <span className="meta-icon">💬</span>
+                      <span className="meta-value">
+                        {session.message_count}
+                      </span>
+                      <span className="meta-label">messages</span>
+                    </div>
                     {session.git_branch && (
-                      <span>Branch: {session.git_branch}</span>
+                      <div className="meta-item">
+                        <span className="meta-icon">🌿</span>
+                        <span className="meta-value">{session.git_branch}</span>
+                        <span className="meta-label">branch</span>
+                      </div>
                     )}
-                    <span>
-                      Updated:{" "}
-                      {new Date(session.timestamp).toLocaleDateString()}
-                    </span>
+                    <div className="meta-item">
+                      <span className="meta-icon">🕒</span>
+                      <span
+                        className="meta-value"
+                        title={formatDateTooltip(session.timestamp)}
+                      >
+                        {formatDateTime(session.timestamp, {
+                          style: "compact",
+                          showRelative: true,
+                        })}
+                      </span>
+                      <span className="meta-label">updated</span>
+                    </div>
                   </div>
                 </div>
               ))
@@ -799,10 +873,19 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
                                 </span>
                               )}
                             </span>
-                            <span className="message-time">
+                            <span
+                              className="message-time"
+                              title={
+                                message.message_type !== "summary"
+                                  ? formatDateTooltip(message.timestamp)
+                                  : undefined
+                              }
+                            >
                               {message.message_type === "summary"
                                 ? ""
-                                : new Date(message.timestamp).toLocaleString()}
+                                : formatDateTime(message.timestamp, {
+                                    style: "technical",
+                                  })}
                             </span>
                           </div>
                           {renderMessageContent(message)}
@@ -856,8 +939,11 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
                         <span className="file-size">
                           {formatFileSize(file.size)}
                         </span>
-                        <span className="file-modified">
-                          {new Date(file.modified).toLocaleDateString()}
+                        <span
+                          className="file-modified"
+                          title={formatDateTooltip(file.modified)}
+                        >
+                          {formatDateTime(file.modified, { style: "compact" })}
                         </span>
                       </div>
                     </div>

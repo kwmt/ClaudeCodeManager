@@ -62,12 +62,7 @@ function App() {
       case "sessions":
         return <SessionBrowser />;
       case "project":
-        return (
-          <ProjectScreen
-            projectPath={selectedProjectPath}
-            onBack={navigateBackToDashboard}
-          />
-        );
+        return <ProjectScreen projectPath={selectedProjectPath} />;
       case "commands":
         return <CommandHistory />;
       case "todos":
@@ -82,7 +77,21 @@ function App() {
   return (
     <div className="app">
       <nav className="nav">
-        <h1 className="nav-title">Claude Code Manager</h1>
+        <h1
+          className="nav-title clickable"
+          onClick={navigateBackToDashboard}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              navigateBackToDashboard();
+            }
+          }}
+          title="Back to Dashboard"
+        >
+          Claude Code Manager
+        </h1>
         <div className="nav-tabs">
           <button
             className={activeTab === "dashboard" ? "active" : ""}

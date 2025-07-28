@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../api";
 import type { CommandLogEntry } from "../types";
+import { formatDateTime, formatDateTooltip } from "../utils/dateUtils";
 
 interface CommandHistoryProps {}
 
@@ -121,8 +122,11 @@ export const CommandHistory: React.FC<CommandHistoryProps> = () => {
               <div key={index} className="command-item">
                 <div className="command-header">
                   <span className="command-user">{cmd.user}</span>
-                  <span className="command-time">
-                    {new Date(cmd.timestamp).toLocaleString()}
+                  <span
+                    className="command-time"
+                    title={formatDateTooltip(cmd.timestamp)}
+                  >
+                    {formatDateTime(cmd.timestamp, { style: "technical" })}
                   </span>
                   <button
                     className="copy-button"

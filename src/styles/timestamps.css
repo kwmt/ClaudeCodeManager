@@ -1,0 +1,120 @@
+/* Timestamp styling for improved readability */
+
+/* General timestamp styling */
+.message-time,
+.command-time,
+.meta-value,
+.file-modified,
+.project-card__last-activity,
+.stat-value {
+  /* Use monospace font for better alignment of numbers */
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-size: 0.875rem;
+  letter-spacing: -0.02em;
+}
+
+/* Enhance contrast for better readability */
+.message-time,
+.command-time {
+  color: var(--text-secondary, #6b7280);
+  transition: color 0.2s ease;
+}
+
+/* Hover effect for timestamps with tooltips */
+.message-time:hover,
+.command-time:hover,
+.meta-value:hover,
+.file-modified:hover,
+.project-card__last-activity:hover {
+  color: var(--text-primary, #1f2937);
+  cursor: help;
+}
+
+/* Visual separator between date and time */
+.stat-value::after {
+  content: '';
+  display: inline-block;
+  width: 0.5ch;
+}
+
+/* Relative time styling in parentheses */
+.relative-time {
+  font-size: 0.813rem;
+  color: var(--text-tertiary, #9ca3af);
+  font-style: italic;
+  margin-left: 0.5rem;
+}
+
+/* Responsive timestamp display */
+@media (max-width: 768px) {
+  /* Hide seconds on mobile for space */
+  .message-time,
+  .command-time {
+    /* This would require JavaScript to implement properly */
+    font-size: 0.813rem;
+  }
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .message-time,
+  .command-time {
+    color: #9ca3af;
+  }
+  
+  .message-time:hover,
+  .command-time:hover,
+  .meta-value:hover,
+  .file-modified:hover,
+  .project-card__last-activity:hover {
+    color: #e5e7eb;
+  }
+  
+  .relative-time {
+    color: #6b7280;
+  }
+}
+
+/* Timestamp alignment in lists */
+.session-meta .meta-value,
+.file-info .file-modified {
+  min-width: 150px;
+  display: inline-block;
+}
+
+/* Timestamp in cards - more prominent */
+.project-card__last-activity {
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* Add subtle icon for timestamps */
+.project-card__last-activity::before,
+.stat-value::before {
+  content: '🕒';
+  font-size: 0.75rem;
+  opacity: 0.6;
+  margin-right: 0.25rem;
+}
+
+/* Animation for recently updated items */
+@keyframes pulse-timestamp {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Apply animation to very recent timestamps (would need JS to add class) */
+.timestamp-recent {
+  animation: pulse-timestamp 2s ease-in-out;
+  color: var(--accent-color, #3b82f6);
+  font-weight: 600;
+}
