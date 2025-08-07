@@ -13,6 +13,14 @@ export default defineConfig(async () => ({
     target: 'es2022',
   },
 
+  // Test configuration
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['src/setupTests.ts'],
+    testTimeout: 10000,
+  },
+
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
   // 1. prevent Vite from obscuring rust errors
