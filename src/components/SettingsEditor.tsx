@@ -6,7 +6,7 @@ import { CommandsAgentsEditor } from "./CommandsAgentsEditor";
 import { SafeCode, SafeJSON } from "../utils/security";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { ImprovedSettingsEditor } from "./improved/ImprovedSettingsEditor";
-import { isImprovedSettingsEnabled } from "../utils/improvedSettings";
+// import { isImprovedSettingsEnabled } from "../utils/improvedSettings";
 
 type SettingsTab = "permissions" | "files" | "commands-agents";
 

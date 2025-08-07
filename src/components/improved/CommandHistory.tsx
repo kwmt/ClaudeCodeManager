@@ -569,7 +569,7 @@ const CommandHistory: React.FC = () => {
         <Toast message={toast.message} type={toast.type} onClose={closeToast} />
       )}
 
-      <style jsx>{`
+      <style>{`
         .command-history {
           display: flex;
           flex-direction: column;

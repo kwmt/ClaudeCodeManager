@@ -54,7 +54,7 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
   );
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const autoSaveTimeoutRef = useRef<number | null>(null);
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [messageSearchQuery, setMessageSearchQuery] = useState("");
   const [selectedMessageType, setSelectedMessageType] = useState<string>("all");
@@ -508,7 +508,16 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
       return (
         <div
           className="markdown-content"
-          dangerouslySetInnerHTML={{ __html: marked(text) }}
+          dangerouslySetInnerHTML={{
+            __html: (() => {
+              try {
+                const result = marked(text);
+                return typeof result === "string" ? result : "";
+              } catch {
+                return "";
+              }
+            })(),
+          }}
         />
       );
     }

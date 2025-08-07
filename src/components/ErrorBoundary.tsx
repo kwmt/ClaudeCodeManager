@@ -8,7 +8,10 @@ import React, { Component, ErrorInfo, ReactNode } from "react";
 
 interface Props {
   children: ReactNode;
-  fallback?: ReactNode;
+  fallback?:
+    | ReactNode
+    | ((props: { error: Error; resetError: () => void }) => ReactNode);
+  onError?: (error: Error, errorInfo: ErrorInfo) => void;
 }
 
 interface State {
@@ -39,6 +42,11 @@ export class ErrorBoundary extends Component<Props, State> {
 
     console.error("Settings Editor Error:", sanitizedError);
 
+    // Call onError callback if provided
+    if (this.props.onError) {
+      this.props.onError(error, errorInfo);
+    }
+
     this.setState({
       error,
       errorInfo,
@@ -52,6 +60,12 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       if (this.props.fallback) {
+        if (typeof this.props.fallback === "function") {
+          return this.props.fallback({
+            error: this.state.error!,
+            resetError: this.handleReset,
+          });
+        }
         return this.props.fallback;
       }
 

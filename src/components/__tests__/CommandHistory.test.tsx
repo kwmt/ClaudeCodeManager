@@ -1,5 +1,4 @@
-import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 import { CommandHistory } from "../CommandHistory";
@@ -40,10 +39,19 @@ describe("CommandHistory", () => {
     vi.clearAllMocks();
     (api.getCommandHistory as any).mockResolvedValue(mockCommands);
     (api.searchCommands as any).mockResolvedValue(mockCommands);
+
+    // Mock navigator.clipboard
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: vi.fn().mockResolvedValue(undefined),
+      },
+    });
   });
 
   it("renders command history with commands", async () => {
-    render(<CommandHistory />);
+    await act(async () => {
+      render(<CommandHistory />);
+    });
 
     await waitFor(() => {
       expect(screen.getByText("Command History")).toBeInTheDocument();
@@ -51,14 +59,18 @@ describe("CommandHistory", () => {
     });
   });
 
-  it("shows loading state initially", () => {
-    render(<CommandHistory />);
+  it("shows loading state initially", async () => {
+    await act(async () => {
+      render(<CommandHistory />);
+    });
     expect(screen.getByText("Loading command history...")).toBeInTheDocument();
   });
 
   it("handles search functionality", async () => {
     const user = userEvent.setup();
-    render(<CommandHistory />);
+    await act(async () => {
+      render(<CommandHistory />);
+    });
 
     await waitFor(() => {
       expect(screen.getByText("ls -la")).toBeInTheDocument();

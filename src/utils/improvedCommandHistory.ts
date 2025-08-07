@@ -306,7 +306,7 @@ class ImprovedCommandHistoryManager {
   /**
    * 分析データをローカルストレージに記録
    */
-  private logAnalytics(event: string, data: any): void {
+  logAnalytics(event: string, data: any): void {
     try {
       const sessionId = this.getOrCreateSessionId();
       const userId = this.getBrowserFingerprint();
@@ -411,3 +411,33 @@ if (typeof window !== "undefined") {
       commandHistoryMigration.collectFeedback(score, comment),
   };
 }
+
+// Export functions required by other components
+export const isImprovedCommandHistoryEnabled = () =>
+  commandHistoryMigration.shouldShowImproved();
+
+export const getCurrentMigrationPhase = () =>
+  commandHistoryMigration.getConfig().phase;
+
+export const getAvailableFeatures = () => ({
+  virtualization: true,
+  search: true,
+  filtering: true,
+  analytics: true,
+});
+
+export const recordPerformanceMetric = (
+  type: "search" | "memory" | "error",
+  value: number,
+) => commandHistoryMigration.recordPerformance(type, value);
+
+export const recordAnalytics = (event: string, data: any) =>
+  commandHistoryMigration.logAnalytics(event, data);
+
+export const shouldCollectFeedback = () => true;
+
+export const recordUserFeedback = (score: number, feedback?: string) =>
+  commandHistoryMigration.collectFeedback(score, feedback);
+
+export const triggerEmergencyRollback = (reason: string) =>
+  commandHistoryMigration.emergencyRollback(reason);

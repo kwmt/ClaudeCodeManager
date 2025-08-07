@@ -31,6 +31,11 @@ export function formatDateTime(
     timezone = undefined,
   } = options;
 
+  // Handle null/undefined dates
+  if (!date) {
+    return "No date";
+  }
+
   const dateObj = typeof date === "string" ? new Date(date) : date;
 
   // Handle invalid dates

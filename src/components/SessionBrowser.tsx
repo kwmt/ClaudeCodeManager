@@ -289,7 +289,16 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = ({
       return (
         <div
           className="markdown-content"
-          dangerouslySetInnerHTML={{ __html: marked(text) }}
+          dangerouslySetInnerHTML={{
+            __html: (() => {
+              try {
+                const result = marked(text);
+                return typeof result === "string" ? result : "";
+              } catch {
+                return "";
+              }
+            })(),
+          }}
         />
       );
     }

@@ -1,7 +1,6 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { api } from "../api";
 import type { CommandLogEntry } from "../types";
-import { formatDateTime, formatDateTooltip } from "../utils/dateUtils";
 import { VirtualizedCommandList } from "./VirtualizedCommandList";
 import { useDebounce } from "../hooks/useDebounce";
 import { ErrorBoundary, CommandHistoryErrorFallback } from "./ErrorBoundary";

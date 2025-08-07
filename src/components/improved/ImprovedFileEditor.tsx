@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import JSONEditor from "../JSONEditor";
 import { SafeConfirmDialog } from "../SafeConfirmDialog";
-import { validateFileName } from "../../utils/security";
+// import { validateFileName } from "../../utils/security";
 
 interface FileChange {
   timestamp: number;

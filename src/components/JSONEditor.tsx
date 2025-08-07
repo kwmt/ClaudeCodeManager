@@ -13,12 +13,14 @@ interface JSONEditorProps {
 const debounce = <T extends (...args: any[]) => any>(
   func: T,
   wait: number,
-): ((...args: Parameters<T>) => void) => {
+): ((...args: Parameters<T>) => void) & { cancel: () => void } => {
   let timeoutId: ReturnType<typeof setTimeout>;
-  return (...args: Parameters<T>) => {
+  const debounced = (...args: Parameters<T>) => {
     clearTimeout(timeoutId);
     timeoutId = setTimeout(() => func(...args), wait);
   };
+  debounced.cancel = () => clearTimeout(timeoutId);
+  return debounced;
 };
 
 export default function JSONEditor({
@@ -59,7 +61,9 @@ export default function JSONEditor({
 
     // クリーンアップ関数でデバウンスをキャンセル
     return () => {
-      debouncedValidation.cancel?.();
+      if (typeof debouncedValidation.cancel === "function") {
+        debouncedValidation.cancel();
+      }
     };
   }, [value, debouncedValidation]);
 

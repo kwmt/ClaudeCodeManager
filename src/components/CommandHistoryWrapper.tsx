@@ -49,7 +49,7 @@ const CommandHistorySkeleton: React.FC = () => (
         </div>
       ))}
     </div>
-    <style jsx>{`
+    <style>{`
       .command-history-skeleton {
         padding: 24px;
         background: var(--color-gray-50);
@@ -135,7 +135,6 @@ interface UserFeedbackModalProps {
 }
 
 const UserFeedbackModal: React.FC<UserFeedbackModalProps> = ({
-  version,
   onSubmit,
   onClose,
 }) => {
@@ -268,7 +267,7 @@ const UserFeedbackModal: React.FC<UserFeedbackModalProps> = ({
           </div>
         </form>
 
-        <style jsx>{`
+        <style>{`
           .feedback-modal-overlay {
             position: fixed;
             top: 0;
@@ -534,7 +533,7 @@ const DevelopmentBanner: React.FC<{
         )}
       </div>
 
-      <style jsx>{`
+      <style>{`
         .dev-banner {
           background: linear-gradient(90deg, #f59e0b, #d97706);
           color: white;
@@ -621,7 +620,7 @@ const DevelopmentBanner: React.FC<{
 // Main wrapper component
 export const CommandHistoryWrapper: React.FC = () => {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
-  const [renderStartTime, setRenderStartTime] = useState<number>(0);
+  // const [renderStartTime, setRenderStartTime] = useState<number>(0);
 
   const useImproved = isImprovedCommandHistoryEnabled();
   const currentPhase = getCurrentMigrationPhase();
@@ -629,12 +628,13 @@ export const CommandHistoryWrapper: React.FC = () => {
 
   useEffect(() => {
     const startTime = performance.now();
-    setRenderStartTime(startTime);
+    // setRenderStartTime(startTime);
 
     // Record render completion time
     const recordRenderTime = () => {
       const renderTime = performance.now() - startTime;
-      recordPerformanceMetric("renderTime", renderTime);
+      // Record as search time since there's no renderTime type
+      recordPerformanceMetric("search", renderTime);
     };
 
     // Use setTimeout to record after React has finished rendering
@@ -656,7 +656,7 @@ export const CommandHistoryWrapper: React.FC = () => {
 
   useEffect(() => {
     // Record analytics data on mount
-    recordAnalytics({
+    recordAnalytics("component_mount", {
       userExperience: {
         tasksCompleted: 0,
         timeSpent: 0,
@@ -680,7 +680,7 @@ export const CommandHistoryWrapper: React.FC = () => {
       usabilityScore: number;
       featureUsage: string[];
     }) => {
-      recordUserFeedback(feedback);
+      recordUserFeedback(feedback.rating, feedback.comment);
     },
     [],
   );
@@ -694,7 +694,7 @@ export const CommandHistoryWrapper: React.FC = () => {
         triggerEmergencyRollback(`Component error: ${error.message}`);
       }
 
-      recordAnalytics({
+      recordAnalytics("error", {
         performance: {
           searchResponseTime: 0,
           renderTime: 0,
@@ -747,7 +747,7 @@ export const CommandHistoryWrapper: React.FC = () => {
           </div>
         </div>
 
-        <style jsx>{`
+        <style>{`
         .command-history-error {
           display: flex;
           align-items: center;
@@ -828,7 +828,7 @@ export const CommandHistoryWrapper: React.FC = () => {
       <DevelopmentBanner
         phase={currentPhase}
         version={useImproved ? "improved" : "legacy"}
-        features={availableFeatures}
+        features={Object.keys(availableFeatures)}
       />
 
       <ErrorBoundary fallback={ErrorFallback} onError={handleError}>

@@ -181,7 +181,7 @@ export const VirtualizedCommandList: React.FC<VirtualizedCommandListProps> = ({
   const [expandedCommands, setExpandedCommands] = useState<Set<number>>(
     new Set(),
   );
-  const [focusedIndex, setFocusedIndex] = useState<number>(-1);
+  // const [focusedIndex, setFocusedIndex] = useState<number>(-1);
 
   const toggleCommandExpansion = useCallback((index: number) => {
     setExpandedCommands((prev) => {
@@ -195,7 +195,8 @@ export const VirtualizedCommandList: React.FC<VirtualizedCommandListProps> = ({
     });
   }, []);
 
-  // Enhanced keyboard navigation
+  // Enhanced keyboard navigation (currently unused but kept for future implementation)
+  /*
   const handleListKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       switch (e.key) {
@@ -226,8 +227,10 @@ export const VirtualizedCommandList: React.FC<VirtualizedCommandListProps> = ({
     },
     [commands.length, focusedIndex, toggleCommandExpansion],
   );
+  */
 
-  // Auto-focus management
+  // Auto-focus management (disabled for now)
+  /*
   React.useEffect(() => {
     if (focusedIndex >= 0) {
       const element = document.querySelector(
@@ -238,6 +241,7 @@ export const VirtualizedCommandList: React.FC<VirtualizedCommandListProps> = ({
       }
     }
   }, [focusedIndex]);
+  */
 
   // For large datasets, we could implement virtual scrolling here
   // For now, we'll optimize rendering with React.memo and proper key usage
@@ -278,7 +282,7 @@ export const VirtualizedCommandList: React.FC<VirtualizedCommandListProps> = ({
         first/last. Actions: Press Enter or Space to expand/collapse, Ctrl+C or
         Cmd+C to copy command.
       </div>
-      {renderedCommands.map((command, index) =>
+      {renderedCommands.map((command) =>
         React.cloneElement(command, {
           "aria-setsize": commands.length,
           key: command.key,
