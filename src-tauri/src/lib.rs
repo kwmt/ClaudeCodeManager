@@ -35,7 +35,15 @@ pub fn run() {
             get_home_directory,
             get_claude_directory_info,
             read_claude_file,
-            write_claude_file
+            write_claude_file,
+            get_custom_commands,
+            get_agents,
+            save_custom_command,
+            save_agent,
+            delete_custom_command,
+            delete_agent,
+            get_all_settings_files,
+            save_settings_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,0 +1,366 @@
+/* =================================
+   Command History - Improved Layout
+   ================================= */
+
+/* Main container with proper height calculation */
+.command-history {
+  height: 100vh; /* Fixed viewport height */
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+  background: #f8f9fa;
+}
+
+/* Header with fixed height to prevent content shift */
+.command-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  background: white;
+  border-bottom: 1px solid #e9ecef;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0; /* Prevent shrinking */
+  min-height: 80px; /* Consistent header height */
+}
+
+/* Content area with explicit height calculation */
+.command-history-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 80px); /* Subtract header height */
+  overflow: hidden; /* Important: prevent content overflow */
+}
+
+/* Commands list with proper scrolling */
+.commands-list {
+  flex: 1;
+  background: white;
+  margin: 1rem 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  overflow-y: auto;
+  overflow-x: hidden;
+  
+  /* Scroll behavior improvements */
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e0 #f7fafc;
+}
+
+/* Webkit scrollbar styling for better UX */
+.commands-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.commands-list::-webkit-scrollbar-track {
+  background: #f7fafc;
+  border-radius: 4px;
+}
+
+.commands-list::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 4px;
+}
+
+.commands-list::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
+/* Loading and empty states */
+.loading, .no-commands {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #6c757d;
+  font-size: 1.1rem;
+  background: white;
+  margin: 1rem 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+/* Command item improvements */
+.command-item {
+  padding: 1.5rem;
+  border-bottom: 1px solid #f1f3f4;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.command-item:hover {
+  background: #f8f9fa;
+  border-left: 4px solid #007bff;
+  padding-left: calc(1.5rem - 4px);
+}
+
+.command-item:focus {
+  outline: 2px solid #007bff;
+  outline-offset: -2px;
+  background: #e3f2fd;
+}
+
+.command-item:last-child {
+  border-bottom: none;
+}
+
+/* Header meta information */
+.command-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.command-meta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.command-user {
+  font-weight: 600;
+  color: #495057;
+  background: #e9ecef;
+  padding: 0.25rem 0.75rem;
+  border-radius: 16px;
+  font-size: 0.875rem;
+}
+
+.command-time {
+  color: #6c757d;
+  font-size: 0.875rem;
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+}
+
+/* Action buttons with better accessibility */
+.command-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.expand-button,
+.copy-button {
+  padding: 0.5rem;
+  border: 1px solid #dee2e6;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+  min-width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.expand-button:hover,
+.copy-button:hover {
+  background: #f8f9fa;
+  border-color: #adb5bd;
+  transform: translateY(-1px);
+}
+
+.expand-button:focus,
+.copy-button:focus {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
+}
+
+.copy-button.copied {
+  background: #d4edda;
+  border-color: #c3e6cb;
+  color: #155724;
+}
+
+/* Command text with better typography */
+.command-text {
+  background: #f8f9fa;
+  border-radius: 8px;
+  border-left: 4px solid #dee2e6;
+  overflow: hidden;
+}
+
+.command-text pre {
+  margin: 0;
+  padding: 1rem;
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-x: auto;
+}
+
+.command-text.expanded {
+  border-left-color: #007bff;
+}
+
+/* Working directory display */
+.command-cwd {
+  margin-top: 0.75rem;
+  padding: 0.5rem 1rem;
+  background: #fff3cd;
+  border-radius: 6px;
+  border-left: 4px solid #ffc107;
+  font-size: 0.875rem;
+}
+
+.cwd-label {
+  font-weight: 600;
+  color: #856404;
+  margin-right: 0.5rem;
+}
+
+.cwd-path {
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  color: #856404;
+}
+
+/* Search container improvements */
+.search-container {
+  flex: 1;
+  max-width: 400px;
+  position: relative;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 2px solid #dee2e6;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+/* Export button styling */
+.export-button {
+  padding: 0.75rem 1.5rem;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.export-button:hover {
+  background: #0056b3;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+.export-button:focus {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
+}
+
+/* Error state styling */
+.command-history-error {
+  text-align: center;
+  padding: 3rem 2rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  margin: 1rem 2rem;
+}
+
+.command-history-error h3 {
+  color: #dc3545;
+  margin-bottom: 1rem;
+  font-size: 1.25rem;
+}
+
+.command-history-error button {
+  padding: 0.75rem 1.5rem;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.command-history-error button:hover {
+  background: #c82333;
+  transform: translateY(-1px);
+}
+
+/* Responsive design improvements */
+@media (max-width: 768px) {
+  .command-history-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+    padding: 1rem;
+    min-height: 120px;
+  }
+  
+  .search-container {
+    max-width: none;
+  }
+  
+  .commands-list {
+    margin: 0.5rem 1rem;
+  }
+  
+  .command-history-content {
+    height: calc(100vh - 120px);
+  }
+  
+  .command-item {
+    padding: 1rem;
+  }
+  
+  .command-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  
+  .command-actions {
+    align-self: flex-end;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .command-item {
+    border-bottom: 2px solid #000;
+  }
+  
+  .command-text {
+    border-left-width: 6px;
+  }
+  
+  .expand-button,
+  .copy-button {
+    border-width: 2px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .command-item,
+  .expand-button,
+  .copy-button,
+  .export-button {
+    transition: none;
+  }
+  
+  .commands-list {
+    scroll-behavior: auto;
+  }
+}

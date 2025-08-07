@@ -8,6 +8,8 @@ import type {
   SessionStats,
   IdeInfo,
   ClaudeDirectoryInfo,
+  CustomCommand,
+  Agent,
 } from "./types";
 
 // Check if we're running in Tauri environment
@@ -183,5 +185,63 @@ export const api = {
       return tauriApi.invoke("write_claude_file", { filePath, content });
     }
     return mockApi.writeClaudeFile(filePath, content);
+  },
+
+  // Custom commands and agents
+  async getCustomCommands(): Promise<CustomCommand[]> {
+    if (isTauri && tauriApi) {
+      return tauriApi.invoke("get_custom_commands");
+    }
+    return mockApi.getCustomCommands();
+  },
+
+  async getAgents(): Promise<Agent[]> {
+    if (isTauri && tauriApi) {
+      return tauriApi.invoke("get_agents");
+    }
+    return mockApi.getAgents();
+  },
+
+  async saveCustomCommand(name: string, content: string): Promise<void> {
+    if (isTauri && tauriApi) {
+      return tauriApi.invoke("save_custom_command", { name, content });
+    }
+    return mockApi.saveCustomCommand(name, content);
+  },
+
+  async saveAgent(name: string, content: string): Promise<void> {
+    if (isTauri && tauriApi) {
+      return tauriApi.invoke("save_agent", { name, content });
+    }
+    return mockApi.saveAgent(name, content);
+  },
+
+  async deleteCustomCommand(name: string): Promise<void> {
+    if (isTauri && tauriApi) {
+      return tauriApi.invoke("delete_custom_command", { name });
+    }
+    return mockApi.deleteCustomCommand(name);
+  },
+
+  async deleteAgent(name: string): Promise<void> {
+    if (isTauri && tauriApi) {
+      return tauriApi.invoke("delete_agent", { name });
+    }
+    return mockApi.deleteAgent(name);
+  },
+
+  // Settings files
+  async getAllSettingsFiles(): Promise<[string, string][]> {
+    if (isTauri && tauriApi) {
+      return tauriApi.invoke("get_all_settings_files");
+    }
+    return mockApi.getAllSettingsFiles();
+  },
+
+  async saveSettingsFile(filename: string, content: string): Promise<void> {
+    if (isTauri && tauriApi) {
+      return tauriApi.invoke("save_settings_file", { filename, content });
+    }
+    return mockApi.saveSettingsFile(filename, content);
   },
 };

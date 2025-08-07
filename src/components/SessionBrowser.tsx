@@ -289,7 +289,16 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = ({
       return (
         <div
           className="markdown-content"
-          dangerouslySetInnerHTML={{ __html: marked(text) }}
+          dangerouslySetInnerHTML={{
+            __html: (() => {
+              try {
+                const result = marked(text);
+                return typeof result === "string" ? result : "";
+              } catch {
+                return "";
+              }
+            })(),
+          }}
         />
       );
     }
@@ -797,9 +806,9 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = ({
                   {session.git_branch && (
                     <span>Branch: {session.git_branch}</span>
                   )}
-                  <span title={formatDateTooltip(session.timestamp)}>
+                  <span title={formatDateTooltip(session.file_modified_time)}>
                     Updated:{" "}
-                    {formatDateTime(session.timestamp, {
+                    {formatDateTime(session.file_modified_time, {
                       style: "compact",
                       showRelative: true,
                     })}

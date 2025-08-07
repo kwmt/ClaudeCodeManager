@@ -1,0 +1,455 @@
+/* Settings tabs */
+.settings-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--secondary-bg);
+}
+
+.settings-tab {
+  padding: 12px 20px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+
+.settings-tab:hover {
+  color: var(--text-primary);
+  background: var(--hover-color);
+}
+
+.settings-tab.active {
+  color: var(--accent-color);
+  border-bottom-color: var(--accent-color);
+}
+
+.settings-tab-content {
+  flex: 1;
+  overflow: auto;
+}
+
+/* Common editor styles */
+.settings-files-editor,
+.commands-agents-editor {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #1e1e1e;
+  color: #d4d4d4;
+}
+
+.editor-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.editor-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.editor-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* File/Item list */
+.file-list,
+.item-list {
+  width: 250px;
+  background: var(--secondary-bg);
+  border-right: 1px solid var(--border-color);
+  overflow-y: auto;
+}
+
+.file-list h3,
+.item-list h3 {
+  padding: 12px 16px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.file-list ul,
+.item-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.file-list li,
+.item-list li {
+  padding: 10px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color 0.2s;
+}
+
+.file-list li:hover,
+.item-list li:hover {
+  background: var(--hover-color);
+}
+
+.file-list li.selected,
+.item-list li.selected {
+  background: var(--accent-color);
+  color: white;
+}
+
+.file-icon,
+.item-icon {
+  font-size: 16px;
+}
+
+/* Editor content */
+.editor-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  overflow: hidden;
+  background: #1e1e1e;
+  color: #d4d4d4;
+}
+
+.file-header,
+.content-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.file-header h3,
+.content-header h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.unsaved-indicator {
+  color: var(--warning-color);
+  font-size: 14px;
+}
+
+/* JSON Editor */
+.json-editor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.json-editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.json-error {
+  color: var(--error-color);
+  font-size: 14px;
+}
+
+.json-editor-textarea {
+  flex: 1;
+  font-family: 'Monaco', 'Consolas', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  resize: none;
+}
+
+.json-editor-textarea:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+.json-editor-textarea.has-error {
+  border-color: var(--error-color);
+}
+
+/* Commands/Agents Editor specific */
+.mode-switcher {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.mode-switcher button {
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  color: #d4d4d4;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.mode-switcher button:not(:last-child) {
+  border-right: 1px solid var(--border-color);
+}
+
+.mode-switcher button:hover {
+  background: #3a3a3a;
+  color: #f0f0f0;
+}
+
+.mode-switcher button.active {
+  background: var(--accent-color);
+  color: white;
+}
+
+.content-editor {
+  flex: 1;
+  font-family: 'Monaco', 'Consolas', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  resize: none;
+}
+
+.content-editor:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+.create-form {
+  margin-bottom: 16px;
+}
+
+.create-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.create-form input {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.create-form input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+/* Empty state */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  height: 100%;
+  color: var(--text-secondary);
+}
+
+/* Buttons */
+.btn-primary,
+.btn-secondary,
+.btn-danger {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-primary {
+  background: var(--accent-color);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.btn-secondary {
+  background: #3a3a3a;
+  color: #d4d4d4;
+  border: 1px solid #555;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #4a4a4a;
+  border-color: #666;
+}
+
+.btn-danger {
+  background: var(--error-color);
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #c53030;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Loading and error states */
+.loading,
+.error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: 16px;
+}
+
+.error {
+  color: var(--error-color);
+}
+
+/* Safe Dialog Styles */
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.dialog-content {
+  background: var(--primary-bg);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow: auto;
+}
+
+.dialog-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.dialog-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.dialog-body {
+  padding: 16px 24px;
+}
+
+.dialog-body p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.dialog-actions {
+  padding: 16px 24px 20px;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.btn-warning {
+  background: var(--warning-color);
+  color: white;
+}
+
+.btn-warning:hover:not(:disabled) {
+  background: #d69e2e;
+}
+
+/* JSON validation indicator */
+.json-validating {
+  color: var(--accent-color);
+  font-size: 14px;
+}
+
+/* Error Boundary Styles */
+.error-boundary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  padding: 24px;
+}
+
+.error-boundary-content {
+  text-align: center;
+  max-width: 500px;
+}
+
+.error-boundary-content h2 {
+  color: var(--error-color);
+  margin-bottom: 16px;
+}
+
+.error-boundary-content p {
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.error-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.error-details {
+  text-align: left;
+  margin-top: 24px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 16px;
+  background: var(--secondary-bg);
+}
+
+.error-details summary {
+  cursor: pointer;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+.error-stack {
+  font-family: 'Monaco', 'Consolas', 'Courier New', monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  overflow-x: auto;
+  color: var(--text-secondary);
+}

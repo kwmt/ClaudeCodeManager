@@ -192,3 +192,15 @@ pub struct ClaudeDirectoryFile {
     pub modified: DateTime<Utc>,
     pub is_directory: bool,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomCommand {
+    pub name: String,
+    pub content: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Agent {
+    pub name: String,
+    pub content: String,
+}
