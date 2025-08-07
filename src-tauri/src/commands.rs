@@ -170,13 +170,35 @@ pub async fn open_session_file(
         .find(|s| s.session_id == session_id)
         .ok_or_else(|| format!("Session with ID {session_id} not found"))?;
 
-    // Construct the file path
+    // Get the project path mapping to convert the actual path to the encoded directory name
+    let path_mapping = data_manager
+        .get_project_path_mapping()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Find the encoded directory name for this project path
+    let encoded_dir_name = path_mapping
+        .iter()
+        .find(|(_, actual_path)| *actual_path == &session.project_path)
+        .map(|(encoded_path, _)| encoded_path.clone())
+        .unwrap_or_else(|| {
+            // If no mapping found, convert the path manually using Claude's encoding scheme
+            // Replace '/' with '-' and ensure it starts with '-'
+            let encoded = session.project_path.replace('/', "-");
+            if encoded.starts_with('-') {
+                encoded
+            } else {
+                format!("-{}", encoded)
+            }
+        });
+
+    // Construct the file path using the encoded directory name
     let home_dir = dirs::home_dir().ok_or_else(|| "Could not find home directory".to_string())?;
 
     let file_path = home_dir
         .join(".claude")
         .join("projects")
-        .join(session.project_path.trim_start_matches('/'))
+        .join(encoded_dir_name)
         .join(format!("{session_id}.jsonl"));
 
     // Open the file with the default application
@@ -269,6 +291,91 @@ pub async fn write_claude_file(
 ) -> Result<(), String> {
     data_manager
         .write_claude_file(&file_path, &content)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_custom_commands(
+    data_manager: State<'_, Arc<ClaudeDataManager>>,
+) -> Result<Vec<CustomCommand>, String> {
+    data_manager
+        .get_custom_commands()
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_agents(
+    data_manager: State<'_, Arc<ClaudeDataManager>>,
+) -> Result<Vec<Agent>, String> {
+    data_manager.get_agents().await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn save_custom_command(
+    name: String,
+    content: String,
+    data_manager: State<'_, Arc<ClaudeDataManager>>,
+) -> Result<(), String> {
+    data_manager
+        .save_custom_command(&name, &content)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn save_agent(
+    name: String,
+    content: String,
+    data_manager: State<'_, Arc<ClaudeDataManager>>,
+) -> Result<(), String> {
+    data_manager
+        .save_agent(&name, &content)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn delete_custom_command(
+    name: String,
+    data_manager: State<'_, Arc<ClaudeDataManager>>,
+) -> Result<(), String> {
+    data_manager
+        .delete_custom_command(&name)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn delete_agent(
+    name: String,
+    data_manager: State<'_, Arc<ClaudeDataManager>>,
+) -> Result<(), String> {
+    data_manager
+        .delete_agent(&name)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_all_settings_files(
+    data_manager: State<'_, Arc<ClaudeDataManager>>,
+) -> Result<Vec<(String, String)>, String> {
+    data_manager
+        .get_all_settings_files()
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn save_settings_file(
+    filename: String,
+    content: String,
+    data_manager: State<'_, Arc<ClaudeDataManager>>,
+) -> Result<(), String> {
+    data_manager
+        .save_settings_file(&filename, &content)
         .await
         .map_err(|e| e.to_string())
 }

@@ -1,7 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { api } from "../api";
 import type { CommandLogEntry } from "../types";
 import { formatDateTime, formatDateTooltip } from "../utils/dateUtils";
+import { VirtualizedCommandList } from "./VirtualizedCommandList";
+import { useDebounce } from "../hooks/useDebounce";
+import { ErrorBoundary, CommandHistoryErrorFallback } from "./ErrorBoundary";
 
 interface CommandHistoryProps {}
 
@@ -10,18 +13,24 @@ export const CommandHistory: React.FC<CommandHistoryProps> = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [copyFeedback, setCopyFeedback] = useState<number | null>(null);
 
   useEffect(() => {
     loadCommands();
   }, []);
 
-  useEffect(() => {
-    if (searchQuery.trim()) {
-      searchCommands();
+  // Debounced search to improve performance
+  const debouncedSearch = useDebounce(async (query: string) => {
+    if (query.trim()) {
+      await searchCommands();
     } else {
-      loadCommands();
+      await loadCommands();
     }
-  }, [searchQuery]);
+  }, 300);
+
+  useEffect(() => {
+    debouncedSearch(searchQuery);
+  }, [searchQuery, debouncedSearch]);
 
   const loadCommands = async () => {
     try {
@@ -53,14 +62,22 @@ export const CommandHistory: React.FC<CommandHistoryProps> = () => {
     }
   };
 
-  const copyCommand = async (command: string) => {
+  const copyCommand = useCallback(async (command: string, index: number) => {
     try {
       await navigator.clipboard.writeText(command);
-      // You might want to show a toast notification here
+      setCopyFeedback(index);
     } catch (err) {
       console.error("Failed to copy command:", err);
     }
-  };
+  }, []);
+
+  // Cleanup copy feedback with proper memory management
+  useEffect(() => {
+    if (copyFeedback !== null) {
+      const timeoutId = setTimeout(() => setCopyFeedback(null), 2000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [copyFeedback]);
 
   const exportCommands = async () => {
     try {
@@ -92,63 +109,56 @@ export const CommandHistory: React.FC<CommandHistoryProps> = () => {
   }
 
   return (
-    <div className="command-history">
-      <div className="command-history-header">
-        <h2>Command History</h2>
-        <div className="header-actions">
-          <div className="search-container">
-            <input
-              type="text"
-              placeholder="Search commands..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="search-input"
-            />
+    <ErrorBoundary
+      fallback={
+        <CommandHistoryErrorFallback
+          error={new Error("Failed to load command history")}
+          retry={loadCommands}
+        />
+      }
+      onError={(error, errorInfo) => {
+        console.error("CommandHistory Error:", error, errorInfo);
+        // Could send to error reporting service here
+      }}
+    >
+      <div className="command-history">
+        <div className="command-history-header">
+          <h2>Command History</h2>
+          <div className="header-actions">
+            <div className="search-container">
+              <input
+                type="text"
+                placeholder="Search commands..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="search-input"
+                aria-label="Search commands"
+              />
+            </div>
+            <button onClick={exportCommands} className="export-button">
+              Export All
+            </button>
           </div>
-          <button onClick={exportCommands} className="export-button">
-            Export All
-          </button>
+        </div>
+
+        <div className="command-history-content">
+          {loading ? (
+            <div className="loading" aria-live="polite">
+              Loading command history...
+            </div>
+          ) : commands.length === 0 ? (
+            <div className="no-commands" role="status">
+              No commands found
+            </div>
+          ) : (
+            <VirtualizedCommandList
+              commands={commands}
+              onCopyCommand={copyCommand}
+              copyFeedback={copyFeedback}
+            />
+          )}
         </div>
       </div>
-
-      <div className="command-history-content">
-        {loading ? (
-          <div className="loading">Loading command history...</div>
-        ) : commands.length === 0 ? (
-          <div className="no-commands">No commands found</div>
-        ) : (
-          <div className="commands-list">
-            {commands.map((cmd, index) => (
-              <div key={index} className="command-item">
-                <div className="command-header">
-                  <span className="command-user">{cmd.user}</span>
-                  <span
-                    className="command-time"
-                    title={formatDateTooltip(cmd.timestamp)}
-                  >
-                    {formatDateTime(cmd.timestamp, { style: "technical" })}
-                  </span>
-                  <button
-                    className="copy-button"
-                    onClick={() => copyCommand(cmd.command)}
-                    title="Copy command"
-                  >
-                    📋
-                  </button>
-                </div>
-                <div className="command-text">
-                  <code>{cmd.command}</code>
-                </div>
-                {cmd.cwd && (
-                  <div className="command-cwd">
-                    Working directory: {cmd.cwd}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+    </ErrorBoundary>
   );
 };

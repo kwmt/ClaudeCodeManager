@@ -1,0 +1,507 @@
+/* 
+ * Improved Command History Styles
+ * UX-focused redesign for better readability, accessibility, and user experience
+ */
+
+/* Main container with improved layout constraints */
+.command-history {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  box-sizing: border-box;
+  background: #f8f9fa;
+}
+
+/* Header with better visual hierarchy */
+.command-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-shrink: 0;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e9ecef;
+}
+
+.command-history-header h2 {
+  color: #2c3e50;
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+/* Enhanced search functionality */
+.search-container {
+  position: relative;
+}
+
+.search-input {
+  padding: 0.5rem 1rem;
+  border: 2px solid #dee2e6;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  width: 250px;
+  transition: all 0.2s ease;
+  background: white;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.search-input::placeholder {
+  color: #6c757d;
+}
+
+/* Export button styling */
+.export-button {
+  padding: 0.5rem 1rem;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.export-button:hover {
+  background: #2980b9;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+}
+
+/* Content area with proper scrolling */
+.command-history-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Commands list with virtual scrolling optimization */
+.commands-list {
+  flex: 1;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  overflow-y: auto;
+  overflow-x: hidden;
+  border: 1px solid #e9ecef;
+  /* Custom scrollbar styling */
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e0 #f7fafc;
+}
+
+.commands-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.commands-list::-webkit-scrollbar-track {
+  background: #f7fafc;
+  border-radius: 4px;
+}
+
+.commands-list::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.commands-list::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
+/* Enhanced command item design */
+.command-item {
+  padding: 1.25rem;
+  border-bottom: 1px solid #f1f3f4;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.command-item:hover {
+  background: #f8f9fa;
+  border-left: 4px solid #3498db;
+  padding-left: calc(1.25rem - 4px);
+}
+
+.command-item:last-child {
+  border-bottom: none;
+}
+
+/* Improved command header layout */
+.command-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+  gap: 1rem;
+}
+
+.command-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.command-user {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 0.9rem;
+}
+
+.command-time {
+  font-size: 0.8rem;
+  color: #6c757d;
+  font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+}
+
+.command-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Enhanced button styling */
+.expand-button,
+.copy-button {
+  padding: 0.375rem;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.8rem;
+  min-width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.expand-button:hover,
+.copy-button:hover {
+  border-color: #3498db;
+  background: #f8f9fa;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.expand-button:focus,
+.copy-button:focus {
+  outline: 2px solid #3498db;
+  outline-offset: 2px;
+}
+
+.copy-button.copied {
+  background: #27ae60;
+  color: white;
+  border-color: #27ae60;
+}
+
+/* Command text display improvements */
+.command-text {
+  background: #2c3e50;
+  color: #ecf0f1;
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+  overflow: hidden;
+  border: 1px solid #34495e;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.command-text pre {
+  margin: 0;
+  padding: 1rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.command-text.expanded pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.command-text code {
+  color: inherit;
+  background: none;
+  padding: 0;
+  font-size: inherit;
+}
+
+/* Working directory styling */
+.command-cwd {
+  padding: 0.5rem 0.75rem;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border-left: 3px solid #6c757d;
+  font-size: 0.8rem;
+  color: #495057;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.cwd-label {
+  font-weight: 600;
+  color: #6c757d;
+}
+
+.cwd-path {
+  font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+  color: #495057;
+  word-break: break-all;
+}
+
+/* Loading and error states */
+.loading,
+.no-commands {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: #6c757d;
+  font-size: 1.1rem;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.loading::before {
+  content: '';
+  width: 20px;
+  height: 20px;
+  border: 2px solid #e9ecef;
+  border-top: 2px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.command-history-error {
+  text-align: center;
+  padding: 2rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e9ecef;
+}
+
+.command-history-error h3 {
+  color: #e74c3c;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+.command-history-error button {
+  padding: 0.5rem 1rem;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.command-history-error button:hover {
+  background: #2980b9;
+  transform: translateY(-1px);
+}
+
+/* Responsive design improvements */
+@media (max-width: 768px) {
+  .command-history {
+    padding: 0.75rem;
+  }
+  
+  .command-history-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+    margin-bottom: 1rem;
+  }
+
+  .command-history-header h2 {
+    font-size: 1.5rem;
+    text-align: center;
+  }
+
+  .header-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .search-input {
+    width: 100%;
+  }
+
+  .command-item {
+    padding: 1rem;
+  }
+
+  .command-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .command-actions {
+    align-self: flex-end;
+  }
+
+  .command-meta {
+    order: 1;
+  }
+
+  .command-actions {
+    order: 2;
+  }
+}
+
+@media (max-width: 480px) {
+  .command-history {
+    padding: 0.5rem;
+  }
+
+  .command-item {
+    padding: 0.75rem;
+  }
+
+  .command-text pre {
+    padding: 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .expand-button,
+  .copy-button {
+    min-width: 28px;
+    height: 28px;
+    font-size: 0.75rem;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .command-item {
+    border-bottom: 2px solid #495057;
+  }
+
+  .command-text {
+    border: 2px solid #495057;
+  }
+
+  .expand-button,
+  .copy-button {
+    border: 2px solid #495057;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .command-item,
+  .expand-button,
+  .copy-button,
+  .export-button,
+  .search-input {
+    transition: none;
+  }
+
+  .loading::before {
+    animation: none;
+  }
+}
+
+/* Keyboard navigation and focus improvements */
+.command-item:focus {
+  outline: 2px solid #3498db;
+  outline-offset: 2px;
+  background: #f8f9fa;
+  border-left: 4px solid #3498db;
+  padding-left: calc(1.25rem - 4px);
+}
+
+.command-item:focus-visible {
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+}
+
+.expand-button:focus-visible,
+.copy-button:focus-visible,
+.export-button:focus-visible,
+.search-input:focus-visible {
+  outline: 2px solid #3498db;
+  outline-offset: 2px;
+}
+
+/* Improved visual feedback for interactive elements */
+.command-item[tabindex="0"] {
+  cursor: pointer;
+}
+
+.command-item[tabindex="0"]:hover .command-header::after {
+  content: "Press Enter/Space to expand, Ctrl+C to copy";
+  position: absolute;
+  right: 0;
+  top: -1.5rem;
+  background: #2c3e50;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+/* Enhanced scrollbar for better visibility */
+.commands-list:focus-within::-webkit-scrollbar-thumb {
+  background: #3498db;
+}
+
+/* Loading animation improvements */
+.loading {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+/* Better contrast for code text */
+.command-text code {
+  text-shadow: none;
+  letter-spacing: 0.02em;
+}
+
+/* Improved working directory styling */
+.command-cwd .cwd-path {
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+}
+
+.command-item:hover .command-cwd .cwd-path {
+  opacity: 1;
+}

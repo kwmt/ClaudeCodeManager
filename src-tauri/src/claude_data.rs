@@ -1079,4 +1079,156 @@ impl ClaudeDataManager {
 
         fs::write(&path, content).map_err(|e| e.into())
     }
+
+    pub async fn get_custom_commands(
+        &self,
+    ) -> Result<Vec<CustomCommand>, Box<dyn std::error::Error>> {
+        let commands_dir = self.claude_dir.join("commands");
+        let mut commands = Vec::new();
+
+        if !commands_dir.exists() {
+            return Ok(commands);
+        }
+
+        for entry in fs::read_dir(&commands_dir)? {
+            let entry = entry?;
+            let file_path = entry.path();
+
+            if file_path.extension().and_then(|e| e.to_str()) == Some("md") {
+                if let Some(name) = file_path.file_stem().and_then(|n| n.to_str()) {
+                    if let Ok(content) = fs::read_to_string(&file_path) {
+                        commands.push(CustomCommand {
+                            name: name.to_string(),
+                            content,
+                        });
+                    }
+                }
+            }
+        }
+
+        commands.sort_by(|a, b| a.name.cmp(&b.name));
+        Ok(commands)
+    }
+
+    pub async fn get_agents(&self) -> Result<Vec<Agent>, Box<dyn std::error::Error>> {
+        let agents_dir = self.claude_dir.join("agents");
+        let mut agents = Vec::new();
+
+        if !agents_dir.exists() {
+            return Ok(agents);
+        }
+
+        for entry in fs::read_dir(&agents_dir)? {
+            let entry = entry?;
+            let file_path = entry.path();
+
+            if file_path.extension().and_then(|e| e.to_str()) == Some("md") {
+                if let Some(name) = file_path.file_stem().and_then(|n| n.to_str()) {
+                    if let Ok(content) = fs::read_to_string(&file_path) {
+                        agents.push(Agent {
+                            name: name.to_string(),
+                            content,
+                        });
+                    }
+                }
+            }
+        }
+
+        agents.sort_by(|a, b| a.name.cmp(&b.name));
+        Ok(agents)
+    }
+
+    pub async fn save_custom_command(
+        &self,
+        name: &str,
+        content: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let commands_dir = self.claude_dir.join("commands");
+        fs::create_dir_all(&commands_dir)?;
+
+        let file_path = commands_dir.join(format!("{}.md", name));
+        fs::write(&file_path, content)?;
+
+        Ok(())
+    }
+
+    pub async fn save_agent(
+        &self,
+        name: &str,
+        content: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let agents_dir = self.claude_dir.join("agents");
+        fs::create_dir_all(&agents_dir)?;
+
+        let file_path = agents_dir.join(format!("{}.md", name));
+        fs::write(&file_path, content)?;
+
+        Ok(())
+    }
+
+    pub async fn delete_custom_command(
+        &self,
+        name: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let file_path = self
+            .claude_dir
+            .join("commands")
+            .join(format!("{}.md", name));
+        fs::remove_file(&file_path)?;
+        Ok(())
+    }
+
+    pub async fn delete_agent(&self, name: &str) -> Result<(), Box<dyn std::error::Error>> {
+        let file_path = self.claude_dir.join("agents").join(format!("{}.md", name));
+        fs::remove_file(&file_path)?;
+        Ok(())
+    }
+
+    pub async fn get_all_settings_files(
+        &self,
+    ) -> Result<Vec<(String, String)>, Box<dyn std::error::Error>> {
+        let mut settings_files = Vec::new();
+
+        // Get main settings.json
+        let main_settings = self.claude_dir.join("settings.json");
+        if main_settings.exists() {
+            let content = fs::read_to_string(&main_settings)?;
+            settings_files.push(("settings.json".to_string(), content));
+        }
+
+        // Look for settings.*.json files
+        for entry in fs::read_dir(&self.claude_dir)? {
+            let entry = entry?;
+            let file_name = entry.file_name();
+            let file_name_str = file_name.to_string_lossy();
+
+            if file_name_str.starts_with("settings.")
+                && file_name_str.ends_with(".json")
+                && file_name_str != "settings.json"
+            {
+                let file_path = entry.path();
+                if let Ok(content) = fs::read_to_string(&file_path) {
+                    settings_files.push((file_name_str.to_string(), content));
+                }
+            }
+        }
+
+        settings_files.sort_by(|a, b| a.0.cmp(&b.0));
+        Ok(settings_files)
+    }
+
+    pub async fn save_settings_file(
+        &self,
+        filename: &str,
+        content: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        // Security check: ensure filename is safe
+        if !filename.starts_with("settings.") || !filename.ends_with(".json") {
+            return Err("Invalid settings filename".into());
+        }
+
+        let file_path = self.claude_dir.join(filename);
+        fs::write(&file_path, content)?;
+        Ok(())
+    }
 }

@@ -797,9 +797,9 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = ({
                   {session.git_branch && (
                     <span>Branch: {session.git_branch}</span>
                   )}
-                  <span title={formatDateTooltip(session.timestamp)}>
+                  <span title={formatDateTooltip(session.file_modified_time)}>
                     Updated:{" "}
-                    {formatDateTime(session.timestamp, {
+                    {formatDateTime(session.file_modified_time, {
                       style: "compact",
                       showRelative: true,
                     })}

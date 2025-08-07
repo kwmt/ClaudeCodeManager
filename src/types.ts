@@ -128,3 +128,13 @@ export interface ClaudeDirectoryFile {
   modified: string;
   is_directory: boolean;
 }
+
+export interface CustomCommand {
+  name: string;
+  content: string;
+}
+
+export interface Agent {
+  name: string;
+  content: string;
+}

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { marked } from "marked";
 import { api } from "../api";
 import {
@@ -61,6 +61,7 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
   const [filteredMessages, setFilteredMessages] = useState<ClaudeMessage[]>([]);
   const [renderAsMarkdown, setRenderAsMarkdown] = useState(false);
   const messageListRef = useRef<HTMLDivElement>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Toast notifications
   const toast = useToast();
@@ -244,6 +245,45 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
       setLoading(false);
     }
   };
+
+  const refreshProjectData = useCallback(async () => {
+    try {
+      setIsRefreshing(true);
+      await loadProjectData();
+
+      // Refresh .claude directory info if on directory tab
+      if (activeTab === "directory") {
+        await loadClaudeDirectoryInfo();
+      }
+
+      toast.success(
+        "Project data refreshed",
+        "Latest data has been loaded successfully",
+        2000,
+      );
+    } catch (err) {
+      toast.error(
+        "Refresh failed",
+        err instanceof Error ? err.message : "Failed to refresh data",
+        4000,
+      );
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [activeTab, toast]);
+
+  // Keyboard shortcut for refresh
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "r") {
+        e.preventDefault();
+        refreshProjectData();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [refreshProjectData]);
 
   const loadClaudeDirectoryInfo = async () => {
     try {
@@ -618,7 +658,18 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
       <div className="project-header">
         <div className="project-hero">
           <div className="project-title-section">
-            <h1 className="project-title">{displayName}</h1>
+            <div className="project-title-with-refresh">
+              <h1 className="project-title">{displayName}</h1>
+              <button
+                className="refresh-button"
+                onClick={refreshProjectData}
+                disabled={isRefreshing}
+                aria-label="Refresh project data (Cmd+R)"
+                title="Refresh project data (Cmd+R)"
+              >
+                🔄
+              </button>
+            </div>
             <p className="project-path" title={normalizedPath}>
               {normalizedPath}
             </p>
@@ -706,76 +757,83 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
                 No sessions found for this project
               </div>
             ) : (
-              sessions.map((session) => (
-                <div
-                  key={session.session_id}
-                  className={`session-card ${selectedSession?.session_id === session.session_id ? "selected" : ""}`}
-                  onClick={() => loadSessionMessages(session)}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`Open session ${session.session_id.substring(0, 8)} with ${session.message_count} messages`}
-                >
-                  <div className="session-card-header">
-                    <div className="session-id-section">
-                      <h4 className="session-title">
-                        Session {session.session_id.substring(0, 8)}...
-                      </h4>
-                      <span
-                        className={`session-status-badge ${session.is_processing ? "status-processing" : "status-completed"}`}
-                        title={
-                          session.is_processing
-                            ? "Session has sequences still processing"
-                            : "Session completed"
-                        }
-                        aria-label={
-                          session.is_processing ? "Processing" : "Completed"
-                        }
-                      >
-                        <span className="status-icon">
-                          {session.is_processing ? "⏳" : "✅"}
+              sessions
+                .sort(
+                  (a, b) =>
+                    new Date(b.file_modified_time).getTime() -
+                    new Date(a.file_modified_time).getTime(),
+                )
+                .map((session) => (
+                  <div
+                    key={session.session_id}
+                    className={`session-card ${selectedSession?.session_id === session.session_id ? "selected" : ""}`}
+                    onClick={() => loadSessionMessages(session)}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Open session ${session.session_id.substring(0, 8)} with ${session.message_count} messages`}
+                  >
+                    <div className="session-card-header">
+                      <div className="session-id-section">
+                        <h4 className="session-title">
+                          Session {session.session_id.substring(0, 8)}...
+                        </h4>
+                        <span
+                          className={`session-status-badge ${session.is_processing ? "status-processing" : "status-completed"}`}
+                          title={
+                            session.is_processing
+                              ? "Session has sequences still processing"
+                              : "Session completed"
+                          }
+                          aria-label={
+                            session.is_processing ? "Processing" : "Completed"
+                          }
+                        >
+                          <span className="status-icon">
+                            {session.is_processing ? "⏳" : "✅"}
+                          </span>
+                          {session.is_processing ? "Processing" : "Complete"}
                         </span>
-                        {session.is_processing ? "Processing" : "Complete"}
-                      </span>
+                      </div>
                     </div>
-                  </div>
-                  {session.latest_content_preview && (
-                    <div className="session-preview">
-                      <p className="preview-text">
-                        {session.latest_content_preview}
-                      </p>
-                    </div>
-                  )}
-                  <div className="session-card-meta">
-                    <div className="meta-item">
-                      <span className="meta-icon">💬</span>
-                      <span className="meta-value">
-                        {session.message_count}
-                      </span>
-                      <span className="meta-label">messages</span>
-                    </div>
-                    {session.git_branch && (
-                      <div className="meta-item">
-                        <span className="meta-icon">🌿</span>
-                        <span className="meta-value">{session.git_branch}</span>
-                        <span className="meta-label">branch</span>
+                    {session.latest_content_preview && (
+                      <div className="session-preview">
+                        <p className="preview-text">
+                          {session.latest_content_preview}
+                        </p>
                       </div>
                     )}
-                    <div className="meta-item">
-                      <span className="meta-icon">🕒</span>
-                      <span
-                        className="meta-value"
-                        title={formatDateTooltip(session.timestamp)}
-                      >
-                        {formatDateTime(session.timestamp, {
-                          style: "compact",
-                          showRelative: true,
-                        })}
-                      </span>
-                      <span className="meta-label">updated</span>
+                    <div className="session-card-meta">
+                      <div className="meta-item">
+                        <span className="meta-icon">💬</span>
+                        <span className="meta-value">
+                          {session.message_count}
+                        </span>
+                        <span className="meta-label">messages</span>
+                      </div>
+                      {session.git_branch && (
+                        <div className="meta-item">
+                          <span className="meta-icon">🌿</span>
+                          <span className="meta-value">
+                            {session.git_branch}
+                          </span>
+                          <span className="meta-label">branch</span>
+                        </div>
+                      )}
+                      <div className="meta-item">
+                        <span
+                          className="meta-value"
+                          title={formatDateTooltip(session.file_modified_time)}
+                        >
+                          {formatDateTime(session.file_modified_time, {
+                            style: "compact",
+                            showRelative: true,
+                          })}
+                        </span>
+                        <span className="meta-label">updated</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                ))
             )}
           </div>
 
@@ -837,6 +895,15 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
                         Markdown
                       </label>
                     </div>
+
+                    <button
+                      className="refresh-messages-button"
+                      onClick={() => loadSessionMessages(selectedSession)}
+                      disabled={loadingMessages}
+                      title="Reload messages"
+                    >
+                      🔄
+                    </button>
                   </div>
                 </div>
 

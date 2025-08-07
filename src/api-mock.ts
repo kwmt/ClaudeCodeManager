@@ -7,6 +7,8 @@ import type {
   ClaudeSettings,
   ProjectSummary,
   SessionStats,
+  CustomCommand,
+  Agent,
 } from "./types";
 
 // Mock data for demonstration
@@ -333,5 +335,102 @@ export const mockApi = {
   async writeClaudeFile(filePath: string, content: string): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 100));
     console.log(`Mock: Would write to ${filePath}:`, content);
+  },
+
+  async getCustomCommands(): Promise<CustomCommand[]> {
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    return [
+      {
+        name: "commit-push",
+        content: "git add . && git commit -m '$1' && git push",
+      },
+      {
+        name: "fix-issue",
+        content:
+          "# Fix Issue Command\n\nThis command helps fix common issues:\n\n1. Run diagnostics\n2. Apply fixes\n3. Verify results",
+      },
+    ];
+  },
+
+  async getAgents(): Promise<Agent[]> {
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    return [
+      {
+        name: "debug-specialist",
+        content:
+          "# Debug Specialist Agent\n\nThis agent specializes in debugging complex issues:\n\n- Analyzes stack traces\n- Identifies root causes\n- Suggests fixes",
+      },
+    ];
+  },
+
+  async saveCustomCommand(name: string, content: string): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    console.log(`Mock: Would save command ${name}:`, content);
+  },
+
+  async saveAgent(name: string, content: string): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    console.log(`Mock: Would save agent ${name}:`, content);
+  },
+
+  async deleteCustomCommand(name: string): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    console.log(`Mock: Would delete command ${name}`);
+  },
+
+  async deleteAgent(name: string): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    console.log(`Mock: Would delete agent ${name}`);
+  },
+
+  async getAllSettingsFiles(): Promise<[string, string][]> {
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    return [
+      [
+        "settings.json",
+        JSON.stringify(
+          {
+            permissions: {
+              defaultMode: "allow",
+              allow: ["*"],
+              deny: [],
+            },
+            hooks: {
+              PreToolUse: [
+                {
+                  matcher: ".*",
+                  hooks: [
+                    {
+                      type: "command",
+                      command: "echo 'Tool use detected'",
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+          null,
+          2,
+        ),
+      ],
+      [
+        "settings.workspace.json",
+        JSON.stringify(
+          {
+            workspace: {
+              folders: ["/Users/developer/projects"],
+              excludePaths: ["node_modules", ".git"],
+            },
+          },
+          null,
+          2,
+        ),
+      ],
+    ];
+  },
+
+  async saveSettingsFile(filename: string, content: string): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    console.log(`Mock: Would save settings file ${filename}:`, content);
   },
 };
