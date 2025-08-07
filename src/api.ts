@@ -244,4 +244,13 @@ export const api = {
     }
     return mockApi.saveSettingsFile(filename, content);
   },
+
+  // Cache management
+  async clearCache(): Promise<void> {
+    if (isTauri && tauriApi) {
+      return tauriApi.invoke("clear_cache");
+    }
+    // Mock API doesn't need cache clearing
+    return Promise.resolve();
+  },
 };

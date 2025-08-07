@@ -1231,4 +1231,27 @@ impl ClaudeDataManager {
         fs::write(&file_path, content)?;
         Ok(())
     }
+
+    /// Clear all cached data to force fresh reads from disk
+    pub async fn clear_cache(&self) -> Result<(), Box<dyn std::error::Error>> {
+        // Clear the sessions cache
+        {
+            let mut cache = self._sessions_cache.write().await;
+            cache.clear();
+        }
+
+        // Clear the messages cache
+        {
+            let mut cache = self.messages_cache.write().await;
+            cache.clear();
+        }
+
+        // Clear the file timestamps cache
+        {
+            let mut timestamps = self.file_timestamps.write().await;
+            timestamps.clear();
+        }
+
+        Ok(())
+    }
 }
