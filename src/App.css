@@ -921,8 +921,9 @@ body {
 .project-path {
   font-size: 0.8rem;
   color: #7f8c8d;
-  margin-bottom: 1rem;
+  margin: 0;
   word-break: break-all;
+  opacity: 0.7;
 }
 
 .project-stats {
@@ -1029,7 +1030,7 @@ body {
 }
 
 .session-item {
-  padding: 1rem;
+  padding: 0.75rem;
   border-bottom: 1px solid #ecf0f1;
   cursor: pointer;
   transition: background-color 0.2s;
@@ -1042,60 +1043,69 @@ body {
 
 .session-item.selected {
   background: #e3f2fd;
-  border-left: 4px solid #3498db;
+  border-left: 3px solid #3498db;
+  box-shadow: 0 1px 3px rgba(52, 152, 219, 0.15);
 }
 
 .session-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.375rem;
 }
 
 .session-header h4 {
   color: #2c3e50;
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
 }
 
 .export-button {
   background: #3498db;
   color: white;
   border: none;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.8rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.7rem;
   cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.export-button:hover {
+  background: #2980b9;
+  transform: translateY(-1px);
 }
 
 .session-path {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: #7f8c8d;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.375rem;
   word-break: break-all;
+  line-height: 1.3;
 }
 
 .session-preview {
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.375rem;
 }
 
 .preview-text {
-  font-size: 0.8rem;
-  color: #555;
-  line-height: 1.4;
+  font-size: 0.75rem;
+  color: #6c757d;
+  line-height: 1.3;
   margin: 0;
-  padding: 0.5rem;
+  padding: 0.375rem 0.5rem;
   background-color: #f8f9fa;
-  border-radius: 4px;
-  border-left: 3px solid #dee2e6;
-  font-style: italic;
+  border-radius: 3px;
+  border-left: 2px solid #dee2e6;
   
-  /* 2行省略表示 - 日本語対応 */
+  /* 1行省略表示でよりコンパクトに */
   display: -webkit-box;
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
-  -webkit-line-clamp: 2;
-  
-  /* max-heightを削除 - line-clampのみで制御して文字が切れないように */
+  -webkit-line-clamp: 1;
   
   /* 日本語の改行対応 */
   word-break: break-word;
@@ -1104,9 +1114,22 @@ body {
 
 .session-meta {
   display: flex;
-  gap: 1rem;
-  font-size: 0.8rem;
+  gap: 0.75rem;
+  font-size: 0.75rem;
   color: #7f8c8d;
+  line-height: 1.2;
+  align-items: center;
+}
+
+.session-meta span {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.session-meta .meta-icon {
+  font-size: 0.7rem;
+  opacity: 0.8;
 }
 
 .messages-panel {
@@ -1120,44 +1143,65 @@ body {
 }
 
 .messages-header {
-  padding: 1rem;
-  border-bottom: 1px solid #ecf0f1;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e8eaed;
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 1rem;
+  gap: 0.75rem;
+  background: #fafbfc;
+  min-height: 60px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .messages-title h3 {
   color: #2c3e50;
-  margin-bottom: 0.5rem;
+  margin: 0 0 0.25rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
 .session-id-container {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  background: #fff;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #e8eaed;
 }
 
 .session-id-container p {
   margin: 0;
+  font-size: 0.8rem;
+  color: #5f6368;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
 }
 
 .open-file-button {
-  background: #3498db;
+  background: #4285f4;
   color: white;
   border: none;
-  padding: 0.25rem 0.5rem;
+  padding: 0.25rem 0.375rem;
   border-radius: 4px;
-  font-size: 1rem;
+  font-size: 0.875rem;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 28px;
 }
 
 .open-file-button:hover {
-  background: #2980b9;
+  background: #3367d6;
   transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(66, 133, 244, 0.3);
 }
 
 .message-controls {
@@ -1224,21 +1268,26 @@ body {
 .messages-list {
   flex: 1;
   overflow-y: auto;
-  padding: 1rem;
+  padding: 0.5rem 1rem 1rem 1rem;
   min-height: 0;
+  background: #f8f9fa;
 }
 
 .message {
-  margin-bottom: 1rem;
-  padding: 1rem;
-  border-radius: 8px;
-  border-left: 4px solid #ddd;
+  margin-bottom: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  border-left: 3px solid #ddd;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .message:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px);
+  border-left-width: 4px;
 }
 
 .message.highlighted {
@@ -1265,14 +1314,21 @@ body {
 .message-header {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 0.5rem;
-  font-size: 0.8rem;
-  color: #7f8c8d;
+  align-items: center;
+  margin-bottom: 0.625rem;
+  font-size: 0.75rem;
+  color: #5f6368;
+  border-bottom: 1px solid #f1f3f4;
+  padding-bottom: 0.375rem;
 }
 
 .message-type {
   font-weight: 600;
   text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
 }
 
 .message-content {
@@ -1488,8 +1544,13 @@ body {
 }
 
 .message-meta {
-  font-size: 0.8rem;
-  color: #7f8c8d;
+  font-size: 0.7rem;
+  color: #5f6368;
+  background: #f8f9fa;
+  padding: 0.25rem 0.5rem;
+  border-radius: 3px;
+  margin-top: 0.5rem;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
 }
 
 /* Command History */
@@ -2069,7 +2130,7 @@ button:hover:not(:disabled) {
 }
 
 .project-header {
-  padding: 1.5rem;
+  padding: 0.75rem 1.5rem;
   background: white;
   border-bottom: 1px solid #e9ecef;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
@@ -2078,10 +2139,10 @@ button:hover:not(:disabled) {
 
 .project-hero {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 2rem;
-  flex-wrap: wrap;
+  gap: 1rem;
+  flex-wrap: nowrap;
 }
 
 .project-title-section {
@@ -2090,49 +2151,51 @@ button:hover:not(:disabled) {
 }
 
 .project-title {
-  margin: 0 0 0.5rem 0;
+  margin: 0 0 0.25rem 0;
   color: #2c3e50;
-  font-size: 1.8rem;
+  font-size: 1.25rem;
   font-weight: 600;
-  line-height: 1.2;
+  line-height: 1.1;
 }
 
 .project-path {
   color: #6c757d;
-  font-size: 0.9rem;
-  margin-bottom: 0.5rem;
+  font-size: 0.8rem;
+  margin: 0;
   font-family: "Courier New", Courier, monospace;
+  opacity: 0.7;
 }
 
 .project-last-activity {
   color: #6c757d;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   font-style: italic;
-  margin-bottom: 1rem;
+  margin: 0;
   opacity: 0.8;
 }
 
 /* Project Stats Horizontal Layout */
 .project-stats-horizontal {
   display: flex;
-  gap: 1.25rem;
+  gap: 0.75rem;
   align-items: stretch;
-  width: 100%;
-  margin-top: 1.5rem;
+  margin-top: 0;
   flex-shrink: 0;
 }
 
 .project-stats-horizontal .stat-card {
-  flex: 1;
-  min-width: 160px;
-  max-width: 280px;
+  flex: 0 0 auto;
+  min-width: 60px;
+  max-width: none;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 1rem;
-  padding: 1.25rem;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
   background: var(--bg-primary);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-color);
+  text-align: center;
   box-shadow: var(--shadow-sm);
   transition: all var(--transition-normal);
   position: relative;
@@ -2163,7 +2226,7 @@ button:hover:not(:disabled) {
 }
 
 .project-stats-horizontal .stat-icon {
-  font-size: 2rem;
+  font-size: 1rem;
   flex-shrink: 0;
   opacity: 0.8;
   transition: all var(--transition-normal);
@@ -2183,20 +2246,22 @@ button:hover:not(:disabled) {
 }
 
 .project-stats-horizontal .stat-value {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1;
   transition: color var(--transition-normal);
+  margin: 0;
 }
 
 .project-stats-horizontal .stat-label {
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.75px;
+  letter-spacing: 0.5px;
   font-weight: 600;
   transition: color var(--transition-normal);
+  margin: 0;
 }
 
 .project-stats-horizontal .stat-card:hover .stat-value {
@@ -2239,29 +2304,32 @@ button:hover:not(:disabled) {
 /* Project title section styling */
 .project-hero {
   display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: nowrap;
 }
 
 .project-title-section {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.25rem;
 }
 
 .project-title {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 600;
   color: var(--text-primary);
   margin: 0;
 }
 
 .project-last-activity {
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   color: var(--text-secondary);
   font-style: italic;
   opacity: 0.8;
   transition: opacity 0.2s ease;
+  margin: 0;
   cursor: help;
 }
 
@@ -2396,29 +2464,6 @@ button:hover:not(:disabled) {
   line-height: 1;
 }
 
-/* Session preview styling */
-.session-preview {
-  margin-bottom: 0.75rem;
-}
-
-.session-preview .preview-text {
-  font-size: 0.875rem;
-  color: #555;
-  line-height: 1.5;
-  margin: 0;
-  padding: 0.625rem;
-  background-color: #f8f9fa;
-  border-radius: 4px;
-  border-left: 3px solid #dee2e6;
-  font-style: italic;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  -webkit-line-clamp: 2;
-  word-break: break-word;
-  overflow-wrap: break-word;
-}
 
 /* Session metadata improvements */
 .session-card-meta {
@@ -2516,23 +2561,6 @@ button:hover:not(:disabled) {
   font-size: 0.875rem;
 }
 
-/* Session preview improvements */
-.session-preview {
-  margin-bottom: 0.75rem;
-}
-
-.preview-text {
-  font-size: 0.875rem;
-  line-height: 1.5;
-  color: #6c757d;
-  margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  word-break: break-word;
-}
 
 /* Session card meta improvements */
 .session-card-meta {
@@ -2603,6 +2631,7 @@ button:hover:not(:disabled) {
   padding: 0 1.5rem;
   background: white;
   border-bottom: 2px solid #e9ecef;
+  min-height: 40px;
 }
 
 .tab-button {
@@ -3025,13 +3054,13 @@ button:hover:not(:disabled) {
 .session-status-indicator {
   display: inline-flex;
   align-items: center;
-  margin-left: 0.5rem;
+  margin-left: 0.375rem;
 }
 
 .processing-dot,
 .status-dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   display: inline-block;
 }
@@ -3256,11 +3285,41 @@ button:hover:not(:disabled) {
   margin: -1rem -1rem 0.5rem -1rem;
 }
 
+/* Focus states for accessibility */
+.open-file-button:focus,
+.refresh-messages-button:focus,
+.message-search-input:focus,
+.message-type-select:focus {
+  outline: 2px solid #4285f4;
+  outline-offset: 2px;
+}
+
+.message:focus-within {
+  box-shadow: 0 0 0 2px #4285f4;
+  border-radius: 6px;
+}
+
 /* Responsive message controls */
 @media (max-width: 768px) {
   .messages-header {
     flex-direction: column;
     align-items: stretch;
+    padding: 0.5rem 1rem;
+    min-height: auto;
+  }
+  
+  .messages-title h3 {
+    font-size: 1rem;
+  }
+  
+  .session-id-container {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+  
+  .session-id-container p {
+    font-size: 0.75rem;
   }
   
   .message-controls {
@@ -3272,6 +3331,11 @@ button:hover:not(:disabled) {
   .message-type-select {
     min-width: auto;
     width: 100%;
+  }
+  
+  .message {
+    margin-bottom: 0.5rem;
+    padding: 0.5rem 0.75rem;
   }
 }
 

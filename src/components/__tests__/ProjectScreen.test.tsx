@@ -153,9 +153,10 @@ describe("ProjectScreen", () => {
     });
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/Messages for Session session-.../),
-      ).toBeInTheDocument();
+      const messagesHeader = screen.getByText(/Session session-.../, {
+        selector: ".messages-title h3",
+      });
+      expect(messagesHeader).toBeInTheDocument();
     });
   });
 

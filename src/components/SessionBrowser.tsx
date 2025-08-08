@@ -802,12 +802,18 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = ({
                   </div>
                 )}
                 <div className="session-meta">
-                  <span>{session.message_count} messages</span>
+                  <span>
+                    <span className="meta-icon">💬</span>
+                    {session.message_count}
+                  </span>
                   {session.git_branch && (
-                    <span>Branch: {session.git_branch}</span>
+                    <span>
+                      <span className="meta-icon">🌿</span>
+                      {session.git_branch}
+                    </span>
                   )}
                   <span title={formatDateTooltip(session.file_modified_time)}>
-                    Updated:{" "}
+                    <span className="meta-icon">🕐</span>
                     {formatDateTime(session.file_modified_time, {
                       style: "compact",
                       showRelative: true,
