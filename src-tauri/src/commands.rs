@@ -36,6 +36,11 @@ pub async fn get_session_messages(
 }
 
 #[tauri::command]
+pub async fn clear_cache(data_manager: State<'_, Arc<ClaudeDataManager>>) -> Result<(), String> {
+    data_manager.clear_cache().await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn get_command_history(
     data_manager: State<'_, Arc<ClaudeDataManager>>,
 ) -> Result<Vec<CommandLogEntry>, String> {

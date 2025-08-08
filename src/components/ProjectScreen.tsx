@@ -249,11 +249,53 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
   const refreshProjectData = useCallback(async () => {
     try {
       setIsRefreshing(true);
+
+      // Store the currently selected session ID before refresh
+      const currentSessionId = selectedSession?.session_id;
+
+      // Clear backend cache to ensure fresh data
+      await api.clearCache();
+      console.log("Backend cache cleared");
+
       await loadProjectData();
 
       // Refresh .claude directory info if on directory tab
       if (activeTab === "directory") {
         await loadClaudeDirectoryInfo();
+      }
+
+      // If there was a selected session, reload its messages with fresh session data
+      if (currentSessionId) {
+        try {
+          // Get fresh sessions data immediately
+          const allSessions = await api.getAllSessions();
+          const projectSessions = allSessions.filter(
+            (session) => session.project_path === projectPath,
+          );
+
+          // Find the updated session by ID
+          const updatedSession = projectSessions.find(
+            (session) => session.session_id === currentSessionId,
+          );
+
+          if (updatedSession) {
+            console.log(
+              "Refreshing messages for session:",
+              updatedSession.session_id,
+            );
+            console.log(
+              "Session file modified:",
+              updatedSession.file_modified_time,
+            );
+            console.log("Session message count:", updatedSession.message_count);
+            console.log("Current messages count:", messages.length);
+
+            // Always reload messages on refresh to ensure we have the latest data
+            await loadSessionMessages(updatedSession);
+          }
+        } catch (err) {
+          console.error("Failed to refresh selected session messages:", err);
+        }
       }
 
       toast.success(
@@ -270,7 +312,7 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
     } finally {
       setIsRefreshing(false);
     }
-  }, [activeTab, toast]);
+  }, [activeTab, selectedSession, projectPath, toast]);
 
   // Keyboard shortcut for refresh
   useEffect(() => {
@@ -414,7 +456,23 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
     try {
       setLoadingMessages(true);
       setSelectedSession(session);
+      console.log(
+        "Loading messages for session:",
+        session.session_id,
+        "at",
+        new Date().toISOString(),
+      );
       const data = await api.getSessionMessages(session.session_id);
+      console.log(
+        "Loaded",
+        data.length,
+        "messages, latest timestamp:",
+        data.length > 0
+          ? data[data.length - 1]?.message_type === "summary"
+            ? "summary message"
+            : (data[data.length - 1] as any)?.timestamp
+          : "none",
+      );
       setMessages(data);
       setFilteredMessages(
         data.filter((message) => message.message_type !== "summary"),

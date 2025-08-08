@@ -2293,7 +2293,7 @@ button:hover:not(:disabled) {
 .project-sessions-content {
   display: grid;
   grid-template-columns: minmax(300px, 1fr) minmax(500px, 2fr);
-  gap: 0;
+  gap: 1.5rem;
   flex: 1;
   padding: 1.5rem 0;
   overflow: hidden;
@@ -2306,7 +2306,7 @@ button:hover:not(:disabled) {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   overflow-y: auto;
   height: 100%;
-  margin: 0 1.5rem;
+  margin: 0 0 1rem 0;
 }
 
 .project-sessions-list h3 {
@@ -2593,7 +2593,7 @@ button:hover:not(:disabled) {
   display: flex;
   flex-direction: column;
   height: 100%;
-  margin: 0 1.5rem;
+  margin: 0;
 }
 
 /* Project tabs */
@@ -2811,9 +2811,6 @@ button:hover:not(:disabled) {
     border-radius: 0;
   }
 
-  .project-messages-panel {
-    margin: 0;
-  }
 
   /* Enhanced project stats horizontal responsive behavior */
   .project-stats-horizontal {

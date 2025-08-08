@@ -21,6 +21,7 @@ pub fn run() {
             get_all_sessions,
             get_changed_sessions,
             get_session_messages,
+            clear_cache,
             get_command_history,
             get_todos,
             get_settings,
