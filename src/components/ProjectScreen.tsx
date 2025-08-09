@@ -910,11 +910,10 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
                 <div className="messages-header">
                   <div className="messages-title">
                     <h3>
-                      Messages for Session{" "}
-                      {selectedSession.session_id.substring(0, 8)}...
+                      Session {selectedSession.session_id.substring(0, 8)}...
                     </h3>
                     <div className="session-id-container">
-                      <p>Session ID: {selectedSession.session_id}</p>
+                      <p>{selectedSession.session_id}</p>
                       <button
                         className="open-file-button"
                         onClick={() =>
