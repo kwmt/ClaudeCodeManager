@@ -91,8 +91,7 @@
 }
 
 /* Add subtle icon for timestamps */
-.project-card__last-activity::before,
-.stat-value::before {
+.project-card__last-activity::before {
   content: '🕒';
   font-size: 0.75rem;
   opacity: 0.6;
