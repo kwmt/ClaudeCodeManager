@@ -1,0 +1,24 @@
+name: Update Dependencies
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+concurrency:
+  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+
+
+jobs:
+  update-dependencies:
+    name: Update Dependencies
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Run Claude Code with OAuth token
+      uses: anthropics/claude-code-base-action@beta
+      with:
+        prompt: "Update dependencies"
+        allowed_tools: "Bash(git:*),View,GlobTool,GrepTool,BatchTool"
+        claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
