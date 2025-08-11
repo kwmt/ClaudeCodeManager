@@ -25,5 +25,5 @@ jobs:
       uses: anthropics/claude-code-base-action@beta
       with:
         prompt: "Update dependencies。その後PRを作成してください。"
-        allowed_tools: "Bash(git:*),Bash(npm:*),View,GlobTool,GrepTool,BatchTool"
+        allowed_tools: "Bash(git:*),Bash(npm:*),Bash(gh:*),Bash(cargo:*),View,GlobTool,GrepTool,BatchTool,EditTool,WriteTool"
         claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
