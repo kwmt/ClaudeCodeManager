@@ -24,6 +24,6 @@ jobs:
     - name: Run Claude Code with OAuth token
       uses: anthropics/claude-code-base-action@beta
       with:
-        prompt: "Update dependencies"
-        allowed_tools: "Bash(git:*),View,GlobTool,GrepTool,BatchTool"
+        prompt: "Update dependencies。その後PRを作成してください。"
+        allowed_tools: "Bash(git:*),Bash(npm:*),View,GlobTool,GrepTool,BatchTool"
         claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
