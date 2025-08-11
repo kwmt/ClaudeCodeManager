@@ -16,7 +16,6 @@ permissions:
   contents: write
   pull-requests: write
   actions: write
-  metadata: read
 
 jobs:
   update-dependencies:
