@@ -12,6 +12,9 @@ concurrency:
   cancel-in-progress: true
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
 
+permissions:
+  contents: write
+  pull-requests: write
 
 jobs:
   update-dependencies:
@@ -27,3 +30,5 @@ jobs:
         prompt: "Update dependencies。その後PRを作成してください。"
         allowed_tools: "Bash(git:*),Bash(npm:*),Bash(gh:*),Bash(cargo:*),View,GlobTool,GrepTool,BatchTool,EditTool,WriteTool"
         claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
