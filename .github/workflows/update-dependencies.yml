@@ -1,0 +1,33 @@
+name: Update Dependencies
+
+on:
+  schedule:
+    # 毎日14時（JST）に実行 - UTCでは5時
+    - cron: '0 5 * * *'
+  workflow_dispatch: # 手動実行も可能にする
+
+concurrency:
+  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  update-dependencies:
+    name: Update Dependencies
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Run Claude Code with OAuth token
+      uses: anthropics/claude-code-base-action@beta
+      with:
+        prompt: "Update dependencies。その後PRを作成してください。ただし、基本的には1 dependencyにつき、1 PRを作成してください。アップデートするdependencyは、package.jsonのdependenciesとdevDependenciesの両方を対象にしてください。アップデート後は、ビルドとテストが成功することを確認してください。もし、アップデート後にビルドやテストが失敗した場合は、その原因を調査し、必要な修正を行ってください。"
+        allowed_tools: "Bash,Read,Write,Edit,Glob,Grep,TodoWrite"
+        claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
