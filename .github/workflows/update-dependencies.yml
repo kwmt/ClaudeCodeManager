@@ -26,7 +26,15 @@ jobs:
       - name: Run Claude Code with OAuth token
         uses: anthropics/claude-code-base-action@beta
         with:
-          prompt: "Update dependencies。その後PRを作成してください。ただし、基本的には1 dependencyにつき、1PRを作成してください。アップデートするdependencyは、package.jsonのdependenciesとdevDependenciesの両方を対象にし、更新してください。アップデート後は、ビルドとテストが成功することを確認してください。もし、アップデート後にビルドやテストが失敗した場合は、その原因を調査し、必要な修正を行ってください。 package-lock.jsonだけを更新するのではなく、package.jsonのdependenciesとdevDependenciesを更新してください。もし、アップデートが必要なdependencyがない場合は、その旨を報告してください。"
+          prompt: |
+            Update dependencies。その後PRを作成してください。
+            ただし、基本的には1 dependencyにつき、1PRを作成してください。
+            アップデートするdependencyは、package.jsonのdependenciesとdevDependenciesの両方を対象にし、更新してください。
+            アップデート後は、ビルドとテストが成功することを確認してください。
+            もし、アップデート後にビルドやテストが失敗した場合は、その原因を調査し、必要な修正を行ってください。
+            package-lock.jsonだけを更新するのではなく、package.jsonのdependenciesとdevDependenciesを更新してください。
+            もし、アップデートが必要なdependencyがない場合は、その旨を報告してください。
+            もし、他のCIのjobが失敗した場合には、そのjobをチェックし修正してください。
           allowed_tools: "Bash,Read,Write,Edit,Glob,Grep,TodoWrite"
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         env:
