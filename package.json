@@ -29,7 +29,7 @@
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-opener": "^2",
     "isomorphic-dompurify": "^2.26.0",
-    "marked": "^16.1.1",
+    "marked": "^16.1.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
