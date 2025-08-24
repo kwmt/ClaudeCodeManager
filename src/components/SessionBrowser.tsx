@@ -92,11 +92,56 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = ({
     setSessions(filtered);
   };
 
+  // Helper function to extract text content from message (moved here to be available in loadSessionMessages)
+  const getMessageTextContent = (message: ClaudeMessage): string => {
+    if (message.message_type === "summary") {
+      return (message as any).summary || "";
+    }
+
+    if (!("content" in message)) {
+      return "";
+    }
+
+    const content = message.content.content;
+
+    if (typeof content === "string") {
+      return content;
+    }
+
+    if (Array.isArray(content)) {
+      return content
+        .map((block) => {
+          if (block.type === "text") {
+            return block.text;
+          }
+          if (block.type === "tool_use") {
+            return `${block.name}: ${JSON.stringify(block.input)}`;
+          }
+          return "";
+        })
+        .join(" ");
+    }
+
+    return "";
+  };
+
   const loadSessionMessages = async (session: ClaudeSession) => {
     try {
       setLoadingMessages(true);
       setSelectedSession(session);
+      setError(null); // Clear any previous errors
       const data = await api.getSessionMessages(session.session_id);
+
+      // Check if we have summary messages
+      const summaryMessages = data.filter((m) => m.message_type === "summary");
+
+      // Validate data
+      if (!Array.isArray(data)) {
+        throw new Error(
+          `Invalid data received: expected array, got ${typeof data}`,
+        );
+      }
+
       setMessages(data);
       setFilteredMessages(data);
 
@@ -152,7 +197,13 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = ({
         }, 150);
       }
     } catch (err) {
+      console.error(
+        `Error loading messages for session ${session.session_id}:`,
+        err,
+      );
       setError(err instanceof Error ? err.message : "Failed to load messages");
+      setMessages([]);
+      setFilteredMessages([]);
     } finally {
       setLoadingMessages(false);
     }
@@ -195,8 +246,8 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = ({
 
   // Filter messages based on search and type
   useEffect(() => {
+    // Skip filtering if no messages
     if (!messages.length) {
-      setFilteredMessages([]);
       return;
     }
 
@@ -220,6 +271,7 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = ({
         // Search in UUID
         if (
           message.message_type !== "summary" &&
+          "uuid" in message &&
           message.uuid.toLowerCase().includes(query)
         )
           return true;
@@ -227,6 +279,7 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = ({
         // Search in timestamp
         if (
           message.message_type !== "summary" &&
+          "timestamp" in message &&
           formatDateTime(message.timestamp, { style: "technical" })
             .toLowerCase()
             .includes(query)
@@ -239,35 +292,6 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = ({
 
     setFilteredMessages(filtered);
   }, [messages, messageSearchQuery, selectedMessageType]);
-
-  // Helper function to extract text content from message
-  const getMessageTextContent = (message: ClaudeMessage): string => {
-    if (message.message_type === "summary") {
-      return message.summary;
-    }
-
-    const content = message.content.content;
-
-    if (typeof content === "string") {
-      return content;
-    }
-
-    if (Array.isArray(content)) {
-      return content
-        .map((block) => {
-          if (block.type === "text") {
-            return block.text;
-          }
-          if (block.type === "tool_use") {
-            return `${block.name}: ${JSON.stringify(block.input)}`;
-          }
-          return "";
-        })
-        .join(" ");
-    }
-
-    return "";
-  };
 
   // Scroll to specific message
   const scrollToMessage = (messageId: string) => {
@@ -597,6 +621,9 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = ({
 
   const renderMessageContent = (message: ClaudeMessage) => {
     if (message.message_type === "user") {
+      if (!("content" in message)) {
+        return null;
+      }
       const userContent = message.content.content;
 
       if (typeof userContent === "string") {
@@ -656,6 +683,9 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = ({
     }
 
     if (message.message_type === "assistant") {
+      if (!("content" in message)) {
+        return null;
+      }
       const assistantContent = message.content.content;
 
       if (Array.isArray(assistantContent)) {
@@ -671,13 +701,14 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = ({
 
     if (message.message_type === "summary") {
       // Summaryメッセージの特別な処理 - summaryフィールドを使用
+      const summaryText = (message as any).summary || "";
       return (
         <div className="message-content summary-message-content">
           <div className="summary-message-header">
             <span className="summary-message-icon">📋</span>
             <span className="summary-message-label">Summary</span>
           </div>
-          <div className="summary-message-text">{message.summary}</div>
+          <div className="summary-message-text">{summaryText}</div>
         </div>
       );
     }
@@ -890,7 +921,7 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = ({
                 <div className="no-messages">
                   {messageSearchQuery || selectedMessageType !== "all"
                     ? "No messages match the current filters"
-                    : "No messages found"}
+                    : `No messages found (messages: ${messages.length}, filtered: ${filteredMessages.length})`}
                 </div>
               ) : (
                 <div className="messages-list" ref={messageListRef}>
@@ -898,7 +929,9 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = ({
                     const messageId =
                       message.message_type === "summary"
                         ? `summary-${index}`
-                        : message.uuid;
+                        : "uuid" in message
+                          ? message.uuid
+                          : `message-${index}`;
                     return (
                       <div
                         key={messageId}
@@ -909,34 +942,42 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = ({
                         <div className="message-header">
                           <span className="message-type">
                             {message.message_type}
-                            {message.message_type !== "summary" && (
-                              <span
-                                className={`status-indicator status-${message.processing_status}`}
-                                title={`Status: ${message.processing_status}${message.message_type === "assistant" && message.stop_reason ? ` (${message.stop_reason})` : ""}`}
-                              >
-                                <span className="status-dot"></span>
-                              </span>
-                            )}
+                            {message.message_type !== "summary" &&
+                              "processing_status" in message && (
+                                <span
+                                  className={`status-indicator status-${message.processing_status}`}
+                                  title={`Status: ${message.processing_status}${message.message_type === "assistant" && "stop_reason" in message && message.stop_reason ? ` (${message.stop_reason})` : ""}`}
+                                >
+                                  <span className="status-dot"></span>
+                                </span>
+                              )}
                           </span>
                           <span
                             className="message-time"
                             title={
-                              message.message_type !== "summary"
+                              message.message_type !== "summary" &&
+                              "timestamp" in message
                                 ? formatDateTooltip(message.timestamp)
                                 : undefined
                             }
                           >
                             {message.message_type === "summary"
                               ? ""
-                              : formatDateTime(message.timestamp, {
-                                  style: "technical",
-                                })}
+                              : "timestamp" in message
+                                ? formatDateTime(message.timestamp, {
+                                    style: "technical",
+                                  })
+                                : ""}
                           </span>
                         </div>
                         {renderMessageContent(message)}
-                        {message.message_type !== "summary" && message.cwd && (
-                          <div className="message-meta">CWD: {message.cwd}</div>
-                        )}
+                        {message.message_type !== "summary" &&
+                          "cwd" in message &&
+                          message.cwd && (
+                            <div className="message-meta">
+                              CWD: {message.cwd}
+                            </div>
+                          )}
                       </div>
                     );
                   })}
