@@ -132,9 +132,6 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = ({
       setError(null); // Clear any previous errors
       const data = await api.getSessionMessages(session.session_id);
 
-      // Check if we have summary messages
-      const summaryMessages = data.filter((m) => m.message_type === "summary");
-
       // Validate data
       if (!Array.isArray(data)) {
         throw new Error(
