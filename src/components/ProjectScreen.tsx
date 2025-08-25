@@ -172,14 +172,12 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
 
   useEffect(() => {
     if (!messages.length) {
-      setFilteredMessages([]);
+      // Don't clear filteredMessages when messages is empty - keep existing data
       return;
     }
 
-    // First, filter out summary messages
-    let filtered = messages.filter(
-      (message) => message.message_type !== "summary",
-    );
+    // Start with all messages (including summary messages)
+    let filtered = messages;
 
     if (selectedMessageType !== "all") {
       filtered = filtered.filter(
@@ -193,9 +191,16 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
         const content = getMessageTextContent(message);
         if (content.toLowerCase().includes(query)) return true;
 
-        if (message.uuid.toLowerCase().includes(query)) return true;
+        if (
+          message.message_type !== "summary" &&
+          "uuid" in message &&
+          message.uuid.toLowerCase().includes(query)
+        )
+          return true;
 
         if (
+          message.message_type !== "summary" &&
+          "timestamp" in message &&
           new Date(message.timestamp)
             .toLocaleString()
             .toLowerCase()
@@ -456,27 +461,9 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
     try {
       setLoadingMessages(true);
       setSelectedSession(session);
-      console.log(
-        "Loading messages for session:",
-        session.session_id,
-        "at",
-        new Date().toISOString(),
-      );
       const data = await api.getSessionMessages(session.session_id);
-      console.log(
-        "Loaded",
-        data.length,
-        "messages, latest timestamp:",
-        data.length > 0
-          ? data[data.length - 1]?.message_type === "summary"
-            ? "summary message"
-            : (data[data.length - 1] as any)?.timestamp
-          : "none",
-      );
       setMessages(data);
-      setFilteredMessages(
-        data.filter((message) => message.message_type !== "summary"),
-      );
+      setFilteredMessages(data);
 
       if (data.length > 0 && session.latest_content_preview) {
         setTimeout(() => {
