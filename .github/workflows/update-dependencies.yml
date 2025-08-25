@@ -35,6 +35,7 @@ jobs:
             package-lock.jsonだけを更新するのではなく、package.jsonのdependenciesとdevDependenciesを更新してください。
             もし、アップデートが必要なdependencyがない場合は、その旨を報告してください。
             もし、他のCIのjobが失敗した場合には、そのjobをチェックし修正してください。
+            すでに同じ差分のPRがあれば、新しいPRを作成しないでください。
           allowed_tools: "Bash,Read,Write,Edit,Glob,Grep,TodoWrite"
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         env:
