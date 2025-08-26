@@ -205,7 +205,7 @@ export const MessagesList: React.FC<MessagesListProps> = ({
       setAnimationStates(newAnimationStates);
 
       // Clear animations after they complete
-      setTimeout(
+      const timeoutId = setTimeout(
         () => {
           setAnimationStates(new Map());
         },
@@ -215,6 +215,9 @@ export const MessagesList: React.FC<MessagesListProps> = ({
           ),
         ),
       );
+
+      // Cleanup timeout on unmount
+      return () => clearTimeout(timeoutId);
     }
   }, []);
 
@@ -293,13 +296,12 @@ export const MessagesList: React.FC<MessagesListProps> = ({
     getMessageTextContent,
     saveScrollPosition,
     restoreScrollPosition,
-    previousMessages,
   ]);
 
   // Handle initial scroll to specific message
   useEffect(() => {
     if (initialScrollToMessage && filteredMessages.length > 0) {
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         const messageElement = document.getElementById(
           `message-${initialScrollToMessage}`,
         );
@@ -321,6 +323,9 @@ export const MessagesList: React.FC<MessagesListProps> = ({
           );
         }
       }, 150);
+
+      // Cleanup timeout on unmount
+      return () => clearTimeout(timeoutId);
     }
   }, [initialScrollToMessage, filteredMessages.length]);
 
