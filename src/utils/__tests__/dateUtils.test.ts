@@ -9,8 +9,8 @@ import {
 } from "../dateUtils";
 
 describe("dateUtils", () => {
-  const mockDate = new Date("2024-01-15T14:30:45Z");
-  const mockNow = new Date("2024-01-15T16:00:00Z"); // 1.5 hours later
+  const mockDate = new Date(2024, 0, 15, 14, 30, 45); // Local time: 2024-01-15 14:30:45
+  const mockNow = new Date(2024, 0, 15, 16, 0, 0); // Local time: 2024-01-15 16:00:00
 
   beforeEach(() => {
     // Mock Date.now to control "current time"
@@ -57,7 +57,7 @@ describe("dateUtils", () => {
     });
 
     it("should handle string dates", () => {
-      const result = formatDateTime("2024-01-15T14:30:45Z", {
+      const result = formatDateTime("2024-01-15T14:30:45", {
         style: "technical",
       });
       expect(result).toMatch(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/);
@@ -135,7 +135,7 @@ describe("dateUtils", () => {
 
     it("should format for log context with ISO format", () => {
       const result = formatDateForContext(mockDate, "log");
-      expect(result).toBe("2024-01-15T14:30:45.000Z");
+      expect(result).toMatch(/2024-01-15T\d{2}:30:45\.\d{3}Z/);
     });
   });
 

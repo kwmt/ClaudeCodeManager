@@ -125,21 +125,12 @@ pub struct CommandLogEntry {
     pub cwd: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ClaudeSettings {
     #[serde(default)]
     pub permissions: PermissionSettings,
     #[serde(default)]
     pub hooks: HookSettings,
-}
-
-impl Default for ClaudeSettings {
-    fn default() -> Self {
-        Self {
-            permissions: PermissionSettings::default(),
-            hooks: HookSettings::default(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -166,18 +157,10 @@ fn default_mode() -> String {
     "prompt".to_string()
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct HookSettings {
     #[serde(rename = "PreToolUse", default)]
     pub pre_tool_use: Vec<HookMatcher>,
-}
-
-impl Default for HookSettings {
-    fn default() -> Self {
-        Self {
-            pre_tool_use: Vec::new(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
