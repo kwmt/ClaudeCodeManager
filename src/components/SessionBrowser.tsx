@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useRef } from "react";
-import { marked } from "marked";
+import React, { useEffect, useState, useCallback } from "react";
 import { api } from "../api";
 import { formatDateTime, formatDateTooltip } from "../utils/dateUtils";
-import type { ClaudeSession, ClaudeMessage, ContentBlock } from "../types";
+import type { ClaudeSession, ClaudeMessage } from "../types";
+import { MessagesList } from "./MessagesList";
 
 interface SessionBrowserProps {
   initialProjectFilter?: string;
@@ -28,9 +28,7 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = ({
   // New state for message filtering and search
   const [messageSearchQuery, setMessageSearchQuery] = useState("");
   const [selectedMessageType, setSelectedMessageType] = useState<string>("all");
-  const [filteredMessages, setFilteredMessages] = useState<ClaudeMessage[]>([]);
   const [renderAsMarkdown, setRenderAsMarkdown] = useState(false);
-  const messageListRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadSessions();
@@ -92,65 +90,74 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = ({
     setSessions(filtered);
   };
 
-  // Helper function to extract text content from message (moved here to be available in loadSessionMessages)
-  const getMessageTextContent = (message: ClaudeMessage): string => {
-    if (message.message_type === "summary") {
-      return (message as any).summary || "";
-    }
+  // State for initial scroll target
+  const [initialScrollTarget, setInitialScrollTarget] = useState<
+    string | undefined
+  >(undefined);
 
-    if (!("content" in message)) {
-      return "";
-    }
+  const loadSessionMessages = useCallback(
+    async (session: ClaudeSession, forceRefresh: boolean = false) => {
+      try {
+        setLoadingMessages(true);
+        setSelectedSession(session);
+        setError(null); // Clear any previous errors
 
-    const content = message.content.content;
+        // Clear initial scroll target if switching sessions
+        if (selectedSession?.session_id !== session.session_id) {
+          setInitialScrollTarget(undefined);
+        }
 
-    if (typeof content === "string") {
-      return content;
-    }
+        const data = await api.getSessionMessages(session.session_id);
 
-    if (Array.isArray(content)) {
-      return content
-        .map((block) => {
-          if (block.type === "text") {
-            return block.text;
-          }
-          if (block.type === "tool_use") {
-            return `${block.name}: ${JSON.stringify(block.input)}`;
-          }
-          return "";
-        })
-        .join(" ");
-    }
+        // Validate data
+        if (!Array.isArray(data)) {
+          throw new Error(
+            `Invalid data received: expected array, got ${typeof data}`,
+          );
+        }
 
-    return "";
-  };
+        setMessages(data);
 
-  const loadSessionMessages = async (session: ClaudeSession) => {
-    try {
-      setLoadingMessages(true);
-      setSelectedSession(session);
-      setError(null); // Clear any previous errors
-      const data = await api.getSessionMessages(session.session_id);
+        // Set initial scroll target for latest content preview
+        if (
+          data.length > 0 &&
+          session.latest_content_preview &&
+          !forceRefresh
+        ) {
+          // Helper function to extract text content from message
+          const getMessageTextContent = (message: ClaudeMessage): string => {
+            if (message.message_type === "summary") {
+              return (message as any).summary || "";
+            }
 
-      // Validate data
-      if (!Array.isArray(data)) {
-        throw new Error(
-          `Invalid data received: expected array, got ${typeof data}`,
-        );
-      }
+            if (!("content" in message)) {
+              return "";
+            }
 
-      setMessages(data);
-      setFilteredMessages(data);
+            const content = message.content.content;
 
-      // Auto-scroll to the message containing the latest content preview
-      if (data.length > 0 && session.latest_content_preview) {
-        // Use setTimeout to ensure DOM is updated before scrolling
-        setTimeout(() => {
+            if (typeof content === "string") {
+              return content;
+            }
+
+            if (Array.isArray(content)) {
+              return content
+                .map((block) => {
+                  if (block.type === "text") {
+                    return block.text;
+                  }
+                  if (block.type === "tool_use") {
+                    return `${block.name}: ${JSON.stringify(block.input)}`;
+                  }
+                  return "";
+                })
+                .join(" ");
+            }
+
+            return "";
+          };
+
           // Find the message that contains the preview text
-          let targetMessage = null;
-          let targetIndex = -1;
-
-          // Search for the message containing the preview text
           for (let i = 0; i < data.length; i++) {
             const message = data[i];
             const content = getMessageTextContent(message);
@@ -158,53 +165,44 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = ({
               session.latest_content_preview &&
               content.includes(session.latest_content_preview)
             ) {
-              targetMessage = message;
-              targetIndex = i;
+              const messageId =
+                message.message_type === "summary"
+                  ? `summary-${i}`
+                  : "uuid" in message
+                    ? message.uuid
+                    : `message-${i}`;
+              setInitialScrollTarget(messageId);
               break;
             }
           }
 
-          // If no message found with preview, fall back to the last message
-          if (!targetMessage && data.length > 0) {
-            targetIndex = data.length - 1;
-            targetMessage = data[targetIndex];
-          }
-
-          if (targetMessage) {
+          // If no message found with preview, scroll to the last message
+          if (!initialScrollTarget && data.length > 0) {
+            const lastMessage = data[data.length - 1];
             const messageId =
-              targetMessage.message_type === "summary"
-                ? `summary-${targetIndex}`
-                : targetMessage.uuid;
-            const messageElement = document.getElementById(
-              `message-${messageId}`,
-            );
-            if (messageElement && messageListRef.current) {
-              messageElement.scrollIntoView({
-                behavior: "smooth",
-                block: "center",
-              });
-              // Highlight message briefly
-              messageElement.classList.add("highlighted");
-              setTimeout(
-                () => messageElement.classList.remove("highlighted"),
-                2000,
-              );
-            }
+              lastMessage.message_type === "summary"
+                ? `summary-${data.length - 1}`
+                : "uuid" in lastMessage
+                  ? lastMessage.uuid
+                  : `message-${data.length - 1}`;
+            setInitialScrollTarget(messageId);
           }
-        }, 150);
+        }
+      } catch (err) {
+        console.error(
+          `Error loading messages for session ${session.session_id}:`,
+          err,
+        );
+        setError(
+          err instanceof Error ? err.message : "Failed to load messages",
+        );
+        setMessages([]);
+      } finally {
+        setLoadingMessages(false);
       }
-    } catch (err) {
-      console.error(
-        `Error loading messages for session ${session.session_id}:`,
-        err,
-      );
-      setError(err instanceof Error ? err.message : "Failed to load messages");
-      setMessages([]);
-      setFilteredMessages([]);
-    } finally {
-      setLoadingMessages(false);
-    }
-  };
+    },
+    [selectedSession?.session_id, initialScrollTarget],
+  );
 
   const refreshAllSessions = async () => {
     const currentSessionId = selectedSession?.session_id;
@@ -231,7 +229,7 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = ({
           (s) => s.session_id === currentSessionId,
         );
         if (updatedSession) {
-          await loadSessionMessages(updatedSession);
+          await loadSessionMessages(updatedSession, true); // Force refresh
         }
       }
     } catch (err) {
@@ -241,188 +239,11 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = ({
     }
   };
 
-  // Filter messages based on search and type
-  useEffect(() => {
-    // Skip filtering if no messages
-    if (!messages.length) {
-      return;
-    }
-
-    let filtered = messages;
-
-    // Filter by message type
-    if (selectedMessageType !== "all") {
-      filtered = filtered.filter(
-        (message) => message.message_type === selectedMessageType,
-      );
-    }
-
-    // Filter by search query
-    if (messageSearchQuery.trim()) {
-      const query = messageSearchQuery.toLowerCase();
-      filtered = filtered.filter((message) => {
-        // Search in content
-        const content = getMessageTextContent(message);
-        if (content.toLowerCase().includes(query)) return true;
-
-        // Search in UUID
-        if (
-          message.message_type !== "summary" &&
-          "uuid" in message &&
-          message.uuid.toLowerCase().includes(query)
-        )
-          return true;
-
-        // Search in timestamp
-        if (
-          message.message_type !== "summary" &&
-          "timestamp" in message &&
-          formatDateTime(message.timestamp, { style: "technical" })
-            .toLowerCase()
-            .includes(query)
-        )
-          return true;
-
-        return false;
-      });
-    }
-
-    setFilteredMessages(filtered);
-  }, [messages, messageSearchQuery, selectedMessageType]);
-
-  // Scroll to specific message
-  const scrollToMessage = (messageId: string) => {
-    const messageElement = document.getElementById(`message-${messageId}`);
-    if (messageElement && messageListRef.current) {
-      messageElement.scrollIntoView({ behavior: "smooth", block: "center" });
-      // Highlight message briefly
-      messageElement.classList.add("highlighted");
-      setTimeout(() => messageElement.classList.remove("highlighted"), 2000);
-    }
-  };
-
-  // Render text with optional markdown
-  const renderText = (
-    text: string,
-    isMarkdown: boolean = false,
-  ): JSX.Element => {
-    if (isMarkdown && renderAsMarkdown) {
-      return (
-        <div
-          className="markdown-content"
-          dangerouslySetInnerHTML={{
-            __html: (() => {
-              try {
-                const result = marked(text);
-                return typeof result === "string" ? result : "";
-              } catch {
-                return "";
-              }
-            })(),
-          }}
-        />
-      );
-    }
-    return <pre className="content-text word-wrap">{text}</pre>;
-  };
-
-  // Calculate diff statistics and generate line-by-line diff
-  const generateDiff = (
-    oldString: string,
-    newString: string,
-    filePath?: string,
-  ) => {
-    const oldLines = oldString.split("\n");
-    const newLines = newString.split("\n");
-
-    // Simple diff algorithm - find common prefix and suffix
-    let commonPrefixLength = 0;
-    const minLength = Math.min(oldLines.length, newLines.length);
-
-    // Find common prefix
-    while (
-      commonPrefixLength < minLength &&
-      oldLines[commonPrefixLength] === newLines[commonPrefixLength]
-    ) {
-      commonPrefixLength++;
-    }
-
-    // Find common suffix
-    let commonSuffixLength = 0;
-    while (
-      commonSuffixLength < minLength - commonPrefixLength &&
-      oldLines[oldLines.length - 1 - commonSuffixLength] ===
-        newLines[newLines.length - 1 - commonSuffixLength]
-    ) {
-      commonSuffixLength++;
-    }
-
-    // Calculate removed and added lines
-    const removedStart = commonPrefixLength;
-    const removedEnd = oldLines.length - commonSuffixLength;
-    const addedStart = commonPrefixLength;
-    const addedEnd = newLines.length - commonSuffixLength;
-
-    const removedLines = oldLines.slice(removedStart, removedEnd);
-    const addedLines = newLines.slice(addedStart, addedEnd);
-
-    // Generate unified diff view
-    const diffLines: Array<{
-      type: "context" | "removed" | "added";
-      oldLineNum?: number;
-      newLineNum?: number;
-      content: string;
-    }> = [];
-
-    // Add context before changes (up to 3 lines)
-    const contextStart = Math.max(0, commonPrefixLength - 3);
-    for (let i = contextStart; i < commonPrefixLength; i++) {
-      diffLines.push({
-        type: "context",
-        oldLineNum: i + 1,
-        newLineNum: i + 1,
-        content: oldLines[i],
-      });
-    }
-
-    // Add removed lines
-    for (let i = 0; i < removedLines.length; i++) {
-      diffLines.push({
-        type: "removed",
-        oldLineNum: removedStart + i + 1,
-        content: removedLines[i],
-      });
-    }
-
-    // Add added lines
-    for (let i = 0; i < addedLines.length; i++) {
-      diffLines.push({
-        type: "added",
-        newLineNum: addedStart + i + 1,
-        content: addedLines[i],
-      });
-    }
-
-    // Add context after changes (up to 3 lines)
-    const contextEndStart = oldLines.length - commonSuffixLength;
-    const contextEndLimit = Math.min(contextEndStart + 3, oldLines.length);
-    for (let i = contextEndStart; i < contextEndLimit; i++) {
-      const newLineIndex = i - (oldLines.length - newLines.length);
-      diffLines.push({
-        type: "context",
-        oldLineNum: i + 1,
-        newLineNum: newLineIndex + 1,
-        content: oldLines[i],
-      });
-    }
-
-    return {
-      filePath: filePath || "Unknown file",
-      additions: addedLines.length,
-      deletions: removedLines.length,
-      diffLines,
-    };
-  };
+  // Handle message click callback
+  const handleMessageClick = useCallback((messageId: string) => {
+    console.log(`Clicked message: ${messageId}`);
+    // You can add additional functionality here if needed
+  }, []);
 
   const activateIdeWindow = async (session: ClaudeSession) => {
     if (!session.ide_info) {
@@ -437,284 +258,6 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = ({
         err instanceof Error ? err.message : "Failed to activate IDE window",
       );
     }
-  };
-
-  const renderContentBlock = (block: ContentBlock, index: number) => {
-    if (block.type === "text") {
-      const text = block.text;
-
-      // Check if text looks like markdown (contains headers, lists, code blocks, inline code, emphasis)
-      const looksLikeMarkdown =
-        /#{1,6}\s|\*\s|-\s|```|\d+\.\s|\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\[.*\]\(.*\)/m.test(
-          text,
-        );
-
-      return (
-        <div key={index} className="text-block">
-          {renderText(text, looksLikeMarkdown)}
-        </div>
-      );
-    }
-
-    if (block.type === "tool_use") {
-      // Check if this is an Edit tool with old_string/new_string
-      if (
-        block.name === "Edit" &&
-        block.input.old_string &&
-        block.input.new_string
-      ) {
-        const diff = generateDiff(
-          block.input.old_string,
-          block.input.new_string,
-          block.input.file_path,
-        );
-
-        return (
-          <div key={index} className="tool-use-block diff-view">
-            <div className="tool-header">
-              <span className="tool-icon">⏺</span>
-              <span className="tool-name">Update({diff.filePath})</span>
-            </div>
-            <div className="diff-summary">
-              ⎿ Updated {diff.filePath} with {diff.additions} addition
-              {diff.additions !== 1 ? "s" : ""} and {diff.deletions} removal
-              {diff.deletions !== 1 ? "s" : ""}
-            </div>
-            <div className="diff-content unified-diff">
-              {diff.diffLines.map((line, lineIndex) => (
-                <div
-                  key={lineIndex}
-                  className={`diff-line diff-line-${line.type}`}
-                >
-                  <span className="line-numbers">
-                    <span className="old-line-num">
-                      {line.oldLineNum || ""}
-                    </span>
-                    <span className="new-line-num">
-                      {line.newLineNum || ""}
-                    </span>
-                  </span>
-                  <span className="diff-marker">
-                    {line.type === "removed"
-                      ? "-"
-                      : line.type === "added"
-                        ? "+"
-                        : " "}
-                  </span>
-                  <pre className="diff-line-content">{line.content}</pre>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      }
-
-      // Check if this is a MultiEdit tool with edits array
-      if (
-        block.name === "MultiEdit" &&
-        block.input.edits &&
-        Array.isArray(block.input.edits)
-      ) {
-        const totalAdditions = block.input.edits.reduce(
-          (sum: number, edit: any) => {
-            const diff = generateDiff(
-              edit.old_string || "",
-              edit.new_string || "",
-            );
-            return sum + diff.additions;
-          },
-          0,
-        );
-
-        const totalDeletions = block.input.edits.reduce(
-          (sum: number, edit: any) => {
-            const diff = generateDiff(
-              edit.old_string || "",
-              edit.new_string || "",
-            );
-            return sum + diff.deletions;
-          },
-          0,
-        );
-
-        return (
-          <div key={index} className="tool-use-block diff-view">
-            <div className="tool-header">
-              <span className="tool-icon">⏺</span>
-              <span className="tool-name">
-                MultiEdit({block.input.file_path || "Unknown file"})
-              </span>
-            </div>
-            <div className="diff-summary">
-              ⎿ Updated {block.input.file_path || "file"} with {totalAdditions}{" "}
-              total addition{totalAdditions !== 1 ? "s" : ""} and{" "}
-              {totalDeletions} total removal{totalDeletions !== 1 ? "s" : ""}{" "}
-              across {block.input.edits.length} edit
-              {block.input.edits.length !== 1 ? "s" : ""}
-            </div>
-            {block.input.edits.map((edit: any, editIndex: number) => {
-              const diff = generateDiff(
-                edit.old_string || "",
-                edit.new_string || "",
-                block.input.file_path,
-              );
-              return (
-                <div key={editIndex} className="multi-edit-section">
-                  <div className="diff-edit-number">
-                    Edit {editIndex + 1} ({diff.additions} addition
-                    {diff.additions !== 1 ? "s" : ""}, {diff.deletions} removal
-                    {diff.deletions !== 1 ? "s" : ""})
-                  </div>
-                  <div className="diff-content unified-diff">
-                    {diff.diffLines.map((line, lineIndex) => (
-                      <div
-                        key={lineIndex}
-                        className={`diff-line diff-line-${line.type}`}
-                      >
-                        <span className="line-numbers">
-                          <span className="old-line-num">
-                            {line.oldLineNum || ""}
-                          </span>
-                          <span className="new-line-num">
-                            {line.newLineNum || ""}
-                          </span>
-                        </span>
-                        <span className="diff-marker">
-                          {line.type === "removed"
-                            ? "-"
-                            : line.type === "added"
-                              ? "+"
-                              : " "}
-                        </span>
-                        <pre className="diff-line-content">{line.content}</pre>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        );
-      }
-
-      // Default tool_use rendering
-      return (
-        <div key={index} className="tool-use-block">
-          <div className="tool-header">
-            <span className="tool-icon">🛠️</span>
-            <span className="tool-name">{block.name}</span>
-          </div>
-          <div className="tool-input">
-            <pre className="word-wrap">
-              {JSON.stringify(block.input, null, 2)}
-            </pre>
-          </div>
-        </div>
-      );
-    }
-
-    return null;
-  };
-
-  const renderMessageContent = (message: ClaudeMessage) => {
-    if (message.message_type === "user") {
-      if (!("content" in message)) {
-        return null;
-      }
-      const userContent = message.content.content;
-
-      if (typeof userContent === "string") {
-        // コマンドメッセージの場合の特別な処理
-        if (
-          userContent.includes("<command-name>") &&
-          userContent.includes("</command-name>")
-        ) {
-          const commandMatch = userContent.match(
-            /<command-name>([^<]+)<\/command-name>/,
-          );
-          const messageMatch = userContent.match(
-            /<command-message>([^<]*)<\/command-message>/,
-          );
-          const argsMatch = userContent.match(
-            /<command-args>([^<]*)<\/command-args>/,
-          );
-
-          return (
-            <div className="message-content user-content command-content">
-              <div className="command-info">
-                <span className="command-label">Command:</span>{" "}
-                {commandMatch?.[1] || "Unknown"}
-              </div>
-              {messageMatch?.[1] && (
-                <div className="command-message">{messageMatch[1]}</div>
-              )}
-              {argsMatch?.[1] && (
-                <div className="command-args">
-                  <span className="args-label">Args:</span> {argsMatch[1]}
-                </div>
-              )}
-            </div>
-          );
-        }
-
-        // 通常のテキストメッセージ（contentがstringの場合はそのまま表示）
-        const looksLikeMarkdown =
-          /#{1,6}\s|\*\s|-\s|```|\d+\.\s|\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\[.*\]\(.*\)/m.test(
-            userContent,
-          );
-        return (
-          <div className="message-content user-content">
-            {renderText(userContent, looksLikeMarkdown)}
-          </div>
-        );
-      } else if (Array.isArray(userContent)) {
-        // ContentBlock[]の場合
-        return (
-          <div className="message-content user-content">
-            {userContent.map((block: any, index: number) =>
-              renderContentBlock(block, index),
-            )}
-          </div>
-        );
-      }
-    }
-
-    if (message.message_type === "assistant") {
-      if (!("content" in message)) {
-        return null;
-      }
-      const assistantContent = message.content.content;
-
-      if (Array.isArray(assistantContent)) {
-        return (
-          <div className="message-content assistant-content">
-            {assistantContent.map((block: any, index: number) =>
-              renderContentBlock(block, index),
-            )}
-          </div>
-        );
-      }
-    }
-
-    if (message.message_type === "summary") {
-      // Summaryメッセージの特別な処理 - summaryフィールドを使用
-      const summaryText = (message as any).summary || "";
-      return (
-        <div className="message-content summary-message-content">
-          <div className="summary-message-header">
-            <span className="summary-message-icon">📋</span>
-            <span className="summary-message-label">Summary</span>
-          </div>
-          <div className="summary-message-text">{summaryText}</div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="message-content">
-        <pre className="content-text">{JSON.stringify(message, null, 2)}</pre>
-      </div>
-    );
   };
 
   if (error) {
@@ -912,74 +455,15 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = ({
                 </div>
               </div>
 
-              {loadingMessages ? (
-                <div className="loading">Loading messages...</div>
-              ) : filteredMessages.length === 0 ? (
-                <div className="no-messages">
-                  {messageSearchQuery || selectedMessageType !== "all"
-                    ? "No messages match the current filters"
-                    : `No messages found (messages: ${messages.length}, filtered: ${filteredMessages.length})`}
-                </div>
-              ) : (
-                <div className="messages-list" ref={messageListRef}>
-                  {filteredMessages.map((message, index) => {
-                    const messageId =
-                      message.message_type === "summary"
-                        ? `summary-${index}`
-                        : "uuid" in message
-                          ? message.uuid
-                          : `message-${index}`;
-                    return (
-                      <div
-                        key={messageId}
-                        id={`message-${messageId}`}
-                        className={`message ${message.message_type.toLowerCase()}`}
-                        onClick={() => scrollToMessage(messageId)}
-                      >
-                        <div className="message-header">
-                          <span className="message-type">
-                            {message.message_type}
-                            {message.message_type !== "summary" &&
-                              "processing_status" in message && (
-                                <span
-                                  className={`status-indicator status-${message.processing_status}`}
-                                  title={`Status: ${message.processing_status}${message.message_type === "assistant" && "stop_reason" in message && message.stop_reason ? ` (${message.stop_reason})` : ""}`}
-                                >
-                                  <span className="status-dot"></span>
-                                </span>
-                              )}
-                          </span>
-                          <span
-                            className="message-time"
-                            title={
-                              message.message_type !== "summary" &&
-                              "timestamp" in message
-                                ? formatDateTooltip(message.timestamp)
-                                : undefined
-                            }
-                          >
-                            {message.message_type === "summary"
-                              ? ""
-                              : "timestamp" in message
-                                ? formatDateTime(message.timestamp, {
-                                    style: "technical",
-                                  })
-                                : ""}
-                          </span>
-                        </div>
-                        {renderMessageContent(message)}
-                        {message.message_type !== "summary" &&
-                          "cwd" in message &&
-                          message.cwd && (
-                            <div className="message-meta">
-                              CWD: {message.cwd}
-                            </div>
-                          )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              <MessagesList
+                messages={messages}
+                loading={loadingMessages}
+                searchQuery={messageSearchQuery}
+                messageTypeFilter={selectedMessageType}
+                renderAsMarkdown={renderAsMarkdown}
+                onMessageClick={handleMessageClick}
+                initialScrollToMessage={initialScrollTarget}
+              />
             </>
           ) : (
             <div className="no-session-selected">
