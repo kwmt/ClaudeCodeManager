@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { safeJSONParse, validateJSONContent } from "../utils/security";
 
 interface JSONEditorProps {
@@ -33,6 +33,8 @@ export default function JSONEditor({
   const [localValue, setLocalValue] = useState(value);
   const [error, setError] = useState<string | null>(null);
   const [isValidating, setIsValidating] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const scrollPositionRef = useRef({ scrollTop: 0, scrollLeft: 0 });
 
   // デバウンスされた検証関数
   const debouncedValidation = useMemo(
@@ -71,6 +73,14 @@ export default function JSONEditor({
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const newValue = e.target.value;
 
+      // Store scroll position before value change
+      if (textareaRef.current) {
+        scrollPositionRef.current = {
+          scrollTop: textareaRef.current.scrollTop,
+          scrollLeft: textareaRef.current.scrollLeft,
+        };
+      }
+
       // 入力サイズ制限チェック
       if (newValue.length > 1024 * 1024) {
         // 1MB制限
@@ -99,6 +109,14 @@ export default function JSONEditor({
       onChange(formatted);
       setError(null);
       onValidationChange?.(true);
+
+      // Reset scroll position after formatting
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.scrollTop = 0;
+          textareaRef.current.scrollLeft = 0;
+        }
+      }, 0);
     } catch (e) {
       const errorMessage =
         e instanceof Error ? e.message : "Cannot format invalid JSON";
@@ -128,11 +146,23 @@ export default function JSONEditor({
         )}
       </div>
       <textarea
+        ref={textareaRef}
         value={localValue}
         onChange={handleChange}
+        onScroll={(e) => {
+          // Update scroll position tracking
+          const target = e.target as HTMLTextAreaElement;
+          scrollPositionRef.current = {
+            scrollTop: target.scrollTop,
+            scrollLeft: target.scrollLeft,
+          };
+        }}
         readOnly={readOnly}
         className={`json-editor-textarea ${error ? "has-error" : ""}`}
-        style={{ height }}
+        style={{
+          height,
+          scrollBehavior: "smooth",
+        }}
         spellCheck={false}
         aria-label="JSON content editor"
         aria-describedby={error ? "json-error" : undefined}

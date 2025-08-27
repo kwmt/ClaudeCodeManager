@@ -362,6 +362,7 @@ export function CommandsAgentsEditor() {
                   onChange={(e) => setNewItemName(e.target.value)}
                   placeholder={`Enter ${mode === "commands" ? "command" : "agent"} name`}
                   autoFocus
+                  autoComplete="off"
                 />
               </label>
             </div>
@@ -386,6 +387,10 @@ export function CommandsAgentsEditor() {
                 placeholder={`Enter ${mode === "commands" ? "command" : "agent"} content (Markdown supported)`}
                 className="content-editor"
                 readOnly={isSaving}
+                style={{
+                  height: "calc(100vh - 220px)",
+                  scrollBehavior: "smooth",
+                }}
               />
             </>
           )}

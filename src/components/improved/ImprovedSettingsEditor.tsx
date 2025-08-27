@@ -125,20 +125,14 @@ export const ImprovedSettingsEditor: FC = React.memo(() => {
 
         case "files":
           return (
-            <SettingsCard
-              title="Configuration Files"
-              description="Manage Claude configuration files and directory structure"
-            >
+            <SettingsCard>
               <SettingsFilesEditor />
             </SettingsCard>
           );
 
         case "commands-agents":
           return (
-            <SettingsCard
-              title="Commands & Agents"
-              description="Manage custom commands and agent configurations"
-            >
+            <SettingsCard>
               <CommandsAgentsEditor />
             </SettingsCard>
           );
@@ -163,9 +157,6 @@ export const ImprovedSettingsEditor: FC = React.memo(() => {
       <div className="improved-settings-editor__header">
         <div className="improved-settings-editor__header-content">
           <h1 className="improved-settings-editor__title">Settings</h1>
-          <p className="improved-settings-editor__description">
-            Configure Claude Code Manager preferences and behavior
-          </p>
         </div>
 
         {/* Header actions could go here */}
