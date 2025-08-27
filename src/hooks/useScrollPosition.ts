@@ -10,6 +10,10 @@ interface UseScrollPositionReturn {
   restoreScrollPosition: () => void;
   getScrollPosition: () => ScrollPosition | null;
   setScrollPosition: (position: ScrollPosition) => void;
+  scrollToTop: () => void;
+  scrollToBottom: () => void;
+  isAtTop: () => boolean;
+  isAtBottom: () => boolean;
 }
 
 /**
@@ -71,10 +75,51 @@ export const useScrollPosition = (
     [containerRef],
   );
 
+  const scrollToTop = useCallback(() => {
+    if (!containerRef.current) return;
+
+    containerRef.current.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: "smooth",
+    });
+  }, [containerRef]);
+
+  const scrollToBottom = useCallback(() => {
+    if (!containerRef.current) return;
+
+    const container = containerRef.current;
+    container.scrollTo({
+      top: container.scrollHeight,
+      left: 0,
+      behavior: "smooth",
+    });
+  }, [containerRef]);
+
+  const isAtTop = useCallback((): boolean => {
+    if (!containerRef.current) return true;
+    return containerRef.current.scrollTop <= 5; // Small threshold for smooth scrolling
+  }, [containerRef]);
+
+  const isAtBottom = useCallback((): boolean => {
+    if (!containerRef.current) return false;
+
+    const container = containerRef.current;
+    const threshold = 5; // Small threshold for smooth scrolling
+    return (
+      container.scrollTop + container.clientHeight >=
+      container.scrollHeight - threshold
+    );
+  }, [containerRef]);
+
   return {
     saveScrollPosition,
     restoreScrollPosition,
     getScrollPosition,
     setScrollPosition,
+    scrollToTop,
+    scrollToBottom,
+    isAtTop,
+    isAtBottom,
   };
 };

@@ -200,7 +200,7 @@ export function SettingsFilesEditor() {
                 value={selectedContent}
                 onChange={handleContentChange}
                 readOnly={isSaving}
-                height="calc(100vh - 250px)"
+                height="calc(100vh - 180px)"
               />
             </>
           )}
