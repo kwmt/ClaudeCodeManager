@@ -70,11 +70,7 @@ export const ImprovedPermissionsTab: FC<ImprovedPermissionsTabProps> =
     // Show loading state
     if (loading) {
       return (
-        <SettingsCard
-          title="Permissions & Hooks"
-          description="Configure command permissions and pre-tool use hooks"
-          loading={true}
-        >
+        <SettingsCard loading={true}>
           <div>Loading permissions...</div>
         </SettingsCard>
       );
@@ -83,11 +79,9 @@ export const ImprovedPermissionsTab: FC<ImprovedPermissionsTabProps> =
     // Show error state
     if (error) {
       return (
-        <SettingsCard
-          title="Permissions & Hooks"
-          description="Configure command permissions and pre-tool use hooks"
-          error={error}
-          headerActions={
+        <SettingsCard error={error}>
+          <div className="settings-error-state">
+            <p>Failed to load permissions and hooks configuration.</p>
             <button
               type="button"
               onClick={onRetry}
@@ -95,10 +89,6 @@ export const ImprovedPermissionsTab: FC<ImprovedPermissionsTabProps> =
             >
               Retry
             </button>
-          }
-        >
-          <div className="settings-error-state">
-            <p>Failed to load permissions and hooks configuration.</p>
           </div>
         </SettingsCard>
       );
@@ -107,13 +97,10 @@ export const ImprovedPermissionsTab: FC<ImprovedPermissionsTabProps> =
     // Show empty state
     if (!settings) {
       return (
-        <SettingsCard
-          title="Permissions & Hooks"
-          description="Configure command permissions and pre-tool use hooks"
-        >
+        <SettingsCard>
           <div className="settings-empty-state">
             <div className="settings-empty-state__icon">📋</div>
-            <h3 className="settings-empty-state__title">No Settings Found</h3>
+            <h2 className="settings-empty-state__title">No Settings Found</h2>
             <p className="settings-empty-state__description">
               No permissions or hooks configuration could be found.
             </p>
@@ -131,23 +118,19 @@ export const ImprovedPermissionsTab: FC<ImprovedPermissionsTabProps> =
 
     return (
       <div className="improved-permissions-tab">
-        {/* Basic Permissions Overview */}
-        <SettingsCard
-          title="Permissions & Hooks"
-          description="Configure command permissions and pre-tool use hooks"
-          headerActions={
-            <div className="permissions-header-actions">
-              <button
-                type="button"
-                onClick={toggleDeveloperMode}
-                className="settings-button settings-button--secondary"
-                aria-pressed={showDeveloperMode}
-              >
-                {showDeveloperMode ? "Hide" : "Show"} Developer Mode
-              </button>
-            </div>
-          }
-        >
+        {/* Permissions & Hooks Settings */}
+        <SettingsCard>
+          {/* Developer Mode Toggle */}
+          <div style={{ marginBottom: "var(--spacing-4)" }}>
+            <button
+              type="button"
+              onClick={toggleDeveloperMode}
+              className="settings-button settings-button--secondary"
+              aria-pressed={showDeveloperMode}
+            >
+              {showDeveloperMode ? "Hide" : "Show"} Developer Mode
+            </button>
+          </div>
           {/* Permission Summary */}
           <SettingsSection
             title="Permission Summary"

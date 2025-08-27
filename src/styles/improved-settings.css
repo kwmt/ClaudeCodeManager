@@ -112,45 +112,7 @@
   background: var(--color-error-50);
 }
 
-.settings-card__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: var(--spacing-6);
-  border-bottom: 1px solid var(--color-gray-100);
-  background: var(--gradient-subtle-secondary);
-}
-
-.settings-card--compact .settings-card__header {
-  padding: var(--spacing-4);
-}
-
-.settings-card__header-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.settings-card__title {
-  margin: 0 0 var(--spacing-2) 0;
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-tight);
-  color: var(--color-gray-900);
-}
-
-.settings-card__description {
-  margin: 0;
-  font-size: var(--font-size-sm);
-  color: var(--color-gray-600);
-  line-height: var(--line-height-normal);
-}
-
-.settings-card__header-actions {
-  display: flex;
-  gap: var(--spacing-3);
-  align-items: flex-start;
-  margin-left: var(--spacing-4);
-}
+/* Permissions classes removed - using inline styles */
 
 .settings-card__body {
   padding: var(--spacing-6);
@@ -162,6 +124,29 @@
 
 .settings-card--compact .settings-card__body {
   padding: var(--spacing-4);
+}
+
+/* Enhanced Error State */
+.settings-card__error-title {
+  margin: 0 0 var(--spacing-2) 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-error-700);
+}
+
+.settings-error-state {
+  text-align: center;
+  padding: var(--spacing-4) 0;
+}
+
+.settings-error-state .settings-button {
+  margin-top: var(--spacing-4);
+}
+
+.settings-empty-state__title {
+  font-size: var(--font-size-xl) !important;
+  font-weight: var(--font-weight-semibold) !important;
+  margin-bottom: var(--spacing-3) !important;
 }
 
 /* Loading State */
@@ -1008,13 +993,13 @@
     font-size: var(--font-size-2xl);
   }
 
-  .settings-card__header {
+  .permissions-header {
     flex-direction: column;
     align-items: stretch;
     gap: var(--spacing-3);
   }
 
-  .settings-card__header-actions {
+  .permissions-header-actions {
     margin-left: 0;
     justify-content: flex-start;
   }
