@@ -548,7 +548,7 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
   const renderText = (
     text: string,
     isMarkdown: boolean = false,
-  ): JSX.Element => {
+  ): React.ReactElement => {
     if (isMarkdown && renderAsMarkdown) {
       return (
         <div

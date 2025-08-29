@@ -356,7 +356,7 @@ export const MessagesList: React.FC<MessagesListProps> = ({
 
   // Render text with optional markdown
   const renderText = useCallback(
-    (text: string, isMarkdown: boolean = false): JSX.Element => {
+    (text: string, isMarkdown: boolean = false): React.ReactElement => {
       if (isMarkdown && renderAsMarkdown) {
         return (
           <div
