@@ -99,7 +99,7 @@ const SearchControls: React.FC<{
 
 // Progress indicator for long lists
 const ScrollProgress: React.FC<{
-  containerRef: React.RefObject<HTMLDivElement>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
 }> = ({ containerRef }) => {
   const [scrollProgress, setScrollProgress] = useState(0);
 

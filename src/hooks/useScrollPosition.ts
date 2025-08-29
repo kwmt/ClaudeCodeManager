@@ -21,7 +21,7 @@ interface UseScrollPositionReturn {
  * Maintains scroll position when content changes, ensuring smooth UX
  */
 export const useScrollPosition = (
-  containerRef: React.RefObject<HTMLElement>,
+  containerRef: React.RefObject<HTMLElement | null>,
 ): UseScrollPositionReturn => {
   const savedPositionRef = useRef<ScrollPosition | null>(null);
 
