@@ -20,6 +20,8 @@ export function CommandsAgentsEditor() {
   const [newItemName, setNewItemName] = useState("");
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editingName, setEditingName] = useState("");
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
 
   useEffect(() => {
@@ -276,6 +278,66 @@ export function CommandsAgentsEditor() {
     setShowDeleteDialog(false);
   };
 
+  const handleStartEditing = () => {
+    if (!selectedItem || isCreating) return;
+    setIsEditingName(true);
+    setEditingName(selectedItem);
+  };
+
+  const handleConfirmEdit = async () => {
+    if (!selectedItem || isCreating || !editingName.trim()) return;
+
+    const oldName = selectedItem;
+    const newName = editingName.trim();
+
+    // 名前が変更されていない場合は編集モードを終了
+    if (oldName === newName) {
+      setIsEditingName(false);
+      setEditingName("");
+      return;
+    }
+
+    // 名前の検証
+    const nameValidation = validateFileName(newName);
+    if (!nameValidation.valid) {
+      setError(nameValidation.error || "Invalid name");
+      return;
+    }
+
+    try {
+      if (mode === "commands") {
+        await api.renameCustomCommand(oldName, newName);
+        setCommands((prev) =>
+          prev
+            .map((cmd) =>
+              cmd.name === oldName ? { ...cmd, name: newName } : cmd,
+            )
+            .sort((a, b) => a.name.localeCompare(b.name)),
+        );
+      } else {
+        await api.renameAgent(oldName, newName);
+        setAgents((prev) =>
+          prev
+            .map((agent) =>
+              agent.name === oldName ? { ...agent, name: newName } : agent,
+            )
+            .sort((a, b) => a.name.localeCompare(b.name)),
+        );
+      }
+
+      setSelectedItem(newName);
+      setIsEditingName(false);
+      setEditingName("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to rename");
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingName(false);
+    setEditingName("");
+  };
+
   if (isLoading) {
     return <div className="loading">Loading...</div>;
   }
@@ -371,11 +433,34 @@ export function CommandsAgentsEditor() {
           {(selectedItem || isCreating) && (
             <>
               <div className="content-header">
-                <h3>
-                  {isCreating
-                    ? `New ${mode === "commands" ? "Command" : "Agent"}`
-                    : selectedItem}
-                </h3>
+                {isCreating ? (
+                  <h3>New {mode === "commands" ? "Command" : "Agent"}</h3>
+                ) : isEditingName ? (
+                  <input
+                    type="text"
+                    value={editingName}
+                    onChange={(e) => setEditingName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        handleConfirmEdit();
+                      } else if (e.key === "Escape") {
+                        handleCancelEdit();
+                      }
+                    }}
+                    onBlur={handleConfirmEdit}
+                    className="content-header-edit"
+                    autoFocus
+                    autoComplete="off"
+                  />
+                ) : (
+                  <h3
+                    onClick={handleStartEditing}
+                    className="content-header-title"
+                    title="Click to rename"
+                  >
+                    {selectedItem}
+                  </h3>
+                )}
                 {hasChanges && (
                   <span className="unsaved-indicator">• Unsaved changes</span>
                 )}

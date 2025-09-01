@@ -383,6 +383,16 @@ export const mockApi = {
     console.log(`Mock: Would delete agent ${name}`);
   },
 
+  async renameCustomCommand(oldName: string, newName: string): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    console.log(`Mock: Would rename command ${oldName} to ${newName}`);
+  },
+
+  async renameAgent(oldName: string, newName: string): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    console.log(`Mock: Would rename agent ${oldName} to ${newName}`);
+  },
+
   async getAllSettingsFiles(): Promise<[string, string][]> {
     await new Promise((resolve) => setTimeout(resolve, 200));
     return [
@@ -432,5 +442,10 @@ export const mockApi = {
   async saveSettingsFile(filename: string, content: string): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 100));
     console.log(`Mock: Would save settings file ${filename}:`, content);
+  },
+
+  async saveSettings(settings: ClaudeSettings): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    console.log(`Mock: Would save settings:`, settings);
   },
 };

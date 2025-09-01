@@ -9,6 +9,31 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use tokio::sync::RwLock;
 
+/// Enum representing the markdown file directories
+#[derive(Debug, Clone, Copy)]
+enum MarkdownDirectory {
+    Commands,
+    Agents,
+}
+
+impl MarkdownDirectory {
+    /// Get the directory name as a string
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::Commands => "commands",
+            Self::Agents => "agents",
+        }
+    }
+
+    /// Get the item type name for error messages
+    fn item_type(&self) -> &'static str {
+        match self {
+            Self::Commands => "Command",
+            Self::Agents => "Agent",
+        }
+    }
+}
+
 pub struct ClaudeDataManager {
     claude_dir: PathBuf,
     _sessions_cache: RwLock<HashMap<String, ClaudeSession>>,
@@ -1138,18 +1163,43 @@ impl ClaudeDataManager {
         Ok(agents)
     }
 
+    /// Generic method to save a markdown file in a specified directory
+    async fn save_markdown_file(
+        &self,
+        directory: MarkdownDirectory,
+        name: &str,
+        content: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let target_dir = self.claude_dir.join(directory.as_str());
+        fs::create_dir_all(&target_dir)?;
+
+        let file_path = target_dir.join(format!("{}.md", name));
+        fs::write(&file_path, content)?;
+
+        Ok(())
+    }
+
+    /// Generic method to delete a markdown file from a specified directory
+    async fn delete_markdown_file(
+        &self,
+        directory: MarkdownDirectory,
+        name: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let file_path = self
+            .claude_dir
+            .join(directory.as_str())
+            .join(format!("{}.md", name));
+        fs::remove_file(&file_path)?;
+        Ok(())
+    }
+
     pub async fn save_custom_command(
         &self,
         name: &str,
         content: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let commands_dir = self.claude_dir.join("commands");
-        fs::create_dir_all(&commands_dir)?;
-
-        let file_path = commands_dir.join(format!("{}.md", name));
-        fs::write(&file_path, content)?;
-
-        Ok(())
+        self.save_markdown_file(MarkdownDirectory::Commands, name, content)
+            .await
     }
 
     pub async fn save_agent(
@@ -1157,31 +1207,62 @@ impl ClaudeDataManager {
         name: &str,
         content: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let agents_dir = self.claude_dir.join("agents");
-        fs::create_dir_all(&agents_dir)?;
-
-        let file_path = agents_dir.join(format!("{}.md", name));
-        fs::write(&file_path, content)?;
-
-        Ok(())
+        self.save_markdown_file(MarkdownDirectory::Agents, name, content)
+            .await
     }
 
     pub async fn delete_custom_command(
         &self,
         name: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let file_path = self
-            .claude_dir
-            .join("commands")
-            .join(format!("{}.md", name));
-        fs::remove_file(&file_path)?;
-        Ok(())
+        self.delete_markdown_file(MarkdownDirectory::Commands, name)
+            .await
     }
 
     pub async fn delete_agent(&self, name: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let file_path = self.claude_dir.join("agents").join(format!("{}.md", name));
-        fs::remove_file(&file_path)?;
+        self.delete_markdown_file(MarkdownDirectory::Agents, name)
+            .await
+    }
+
+    /// Generic method to rename a markdown file in a specified directory
+    async fn rename_markdown_file(
+        &self,
+        directory: MarkdownDirectory,
+        old_name: &str,
+        new_name: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let target_dir = self.claude_dir.join(directory.as_str());
+        let old_path = target_dir.join(format!("{}.md", old_name));
+        let new_path = target_dir.join(format!("{}.md", new_name));
+
+        if !old_path.exists() {
+            return Err(format!("{} '{}' not found", directory.item_type(), old_name).into());
+        }
+
+        if new_path.exists() {
+            return Err(format!("{} '{}' already exists", directory.item_type(), new_name).into());
+        }
+
+        fs::rename(&old_path, &new_path)?;
         Ok(())
+    }
+
+    pub async fn rename_custom_command(
+        &self,
+        old_name: &str,
+        new_name: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        self.rename_markdown_file(MarkdownDirectory::Commands, old_name, new_name)
+            .await
+    }
+
+    pub async fn rename_agent(
+        &self,
+        old_name: &str,
+        new_name: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        self.rename_markdown_file(MarkdownDirectory::Agents, old_name, new_name)
+            .await
     }
 
     pub async fn get_all_settings_files(
