@@ -2,6 +2,9 @@ import React, { type FC, useState, useCallback, useMemo } from "react";
 import type { ClaudeSettings } from "../../types";
 import { SettingsCard } from "../ui/SettingsCard";
 import { SettingsSection, useSettingsSections } from "../ui/SettingsSection";
+import { EditablePermissions } from "./EditablePermissions";
+import { EditableHooks } from "./EditableHooks";
+import { api } from "../../api";
 
 interface ImprovedPermissionsTabProps {
   settings: ClaudeSettings | null;
@@ -11,9 +14,11 @@ interface ImprovedPermissionsTabProps {
 }
 
 /**
- * Improved Permissions Tab with Progressive Disclosure
+ * Improved Permissions Tab with Progressive Disclosure and Edit Mode
  *
  * Features:
+ * - Edit mode for modifying settings
+ * - Save/Cancel functionality with validation
  * - Hierarchical information structure (Basic → Advanced → Developer)
  * - Collapsible sections with smart defaults
  * - Visual priority indicators
@@ -33,6 +38,13 @@ interface ImprovedPermissionsTabProps {
 export const ImprovedPermissionsTab: FC<ImprovedPermissionsTabProps> =
   React.memo(({ settings, loading, error, onRetry }) => {
     const [showDeveloperMode, setShowDeveloperMode] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editedSettings, setEditedSettings] = useState<ClaudeSettings | null>(
+      null,
+    );
+    const [saveError, setSaveError] = useState<string | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveSuccess, setSaveSuccess] = useState(false);
 
     // Manage section expanded states with smart defaults
     const sectionIds = [
@@ -43,7 +55,7 @@ export const ImprovedPermissionsTab: FC<ImprovedPermissionsTabProps> =
     ];
     const { toggleSection, isExpanded } = useSettingsSections(sectionIds, {
       "permissions-basic": true, // Always show basic info
-      "permissions-lists": false, // Collapsed by default
+      "permissions-lists": isEditing, // Expand when editing
       hooks: false, // Collapsed by default (advanced)
       "raw-json": false, // Developer mode only
     });
@@ -52,20 +64,89 @@ export const ImprovedPermissionsTab: FC<ImprovedPermissionsTabProps> =
       setShowDeveloperMode((prev) => !prev);
     }, []);
 
+    const startEditing = useCallback(() => {
+      if (settings) {
+        setEditedSettings(JSON.parse(JSON.stringify(settings)));
+        setIsEditing(true);
+        setSaveError(null);
+        setSaveSuccess(false);
+      }
+    }, [settings]);
+
+    const cancelEditing = useCallback(() => {
+      setEditedSettings(null);
+      setIsEditing(false);
+      setSaveError(null);
+      setSaveSuccess(false);
+    }, []);
+
+    const saveSettings = useCallback(async () => {
+      if (!editedSettings) return;
+
+      try {
+        setIsSaving(true);
+        setSaveError(null);
+        await api.saveSettings(editedSettings);
+        setSaveSuccess(true);
+        setIsEditing(false);
+        // Reload settings after successful save
+        setTimeout(() => {
+          onRetry();
+          setSaveSuccess(false);
+        }, 1500);
+      } catch (err) {
+        setSaveError(
+          err instanceof Error ? err.message : "Failed to save settings",
+        );
+      } finally {
+        setIsSaving(false);
+      }
+    }, [editedSettings, onRetry]);
+
+    const handlePermissionsChange = useCallback(
+      (permissions: ClaudeSettings["permissions"]) => {
+        if (editedSettings) {
+          setEditedSettings({
+            ...editedSettings,
+            permissions,
+          });
+        }
+      },
+      [editedSettings],
+    );
+
+    const handleHooksChange = useCallback(
+      (hooks: ClaudeSettings["hooks"]) => {
+        if (editedSettings) {
+          setEditedSettings({
+            ...editedSettings,
+            hooks,
+          });
+        }
+      },
+      [editedSettings],
+    );
+
     // Calculate summary statistics
     const summaryStats = useMemo(() => {
-      if (!settings) return null;
+      const targetSettings = editedSettings || settings;
+      if (!targetSettings) return null;
 
       return {
-        totalAllowedCommands: settings.permissions.allow.length,
-        totalDeniedCommands: settings.permissions.deny.length,
-        totalHooks: settings.hooks.PreToolUse.reduce(
+        totalAllowedCommands: targetSettings.permissions.allow.length,
+        totalDeniedCommands: targetSettings.permissions.deny.length,
+        totalHooks: targetSettings.hooks.PreToolUse.reduce(
           (sum, matcher) => sum + matcher.hooks.length,
           0,
         ),
-        totalMatchers: settings.hooks.PreToolUse.length,
+        totalMatchers: targetSettings.hooks.PreToolUse.length,
       };
-    }, [settings]);
+    }, [settings, editedSettings]);
+
+    const hasChanges = useMemo(() => {
+      if (!settings || !editedSettings) return false;
+      return JSON.stringify(settings) !== JSON.stringify(editedSettings);
+    }, [settings, editedSettings]);
 
     // Show loading state
     if (loading) {
@@ -116,21 +197,71 @@ export const ImprovedPermissionsTab: FC<ImprovedPermissionsTabProps> =
       );
     }
 
+    const currentSettings = editedSettings || settings;
+
     return (
       <div className="improved-permissions-tab">
+        {/* Actions Bar */}
+        <div className="settings-actions-bar">
+          {!isEditing ? (
+            <>
+              <button
+                type="button"
+                onClick={startEditing}
+                className="settings-button settings-button--primary"
+              >
+                Edit Settings
+              </button>
+              <button
+                type="button"
+                onClick={toggleDeveloperMode}
+                className="settings-button settings-button--secondary"
+                aria-pressed={showDeveloperMode}
+              >
+                {showDeveloperMode ? "Hide" : "Show"} Developer Mode
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={saveSettings}
+                className="settings-button settings-button--success"
+                disabled={isSaving || !hasChanges}
+              >
+                {isSaving ? "Saving..." : "Save Changes"}
+              </button>
+              <button
+                type="button"
+                onClick={cancelEditing}
+                className="settings-button settings-button--secondary"
+                disabled={isSaving}
+              >
+                Cancel
+              </button>
+              {hasChanges && (
+                <span className="settings-status">
+                  ✏️ {hasChanges ? "Unsaved changes" : ""}
+                </span>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Status Messages */}
+        {saveError && (
+          <div className="settings-alert settings-alert--error">
+            <strong>Error:</strong> {saveError}
+          </div>
+        )}
+        {saveSuccess && (
+          <div className="settings-alert settings-alert--success">
+            <strong>Success:</strong> Settings saved successfully!
+          </div>
+        )}
+
         {/* Permissions & Hooks Settings */}
         <SettingsCard>
-          {/* Developer Mode Toggle */}
-          <div style={{ marginBottom: "var(--spacing-4)" }}>
-            <button
-              type="button"
-              onClick={toggleDeveloperMode}
-              className="settings-button settings-button--secondary"
-              aria-pressed={showDeveloperMode}
-            >
-              {showDeveloperMode ? "Hide" : "Show"} Developer Mode
-            </button>
-          </div>
           {/* Permission Summary */}
           <SettingsSection
             title="Permission Summary"
@@ -161,7 +292,7 @@ export const ImprovedPermissionsTab: FC<ImprovedPermissionsTabProps> =
                     </div>
                     <div className="permissions-summary-item__value">
                       <code className="permission-mode">
-                        {settings.permissions.defaultMode}
+                        {currentSettings.permissions.defaultMode}
                       </code>
                     </div>
                   </div>
@@ -208,9 +339,9 @@ export const ImprovedPermissionsTab: FC<ImprovedPermissionsTabProps> =
 
           {/* Detailed Permission Lists */}
           <SettingsSection
-            title="Command Lists"
-            description="Detailed view of allowed and denied commands"
-            defaultExpanded={isExpanded("permissions-lists")}
+            title="Command Permissions"
+            description="Configure allowed and denied commands"
+            defaultExpanded={isExpanded("permissions-lists") || isEditing}
             onExpandedChange={(expanded) =>
               !expanded || toggleSection("permissions-lists")
             }
@@ -236,67 +367,11 @@ export const ImprovedPermissionsTab: FC<ImprovedPermissionsTabProps> =
               </svg>
             }
           >
-            <div className="permission-lists">
-              <div className="permission-group">
-                <h4 className="permission-group__title permission-group__title--allow">
-                  Allowed Commands
-                  <span className="permission-count">
-                    ({settings.permissions.allow.length})
-                  </span>
-                </h4>
-                {settings.permissions.allow.length === 0 ? (
-                  <div className="permission-empty-state">
-                    <p className="permission-empty-message">
-                      No allowed commands specified
-                    </p>
-                    <p className="permission-empty-help">
-                      Commands will be handled according to the default mode
-                    </p>
-                  </div>
-                ) : (
-                  <ul className="permission-list permission-list--allow">
-                    {settings.permissions.allow.map((item, index) => (
-                      <li
-                        key={`allow-${index}`}
-                        className="permission-list-item"
-                      >
-                        <code className="permission-command">{item}</code>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-
-              <div className="permission-group">
-                <h4 className="permission-group__title permission-group__title--deny">
-                  Denied Commands
-                  <span className="permission-count">
-                    ({settings.permissions.deny.length})
-                  </span>
-                </h4>
-                {settings.permissions.deny.length === 0 ? (
-                  <div className="permission-empty-state">
-                    <p className="permission-empty-message">
-                      No denied commands specified
-                    </p>
-                    <p className="permission-empty-help">
-                      Commands will be handled according to the default mode
-                    </p>
-                  </div>
-                ) : (
-                  <ul className="permission-list permission-list--deny">
-                    {settings.permissions.deny.map((item, index) => (
-                      <li
-                        key={`deny-${index}`}
-                        className="permission-list-item"
-                      >
-                        <code className="permission-command">{item}</code>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
+            <EditablePermissions
+              permissions={currentSettings.permissions}
+              onChange={handlePermissionsChange}
+              isEditing={isEditing}
+            />
           </SettingsSection>
 
           {/* Hooks Configuration - Advanced */}
@@ -326,61 +401,11 @@ export const ImprovedPermissionsTab: FC<ImprovedPermissionsTabProps> =
               </svg>
             }
           >
-            <div className="hooks-configuration">
-              {settings.hooks.PreToolUse.length === 0 ? (
-                <div className="hooks-empty-state">
-                  <div className="hooks-empty-state__icon">🪝</div>
-                  <h4 className="hooks-empty-state__title">
-                    No Hooks Configured
-                  </h4>
-                  <p className="hooks-empty-state__description">
-                    Pre-tool use hooks allow you to run custom commands before
-                    tool execution.
-                  </p>
-                </div>
-              ) : (
-                <div className="hooks-list">
-                  {settings.hooks.PreToolUse.map((matcher, matcherIndex) => (
-                    <div
-                      key={`matcher-${matcherIndex}`}
-                      className="hook-matcher"
-                    >
-                      <div className="hook-matcher__header">
-                        <h5 className="hook-matcher__title">Matcher Pattern</h5>
-                        <code className="hook-matcher__pattern">
-                          {matcher.matcher}
-                        </code>
-                      </div>
-
-                      <div className="hook-matcher__hooks">
-                        <h6 className="hook-matcher__hooks-title">
-                          Hooks ({matcher.hooks.length})
-                        </h6>
-                        <div className="hook-commands">
-                          {matcher.hooks.map((hook, hookIndex) => (
-                            <div
-                              key={`hook-${matcherIndex}-${hookIndex}`}
-                              className="hook-command"
-                            >
-                              <div className="hook-command__header">
-                                <span className="hook-command__type">
-                                  {hook.type}
-                                </span>
-                              </div>
-                              <div className="hook-command__content">
-                                <code className="hook-command__text">
-                                  {hook.command}
-                                </code>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <EditableHooks
+              hooks={currentSettings.hooks}
+              onChange={handleHooksChange}
+              isEditing={isEditing}
+            />
           </SettingsSection>
 
           {/* Developer Mode - Raw JSON */}
@@ -408,13 +433,15 @@ export const ImprovedPermissionsTab: FC<ImprovedPermissionsTabProps> =
               <div className="raw-json-viewer">
                 <div className="raw-json-viewer__header">
                   <p className="raw-json-viewer__warning">
-                    ⚠️ This is the raw configuration data. Modifying this
-                    directly is not recommended.
+                    ⚠️ This is the raw configuration data.{" "}
+                    {isEditing
+                      ? "Shows current edits in real-time."
+                      : "Use Edit Settings button to modify."}
                   </p>
                 </div>
                 <div className="raw-json-viewer__content">
                   <pre className="raw-json-viewer__code">
-                    <code>{JSON.stringify(settings, null, 2)}</code>
+                    <code>{JSON.stringify(currentSettings, null, 2)}</code>
                   </pre>
                 </div>
               </div>
