@@ -95,6 +95,17 @@ export const api = {
     return mockApi.getSettings();
   },
 
+  async saveSettings(settings: ClaudeSettings): Promise<void> {
+    if (isTauri && tauriApi) {
+      const settingsJson = JSON.stringify(settings, null, 2);
+      return tauriApi.invoke("save_settings_file", {
+        filename: "settings.json",
+        content: settingsJson,
+      });
+    }
+    return mockApi.saveSettings(settings);
+  },
+
   // Statistics and summaries
   async getProjectSummary(): Promise<ProjectSummary[]> {
     if (isTauri && tauriApi) {
@@ -228,6 +239,20 @@ export const api = {
       return tauriApi.invoke("delete_agent", { name });
     }
     return mockApi.deleteAgent(name);
+  },
+
+  async renameCustomCommand(oldName: string, newName: string): Promise<void> {
+    if (isTauri && tauriApi) {
+      return tauriApi.invoke("rename_custom_command", { oldName, newName });
+    }
+    return mockApi.renameCustomCommand(oldName, newName);
+  },
+
+  async renameAgent(oldName: string, newName: string): Promise<void> {
+    if (isTauri && tauriApi) {
+      return tauriApi.invoke("rename_agent", { oldName, newName });
+    }
+    return mockApi.renameAgent(oldName, newName);
   },
 
   // Settings files

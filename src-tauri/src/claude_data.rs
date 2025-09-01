@@ -1184,6 +1184,48 @@ impl ClaudeDataManager {
         Ok(())
     }
 
+    pub async fn rename_custom_command(
+        &self,
+        old_name: &str,
+        new_name: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let commands_dir = self.claude_dir.join("commands");
+        let old_path = commands_dir.join(format!("{}.md", old_name));
+        let new_path = commands_dir.join(format!("{}.md", new_name));
+
+        if !old_path.exists() {
+            return Err(format!("Command '{}' not found", old_name).into());
+        }
+
+        if new_path.exists() {
+            return Err(format!("Command '{}' already exists", new_name).into());
+        }
+
+        fs::rename(&old_path, &new_path)?;
+        Ok(())
+    }
+
+    pub async fn rename_agent(
+        &self,
+        old_name: &str,
+        new_name: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let agents_dir = self.claude_dir.join("agents");
+        let old_path = agents_dir.join(format!("{}.md", old_name));
+        let new_path = agents_dir.join(format!("{}.md", new_name));
+
+        if !old_path.exists() {
+            return Err(format!("Agent '{}' not found", old_name).into());
+        }
+
+        if new_path.exists() {
+            return Err(format!("Agent '{}' already exists", new_name).into());
+        }
+
+        fs::rename(&old_path, &new_path)?;
+        Ok(())
+    }
+
     pub async fn get_all_settings_files(
         &self,
     ) -> Result<Vec<(String, String)>, Box<dyn std::error::Error>> {

@@ -364,6 +364,30 @@ pub async fn delete_agent(
 }
 
 #[tauri::command]
+pub async fn rename_custom_command(
+    old_name: String,
+    new_name: String,
+    data_manager: State<'_, Arc<ClaudeDataManager>>,
+) -> Result<(), String> {
+    data_manager
+        .rename_custom_command(&old_name, &new_name)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn rename_agent(
+    old_name: String,
+    new_name: String,
+    data_manager: State<'_, Arc<ClaudeDataManager>>,
+) -> Result<(), String> {
+    data_manager
+        .rename_agent(&old_name, &new_name)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn get_all_settings_files(
     data_manager: State<'_, Arc<ClaudeDataManager>>,
 ) -> Result<Vec<(String, String)>, String> {

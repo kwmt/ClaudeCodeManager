@@ -43,6 +43,8 @@ pub fn run() {
             save_agent,
             delete_custom_command,
             delete_agent,
+            rename_custom_command,
+            rename_agent,
             get_all_settings_files,
             save_settings_file
         ])
