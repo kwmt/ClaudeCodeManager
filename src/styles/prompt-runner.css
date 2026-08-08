@@ -3,11 +3,26 @@
  * design-tokens.css の CSS 変数を利用し、App.css の既存カード表現に揃える
  */
 
+/*
+ * .project-screen は height 固定 + overflow: hidden の内部スクロール設計。
+ * Prompt タブもそれに合わせ、タブ以下の残り高さいっぱいに広がる flex 列にする。
+ * 会話ログ（__log）だけが内部スクロールし、コンポーザーは常に画面内に留まる。
+ * ここを auto 高さにすると、長い会話でコンポーザーが overflow: hidden の外に
+ * 押し出されてクリックできなくなる。
+ */
+.project-prompt-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .prompt-runner {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: var(--spacing-4);
-  height: 100%;
   min-height: 0;
   padding: var(--spacing-5);
 }

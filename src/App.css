@@ -2259,7 +2259,11 @@ button:hover:not(:disabled) {
 .project-screen {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  /* 100vh だとナビ + .main の padding の分だけ画面下にはみ出し、
+     最下部（Prompt タブのコンポーザー等）が見えなくなる。
+     .main は .app(100vh) 内の flex アイテムで高さが確定しているため
+     100% で「残りの高さちょうど」に収まる。 */
+  height: 100%;
   overflow: hidden;
 }
 
