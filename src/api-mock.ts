@@ -9,6 +9,9 @@ import type {
   SessionStats,
   CustomCommand,
   Agent,
+  ClaudeCliStatus,
+  PromptRunEvent,
+  StartPromptRunParams,
 } from "./types";
 
 // Mock data for demonstration
@@ -177,6 +180,46 @@ const mockSettings: ClaudeSettings = {
     ],
   },
 };
+
+// ============================================================================
+// Prompt runner mock: 疑似イベントバス
+// ブラウザ単体開発（npm run dev）で UI を確認するためのもの
+// ============================================================================
+
+type PromptRunEventHandler = (event: PromptRunEvent) => void;
+
+/**
+ * 購読 1 件を表すラッパー。
+ *
+ * Tauri の `listen()` は同じ関数を 2 回渡しても別々の購読になる。
+ * handler をそのまま Set に入れると参照が同一のときに 1 件へ潰れてしまい、
+ * StrictMode の「購読 → 解除 → 購読」で最後に残るはずの購読まで消える。
+ * 実挙動を揃えるため、購読ごとに固有のオブジェクトを持たせる。
+ */
+type PromptRunSubscription = { handler: PromptRunEventHandler };
+
+const promptRunSubscriptions = new Set<PromptRunSubscription>();
+const promptRunTimers = new Map<string, ReturnType<typeof setTimeout>[]>();
+let promptRunSeq = 0;
+
+function emitPromptRunEvent(event: PromptRunEvent): void {
+  // 配信中に解除されても走査が壊れないようコピーを回す。
+  for (const subscription of [...promptRunSubscriptions]) {
+    subscription.handler(event);
+  }
+}
+
+function clearPromptRunTimers(runId: string): void {
+  const timers = promptRunTimers.get(runId);
+  if (timers) {
+    for (const timer of timers) {
+      clearTimeout(timer);
+    }
+    promptRunTimers.delete(runId);
+  }
+}
+
+const MOCK_SESSION_ID = "3f9a1c72-4b8e-4c1d-9f2a-6d5b8e7c1a90";
 
 // Mock API implementation
 export const mockApi = {
@@ -447,5 +490,175 @@ export const mockApi = {
   async saveSettings(settings: ClaudeSettings): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 200));
     console.log(`Mock: Would save settings:`, settings);
+  },
+
+  // --------------------------------------------------------------------------
+  // In-app prompt runner
+  // --------------------------------------------------------------------------
+
+  async getClaudeCliStatus(): Promise<ClaudeCliStatus> {
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    return {
+      available: true,
+      path: "/usr/local/bin/claude",
+      version: "2.1.226 (Claude Code)",
+    };
+  },
+
+  async startPromptRun(params: StartPromptRunParams): Promise<string> {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    promptRunSeq += 1;
+    const runId = `mock-run-${promptRunSeq}`;
+    const sessionId = params.resumeSessionId ?? MOCK_SESSION_ID;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    const schedule = (delay: number, event: PromptRunEvent): void => {
+      timers.push(
+        setTimeout(() => {
+          if (event.kind === "exit") {
+            clearPromptRunTimers(runId);
+          }
+          emitPromptRunEvent(event);
+        }, delay),
+      );
+    };
+
+    schedule(200, {
+      run_id: runId,
+      kind: "message",
+      payload: {
+        type: "system",
+        subtype: "init",
+        session_id: sessionId,
+        model: params.model ?? "claude-sonnet-4-6",
+        cwd: params.projectPath,
+        tools: ["Read", "Grep", "Bash"],
+        permissionMode: params.permissionMode,
+      },
+    });
+
+    schedule(600, {
+      run_id: runId,
+      kind: "message",
+      payload: {
+        type: "assistant",
+        session_id: sessionId,
+        message: {
+          role: "assistant",
+          content: [
+            {
+              type: "text",
+              text: `了解しました。\`${params.projectPath}\` を調べます。\n\n- まずファイルを読みます\n- 次に要約します`,
+            },
+          ],
+        },
+      },
+    });
+
+    schedule(1100, {
+      run_id: runId,
+      kind: "message",
+      payload: {
+        type: "assistant",
+        session_id: sessionId,
+        message: {
+          role: "assistant",
+          content: [
+            {
+              type: "tool_use",
+              id: "toolu_mock_1",
+              name: "Read",
+              input: { file_path: `${params.projectPath}/package.json` },
+            },
+          ],
+        },
+      },
+    });
+
+    schedule(1600, {
+      run_id: runId,
+      kind: "message",
+      payload: {
+        type: "user",
+        session_id: sessionId,
+        message: {
+          role: "user",
+          content: [
+            {
+              type: "tool_result",
+              tool_use_id: "toolu_mock_1",
+              content:
+                '{\n  "name": "claude-code-manager",\n  "version": "0.1.0"\n}',
+              is_error: false,
+            },
+          ],
+        },
+      },
+    });
+
+    schedule(2100, {
+      run_id: runId,
+      kind: "message",
+      payload: {
+        type: "assistant",
+        session_id: sessionId,
+        message: {
+          role: "assistant",
+          content: [
+            {
+              type: "text",
+              text: "**完了しました。** `claude-code-manager` v0.1.0 のプロジェクトです。",
+            },
+          ],
+        },
+      },
+    });
+
+    schedule(2400, {
+      run_id: runId,
+      kind: "message",
+      payload: {
+        type: "result",
+        subtype: "success",
+        session_id: sessionId,
+        is_error: false,
+        duration_ms: 2400,
+        num_turns: 3,
+        total_cost_usd: 0.0123,
+        result: "完了しました。",
+      },
+    });
+
+    schedule(2500, {
+      run_id: runId,
+      kind: "exit",
+      exit_code: 0,
+      success: true,
+    });
+
+    promptRunTimers.set(runId, timers);
+    return runId;
+  },
+
+  async stopPromptRun(runId: string): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    clearPromptRunTimers(runId);
+    emitPromptRunEvent({
+      run_id: runId,
+      kind: "exit",
+      exit_code: 143,
+      success: false,
+    });
+  },
+
+  async onPromptRunEvent(
+    handler: (event: PromptRunEvent) => void,
+  ): Promise<() => void> {
+    const subscription: PromptRunSubscription = { handler };
+    promptRunSubscriptions.add(subscription);
+    return () => {
+      promptRunSubscriptions.delete(subscription);
+    };
   },
 };

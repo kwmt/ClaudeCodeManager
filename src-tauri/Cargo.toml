@@ -28,6 +28,10 @@ dirs = "5.0"
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.0", features = ["v4", "serde"] }
 
+# プロセスグループ単位でのシグナル送信（プロンプト実行の停止）に使用
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
 [dev-dependencies]
 tempfile = "3.0"
 tokio-test = "0.4"

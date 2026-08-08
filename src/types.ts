@@ -138,3 +138,66 @@ export interface Agent {
   name: string;
   content: string;
 }
+
+// ============================================================================
+// In-App Prompt Runner (Issue #181)
+// Rust 側 DTO と同じ snake_case。例外は PermissionMode の値のみ（CLI 引数と同一文字列）
+// ============================================================================
+
+export type PermissionMode = "plan" | "acceptEdits" | "bypassPermissions";
+
+export interface ClaudeCliStatus {
+  available: boolean;
+  path?: string | null;
+  version?: string | null;
+  error?: string | null;
+}
+
+export type PromptRunEventKind = "message" | "stderr" | "exit" | "error";
+
+export interface PromptRunEvent {
+  run_id: string;
+  kind: PromptRunEventKind;
+  payload?: StreamJsonMessage | null;
+  text?: string | null;
+  exit_code?: number | null;
+  success?: boolean | null;
+}
+
+export type StreamContentBlock =
+  | { type: "text"; text: string }
+  | { type: "thinking"; thinking?: string }
+  | {
+      type: "tool_use";
+      id: string;
+      name: string;
+      input: Record<string, unknown>;
+    }
+  | {
+      type: "tool_result";
+      tool_use_id: string;
+      content?: unknown;
+      is_error?: boolean;
+    };
+
+export interface StreamJsonMessage {
+  type: string; // "system" | "assistant" | "user" | "result" | ...
+  subtype?: string;
+  session_id?: string;
+  model?: string;
+  message?: { role: string; content: string | StreamContentBlock[] };
+  result?: string;
+  is_error?: boolean;
+  duration_ms?: number;
+  num_turns?: number;
+  total_cost_usd?: number;
+  [key: string]: unknown;
+}
+
+export interface StartPromptRunParams {
+  projectPath: string;
+  prompt: string;
+  permissionMode: PermissionMode;
+  resumeSessionId?: string | null;
+  model?: string | null;
+}

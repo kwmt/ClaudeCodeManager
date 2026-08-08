@@ -2,6 +2,7 @@
 mod tests {
     use crate::claude_data::ClaudeDataManager;
     use crate::models::*;
+    use crate::prompt_runner::build_claude_args;
     use chrono::{DateTime, Utc};
     use std::fs;
     use std::path::Path;
@@ -2109,5 +2110,170 @@ mod tests {
             .to_string()
             .contains("must be within a .claude directory"));
         assert!(!bad_file.exists());
+    }
+
+    // ---------------------------------------------------------------------
+    // Prompt runner
+    // ---------------------------------------------------------------------
+
+    /// `PermissionMode` の JSON 表現と CLI 引数表現が一致していること。
+    #[test]
+    fn test_permission_mode_serialization_matches_cli_arg() {
+        let cases = [
+            (PermissionMode::Plan, "plan"),
+            (PermissionMode::AcceptEdits, "acceptEdits"),
+            (PermissionMode::BypassPermissions, "bypassPermissions"),
+        ];
+
+        for (mode, expected) in cases {
+            assert_eq!(
+                serde_json::to_string(&mode).unwrap(),
+                format!("\"{expected}\"")
+            );
+            assert_eq!(mode.as_cli_arg(), expected);
+        }
+    }
+
+    /// 3 モード × resume あり/なし × model あり/なしの全組み合わせ。
+    #[test]
+    fn test_build_claude_args_all_combinations() {
+        let modes = [
+            PermissionMode::Plan,
+            PermissionMode::AcceptEdits,
+            PermissionMode::BypassPermissions,
+        ];
+        let resume_ids = [None, Some("0199a1b2-3c4d-5e6f-8a9b-0c1d2e3f4a5b")];
+        let models = [None, Some("claude-sonnet-4-5")];
+
+        for mode in modes {
+            for resume_session_id in resume_ids {
+                for model in models {
+                    let args = build_claude_args(mode, resume_session_id, model)
+                        .expect("valid arguments should be accepted");
+
+                    let mut expected = vec![
+                        "-p",
+                        "--output-format",
+                        "stream-json",
+                        "--verbose",
+                        "--permission-mode",
+                        mode.as_cli_arg(),
+                    ];
+                    if let Some(session_id) = resume_session_id {
+                        expected.push("--resume");
+                        expected.push(session_id);
+                    }
+                    if let Some(model) = model {
+                        expected.push("--model");
+                        expected.push(model);
+                    }
+
+                    assert_eq!(args, expected, "mode={mode:?}");
+                }
+            }
+        }
+    }
+
+    /// 不正なセッション ID は引数インジェクションを防ぐために拒否されること。
+    #[test]
+    fn test_build_claude_args_rejects_invalid_session_id() {
+        let too_long = "a".repeat(65);
+        let invalid_values = [
+            "--dangerously-skip-permissions",
+            "a b",
+            "",
+            too_long.as_str(),
+            "a;b",
+            "../etc/passwd",
+        ];
+
+        for value in invalid_values {
+            let result = build_claude_args(PermissionMode::Plan, Some(value), None);
+            assert!(
+                result.is_err(),
+                "session_id {value:?} should have been rejected"
+            );
+        }
+    }
+
+    /// 不正なモデル名は拒否されること。
+    #[test]
+    fn test_build_claude_args_rejects_invalid_model() {
+        let too_long = "a".repeat(65);
+        let invalid_values = ["-x", "a;b", "", too_long.as_str(), "a b", "$(whoami)"];
+
+        for value in invalid_values {
+            let result = build_claude_args(PermissionMode::Plan, None, Some(value));
+            assert!(result.is_err(), "model {value:?} should have been rejected");
+        }
+    }
+
+    /// 境界値: 64 文字はセーフ、65 文字はアウト。
+    #[test]
+    fn test_build_claude_args_length_boundary() {
+        let max_len_value = "a".repeat(64);
+        assert!(build_claude_args(PermissionMode::Plan, Some(&max_len_value), None).is_ok());
+        assert!(build_claude_args(PermissionMode::Plan, None, Some(&max_len_value)).is_ok());
+
+        let over_len_value = "a".repeat(65);
+        assert!(build_claude_args(PermissionMode::Plan, Some(&over_len_value), None).is_err());
+        assert!(build_claude_args(PermissionMode::Plan, None, Some(&over_len_value)).is_err());
+    }
+
+    /// `PromptRunEvent` が契約どおり snake_case のキーでシリアライズされること。
+    #[test]
+    fn test_prompt_run_event_serialization() {
+        let message_event = PromptRunEvent {
+            run_id: "run-1".to_string(),
+            kind: PromptRunEventKind::Message,
+            payload: Some(serde_json::json!({"type": "system", "session_id": "s-1"})),
+            text: None,
+            exit_code: None,
+            success: None,
+        };
+
+        let json = serde_json::to_value(&message_event).unwrap();
+        assert_eq!(json["run_id"], "run-1");
+        assert_eq!(json["kind"], "message");
+        assert_eq!(json["payload"]["type"], "system");
+        assert_eq!(json["payload"]["session_id"], "s-1");
+        assert!(json["text"].is_null());
+        assert!(json["exit_code"].is_null());
+        assert!(json["success"].is_null());
+
+        let exit_event = PromptRunEvent {
+            run_id: "run-1".to_string(),
+            kind: PromptRunEventKind::Exit,
+            payload: None,
+            text: None,
+            exit_code: Some(0),
+            success: Some(true),
+        };
+
+        let json = serde_json::to_value(&exit_event).unwrap();
+        assert_eq!(json["run_id"], "run-1");
+        assert_eq!(json["kind"], "exit");
+        assert_eq!(json["exit_code"], 0);
+        assert_eq!(json["success"], true);
+        assert!(json["payload"].is_null());
+        assert!(json["text"].is_null());
+    }
+
+    /// イベント種別が snake_case で表現されること。
+    #[test]
+    fn test_prompt_run_event_kind_serialization() {
+        let cases = [
+            (PromptRunEventKind::Message, "message"),
+            (PromptRunEventKind::Stderr, "stderr"),
+            (PromptRunEventKind::Exit, "exit"),
+            (PromptRunEventKind::Error, "error"),
+        ];
+
+        for (kind, expected) in cases {
+            assert_eq!(
+                serde_json::to_string(&kind).unwrap(),
+                format!("\"{expected}\"")
+            );
+        }
     }
 }

@@ -1,0 +1,455 @@
+/**
+ * PromptRunner styles
+ * design-tokens.css の CSS 変数を利用し、App.css の既存カード表現に揃える
+ */
+
+.prompt-runner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+  height: 100%;
+  min-height: 0;
+  padding: var(--spacing-5);
+}
+
+/* ------------------------------------------------------------------ */
+/* CLI ステータス                                                       */
+/* ------------------------------------------------------------------ */
+
+.prompt-runner__banner {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-4) var(--spacing-5);
+  background: var(--color-warning-50);
+  border: 1px solid var(--color-warning-300);
+  border-radius: var(--radius-base);
+  color: var(--color-warning-900);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+.prompt-runner__banner-icon {
+  flex-shrink: 0;
+}
+
+.prompt-runner__cli-status {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-secondary-500);
+}
+
+/* ------------------------------------------------------------------ */
+/* 会話エリア                                                           */
+/* ------------------------------------------------------------------ */
+
+.prompt-runner__log {
+  flex: 1 1 auto;
+  min-height: 240px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+  padding: var(--spacing-5);
+  background: #ffffff;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-base);
+}
+
+.prompt-runner__placeholder {
+  margin: 0;
+  color: var(--color-secondary-400);
+  font-size: var(--font-size-sm);
+}
+
+.prompt-runner__bubble {
+  padding: var(--spacing-4) var(--spacing-5);
+  border-radius: var(--radius-base);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.prompt-runner__bubble--user {
+  align-self: flex-end;
+  max-width: 80%;
+  background: var(--color-primary-50);
+  border: 1px solid var(--color-primary-200);
+  color: var(--color-primary-900);
+}
+
+/* markdown 本文 */
+.prompt-runner__markdown {
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
+  color: var(--color-gray-800);
+  word-break: break-word;
+}
+
+.prompt-runner__markdown > *:first-child {
+  margin-top: 0;
+}
+
+.prompt-runner__markdown > *:last-child {
+  margin-bottom: 0;
+}
+
+.prompt-runner__markdown pre {
+  padding: var(--spacing-4);
+  background: var(--color-secondary-50);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+}
+
+.prompt-runner__markdown code {
+  font-family: var(--font-family-mono);
+  font-size: 0.9em;
+}
+
+.prompt-runner__markdown :not(pre) > code {
+  padding: 1px 4px;
+  background: var(--color-secondary-100);
+  border-radius: var(--radius-sm);
+}
+
+/* 折りたたみトリガ */
+.prompt-runner__disclosure {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  width: 100%;
+  padding: var(--spacing-2) var(--spacing-3);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-secondary-600);
+  font-size: var(--font-size-xs);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.prompt-runner__disclosure:hover {
+  background: var(--color-secondary-50);
+}
+
+.prompt-runner__disclosure:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+.prompt-runner__pre {
+  margin: var(--spacing-2) 0 0;
+  padding: var(--spacing-4);
+  max-height: 320px;
+  overflow: auto;
+  background: var(--color-secondary-50);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.prompt-runner__truncated-note {
+  margin: var(--spacing-2) 0 0;
+  color: var(--color-secondary-400);
+  font-size: var(--font-size-xs);
+}
+
+/* thinking */
+.prompt-runner__thinking {
+  border-left: 2px solid var(--color-secondary-200);
+  padding-left: var(--spacing-3);
+}
+
+/* tool_use */
+.prompt-runner__tool-use {
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-sm);
+  background: var(--color-secondary-50);
+}
+
+.prompt-runner__disclosure--tool {
+  gap: var(--spacing-4);
+}
+
+.prompt-runner__tool-name {
+  flex-shrink: 0;
+  font-family: var(--font-family-mono);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-secondary-700);
+}
+
+.prompt-runner__tool-summary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-family-mono);
+  color: var(--color-secondary-500);
+}
+
+/* tool_result */
+.prompt-runner__tool-result {
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-2);
+}
+
+.prompt-runner__tool-result--error {
+  border-color: var(--color-error-300);
+  background: var(--color-error-50);
+}
+
+.prompt-runner__tool-result--error .prompt-runner__disclosure {
+  color: var(--color-error-700);
+}
+
+.prompt-runner__tool-result--error .prompt-runner__pre {
+  border-color: var(--color-error-200);
+  background: #ffffff;
+}
+
+/* result チップ */
+.prompt-runner__result {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+}
+
+.prompt-runner__chip {
+  padding: var(--spacing-1) var(--spacing-3);
+  background: var(--color-secondary-100);
+  border-radius: var(--radius-full);
+  color: var(--color-secondary-600);
+  font-size: var(--font-size-xs);
+}
+
+.prompt-runner__result--error .prompt-runner__chip {
+  background: var(--color-error-100);
+  color: var(--color-error-700);
+}
+
+/* stderr */
+.prompt-runner__stderr {
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-2);
+}
+
+.prompt-runner__badge {
+  margin-left: auto;
+  padding: 0 var(--spacing-3);
+  background: var(--color-secondary-200);
+  border-radius: var(--radius-full);
+  color: var(--color-secondary-700);
+  font-size: var(--font-size-xs);
+}
+
+/* エラー行 / 終了表示 */
+.prompt-runner__error-row {
+  padding: var(--spacing-3) var(--spacing-4);
+  background: var(--color-error-50);
+  border: 1px solid var(--color-error-200);
+  border-radius: var(--radius-sm);
+  color: var(--color-error-700);
+  font-size: var(--font-size-sm);
+}
+
+.prompt-runner__exit {
+  color: var(--color-secondary-400);
+  font-size: var(--font-size-xs);
+}
+
+.prompt-runner__exit--error {
+  color: var(--color-error-600);
+  font-weight: var(--font-weight-medium);
+}
+
+/* 実行中インジケータ */
+.prompt-runner__running {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  color: var(--color-primary-600);
+  font-size: var(--font-size-sm);
+}
+
+.prompt-runner__spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-primary-200);
+  border-top-color: var(--color-primary-600);
+  border-radius: var(--radius-full);
+  animation: prompt-runner-spin 0.8s linear infinite;
+}
+
+@keyframes prompt-runner-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prompt-runner__spinner {
+    animation: none;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* コンポーザー                                                         */
+/* ------------------------------------------------------------------ */
+
+.prompt-runner__composer {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  padding: var(--spacing-4);
+  background: #ffffff;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-base);
+}
+
+.prompt-runner__session {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  font-size: var(--font-size-xs);
+  color: var(--color-secondary-500);
+}
+
+.prompt-runner__session-label {
+  font-family: var(--font-family-mono);
+}
+
+.prompt-runner__link-button {
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--color-primary-600);
+  font-size: var(--font-size-xs);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.prompt-runner__link-button:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+.prompt-runner__textarea {
+  width: 100%;
+  min-height: 4rem;
+  max-height: 12rem;
+  padding: var(--spacing-4);
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-gray-800);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.prompt-runner__textarea:focus {
+  outline: none;
+  border-color: var(--input-border-focus);
+  box-shadow: 0 0 0 2px var(--color-primary-100);
+}
+
+.prompt-runner__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--spacing-4);
+}
+
+.prompt-runner__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.prompt-runner__field label {
+  color: var(--color-secondary-500);
+  font-size: var(--font-size-xs);
+}
+
+.prompt-runner__field select {
+  padding: var(--spacing-2) var(--spacing-3);
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-gray-800);
+  font-size: var(--font-size-sm);
+}
+
+.prompt-runner__field select:disabled {
+  background: var(--color-secondary-100);
+  color: var(--color-secondary-400);
+  cursor: not-allowed;
+}
+
+.prompt-runner__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  margin-left: auto;
+}
+
+/*
+ * グローバルの .btn-primary / .btn-secondary は App.css と editors.css で
+ * 二重定義されており、後勝ちする editors.css 側が未定義の --accent-color を
+ * 参照するため背景が透明になる（白文字が消える）。
+ * ここでは読み込み順に左右されない専用クラスで色を確定させる。
+ */
+.prompt-runner__button {
+  padding: 8px 18px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.prompt-runner__button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.prompt-runner__button--primary {
+  background: var(--color-primary-600);
+  color: #fff;
+}
+
+.prompt-runner__button--primary:hover:not(:disabled) {
+  background: var(--color-primary-700);
+}
+
+.prompt-runner__button--secondary {
+  background: #fff;
+  color: var(--color-secondary-700);
+  border-color: var(--color-secondary-300);
+}
+
+.prompt-runner__button--secondary:hover:not(:disabled) {
+  background: var(--color-secondary-100);
+}
+
+.prompt-runner__button:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}

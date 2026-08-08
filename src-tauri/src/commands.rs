@@ -1,8 +1,9 @@
 use crate::claude_data::ClaudeDataManager;
 use crate::models::*;
+use crate::prompt_runner::{PromptRunner, StartPromptRunRequest};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tauri::State;
+use tauri::{AppHandle, State};
 
 #[tauri::command]
 pub async fn get_all_sessions(
@@ -407,4 +408,59 @@ pub async fn save_settings_file(
         .save_settings_file(&filename, &content)
         .await
         .map_err(|e| e.to_string())
+}
+
+/// `claude` CLI が利用可能かを返す。
+///
+/// 検出に失敗しても `Err` にはせず `available: false` を返し、
+/// フロントエンドが警告バナーを表示できるようにする。
+#[tauri::command]
+pub async fn get_claude_cli_status() -> Result<ClaudeCliStatus, String> {
+    Ok(crate::prompt_runner::claude_cli_status().await)
+}
+
+/// プロンプトを Claude Code CLI に投げ、実行 ID（UUID v4）を返す。
+///
+/// 進捗は `prompt-run-event` イベントで配信される。
+#[tauri::command]
+pub async fn start_prompt_run(
+    project_path: String,
+    prompt: String,
+    permission_mode: PermissionMode,
+    resume_session_id: Option<String>,
+    model: Option<String>,
+    app: AppHandle,
+    prompt_runner: State<'_, Arc<PromptRunner>>,
+) -> Result<String, String> {
+    let runner = Arc::clone(prompt_runner.inner());
+    runner
+        .start(
+            app,
+            StartPromptRunRequest {
+                project_path,
+                prompt,
+                permission_mode,
+                // 空文字は「未指定」として扱う（UI の空入力を許容する）
+                resume_session_id: normalize_optional_arg(resume_session_id),
+                model: normalize_optional_arg(model),
+            },
+        )
+        .await
+}
+
+/// 実行中のプロンプトを停止する。
+#[tauri::command]
+pub async fn stop_prompt_run(
+    run_id: String,
+    prompt_runner: State<'_, Arc<PromptRunner>>,
+) -> Result<(), String> {
+    let runner = Arc::clone(prompt_runner.inner());
+    runner.stop(&run_id).await
+}
+
+/// 空白のみ・空文字の任意引数を `None` に正規化する。
+fn normalize_optional_arg(value: Option<String>) -> Option<String> {
+    value
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty())
 }

@@ -10,6 +10,9 @@ import type {
   ClaudeDirectoryInfo,
   CustomCommand,
   Agent,
+  ClaudeCliStatus,
+  PromptRunEvent,
+  StartPromptRunParams,
 } from "./types";
 
 // Check if we're running in Tauri environment
@@ -268,6 +271,51 @@ export const api = {
       return tauriApi.invoke("save_settings_file", { filename, content });
     }
     return mockApi.saveSettingsFile(filename, content);
+  },
+
+  // In-app prompt runner
+  async getClaudeCliStatus(): Promise<ClaudeCliStatus> {
+    if (isTauri && tauriApi) {
+      return tauriApi.invoke("get_claude_cli_status");
+    }
+    return mockApi.getClaudeCliStatus();
+  },
+
+  async startPromptRun(params: StartPromptRunParams): Promise<string> {
+    if (isTauri && tauriApi) {
+      return tauriApi.invoke("start_prompt_run", {
+        projectPath: params.projectPath,
+        prompt: params.prompt,
+        permissionMode: params.permissionMode,
+        resumeSessionId: params.resumeSessionId ?? null,
+        model: params.model ?? null,
+      });
+    }
+    return mockApi.startPromptRun(params);
+  },
+
+  async stopPromptRun(runId: string): Promise<void> {
+    if (isTauri && tauriApi) {
+      return tauriApi.invoke("stop_prompt_run", { runId });
+    }
+    return mockApi.stopPromptRun(runId);
+  },
+
+  /**
+   * `prompt-run-event` を購読する。戻り値の関数を呼ぶと購読解除される。
+   */
+  async onPromptRunEvent(
+    handler: (event: PromptRunEvent) => void,
+  ): Promise<() => void> {
+    if (isTauri && tauriApi) {
+      const { listen } = await import("@tauri-apps/api/event");
+      const unlisten = await listen<PromptRunEvent>(
+        "prompt-run-event",
+        (event) => handler(event.payload),
+      );
+      return unlisten;
+    }
+    return mockApi.onPromptRunEvent(handler);
   },
 
   // Cache management

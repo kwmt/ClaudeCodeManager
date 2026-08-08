@@ -222,3 +222,68 @@ pub struct Agent {
     pub name: String,
     pub content: String,
 }
+
+/// Claude Code CLI の `--permission-mode` に渡す権限モード。
+///
+/// JSON 表現は CLI 引数と同一文字列（camelCase）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PermissionMode {
+    #[serde(rename = "plan")]
+    Plan,
+    #[serde(rename = "acceptEdits")]
+    AcceptEdits,
+    #[serde(rename = "bypassPermissions")]
+    BypassPermissions,
+}
+
+impl PermissionMode {
+    /// `--permission-mode` に渡す文字列表現を返す。
+    pub fn as_cli_arg(&self) -> &'static str {
+        match self {
+            Self::Plan => "plan",
+            Self::AcceptEdits => "acceptEdits",
+            Self::BypassPermissions => "bypassPermissions",
+        }
+    }
+}
+
+/// `claude` CLI の検出結果。UI の警告バナー表示に使う。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClaudeCliStatus {
+    pub available: bool,
+    /// 解決された `claude` バイナリの絶対パス。
+    pub path: Option<String>,
+    /// `claude --version` の出力（トリム済み）。
+    pub version: Option<String>,
+    /// `available` が false のときの理由。
+    pub error: Option<String>,
+}
+
+/// プロンプト実行中にフロントエンドへ通知するイベント種別。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PromptRunEventKind {
+    /// stream-json の 1 行をパースしたもの。
+    Message,
+    /// 標準エラー出力、または JSON として解釈できなかった行。
+    Stderr,
+    /// プロセス終了（各実行につき最後に必ず 1 回だけ流れる）。
+    Exit,
+    /// 実行制御自体のエラー。
+    Error,
+}
+
+/// `prompt-run-event` のペイロード。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PromptRunEvent {
+    pub run_id: String,
+    pub kind: PromptRunEventKind,
+    /// `kind = Message` のときの stream-json オブジェクト。
+    pub payload: Option<serde_json::Value>,
+    /// `kind = Stderr` / `Error` のときのテキスト。
+    pub text: Option<String>,
+    /// `kind = Exit` のときの終了コード。
+    pub exit_code: Option<i32>,
+    /// `kind = Exit` のときの成否（停止された場合は false）。
+    pub success: Option<bool>,
+}

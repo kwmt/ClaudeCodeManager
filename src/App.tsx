@@ -4,6 +4,7 @@ import "./styles/editors.css";
 import "./styles/design-tokens.css";
 import "./styles/improved-settings.css";
 import "./styles/command-history-migration.css";
+import "./styles/prompt-runner.css";
 import { Dashboard } from "./components/Dashboard";
 import { SessionBrowser } from "./components/SessionBrowser";
 import { ProjectScreen } from "./components/ProjectScreen";
