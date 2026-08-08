@@ -17,6 +17,7 @@ import React, {
   useState,
 } from "react";
 import { api } from "../api";
+import { usePromptRunsOptional } from "../contexts/PromptRunsContext";
 import type {
   ClaudeCliStatus,
   PermissionMode,
@@ -393,6 +394,9 @@ export const PromptRunner: React.FC<PromptRunnerProps> = ({
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
+  // アプリ全体の実行状況ストア（Provider 配下でない場合は null で無効化）
+  const runsStore = usePromptRunsOptional();
+
   // イベントハンドラを張り替えないための ref 群
   const runIdRef = useRef<string | null>(null);
   const sessionIdRef = useRef<string | null>(null);
@@ -668,6 +672,13 @@ export const PromptRunner: React.FC<PromptRunnerProps> = ({
       runIdRef.current = runId;
       pendingRef.current = false;
       flushEventBuffer(runId);
+      // アプリ全体の実行状況ストアにも登録する（Prompts タブ / Dashboard 用）
+      runsStore?.registerRun(runId, {
+        projectPath,
+        prompt: text,
+        permissionMode,
+        model: model === "" ? null : model,
+      });
     } catch (error: unknown) {
       runIdRef.current = null;
       pendingRef.current = false;
@@ -689,6 +700,7 @@ export const PromptRunner: React.FC<PromptRunnerProps> = ({
     model,
     clearEventBuffer,
     flushEventBuffer,
+    runsStore,
   ]);
 
   const handleSubmit = useCallback(() => {

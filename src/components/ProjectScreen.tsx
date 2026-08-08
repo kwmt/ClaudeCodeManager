@@ -19,10 +19,16 @@ import type {
 
 interface ProjectScreenProps {
   projectPath: string;
+  /**
+   * Prompt タブを開いた状態で表示するリクエスト（Dashboard / Prompts 一覧から）。
+   * nonce が変わるたびに Prompt タブへ切り替える。0 は「リクエストなし」。
+   */
+  promptTabRequest?: { nonce: number };
 }
 
 export const ProjectScreen: React.FC<ProjectScreenProps> = ({
   projectPath,
+  promptTabRequest,
 }) => {
   const [sessions, setSessions] = useState<ClaudeSession[]>([]);
   const [selectedSession, setSelectedSession] = useState<ClaudeSession | null>(
@@ -123,6 +129,15 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
   useEffect(() => {
     loadProjectData();
   }, [projectPath]);
+
+  // Dashboard / Prompts 一覧からの「Prompt タブで開く」リクエストに応える
+  const promptTabRequestNonce = promptTabRequest?.nonce ?? 0;
+  useEffect(() => {
+    if (promptTabRequestNonce > 0) {
+      setPromptTabVisited(true);
+      setActiveTab("prompt");
+    }
+  }, [promptTabRequestNonce]);
 
   useEffect(() => {
     if (activeTab === "directory") {
