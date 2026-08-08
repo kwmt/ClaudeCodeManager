@@ -345,13 +345,19 @@
   outline-offset: 2px;
 }
 
+/*
+ * 色は --input-bg / --input-border を使わず直接指定する。
+ * これらは design-tokens.css の :root 内 @media (prefers-color-scheme: dark)
+ * でダーク値に反転するが、アプリ本体（App.css）は白背景固定のライト UI のため、
+ * OS がダークモードだと入力欄だけが黒くなり文字が読めなくなる。
+ */
 .prompt-runner__textarea {
   width: 100%;
   min-height: 4rem;
   max-height: 12rem;
   padding: var(--spacing-4);
-  background: var(--input-bg);
-  border: 1px solid var(--input-border);
+  background: #fff;
+  border: 1px solid var(--color-gray-300);
   border-radius: var(--radius-sm);
   color: var(--color-gray-800);
   font-family: inherit;
@@ -361,9 +367,13 @@
   box-sizing: border-box;
 }
 
+.prompt-runner__textarea::placeholder {
+  color: var(--color-gray-500);
+}
+
 .prompt-runner__textarea:focus {
   outline: none;
-  border-color: var(--input-border-focus);
+  border-color: var(--color-primary-500);
   box-shadow: 0 0 0 2px var(--color-primary-100);
 }
 
@@ -387,8 +397,8 @@
 
 .prompt-runner__field select {
   padding: var(--spacing-2) var(--spacing-3);
-  background: var(--input-bg);
-  border: 1px solid var(--input-border);
+  background: #fff;
+  border: 1px solid var(--color-gray-300);
   border-radius: var(--radius-sm);
   color: var(--color-gray-800);
   font-size: var(--font-size-sm);
