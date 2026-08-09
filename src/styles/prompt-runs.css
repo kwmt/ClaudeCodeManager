@@ -128,49 +128,125 @@
   list-style: none;
 }
 
-/* ---- 実行 1 件の行（Prompts タブ / Dashboard 共用） ---- */
+/* ---- 状態インジケータ（色ドット / ピル） ----
+ * 状態は「色＋形（ドット）＋文字ラベル」の 3 要素で冗長に符号化する
+ * （WCAG 1.4.1 / IBM Carbon 状態インジケータ指針）。
+ * 絵文字は環境依存の見た目と走査ノイズのため使わない。
+ * 色は Carbon の注意階層に従う: 実行中=青 / 完了=緑 / 失敗=赤 / 停止=グレー系 */
+
+.run-status-dot {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-gray-400);
+  vertical-align: middle;
+}
+
+.run-status-dot--running {
+  background: var(--color-primary-500);
+  animation: prompt-runs-pulse 1.2s ease-in-out infinite;
+}
+
+.run-status-dot--completed {
+  background: var(--color-success-500);
+}
+
+.run-status-dot--failed {
+  background: var(--color-error-500);
+}
+
+.run-status-dot--stopped {
+  background: var(--color-warning-500);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .run-status-dot--running {
+    animation: none;
+  }
+}
+
+/* 行の左端に縦に揃える固定幅の状態ピル（F 字型走査の起点） */
+.run-status-pill {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  width: 76px;
+  padding: 3px 0;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.run-status-pill__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.run-status-pill--running {
+  background: var(--color-primary-100);
+  color: var(--color-primary-700);
+}
+
+.run-status-pill--running .run-status-pill__dot {
+  background: var(--color-primary-500);
+  animation: prompt-runs-pulse 1.2s ease-in-out infinite;
+}
+
+.run-status-pill--completed {
+  background: var(--color-success-100);
+  color: var(--color-success-700);
+}
+
+.run-status-pill--completed .run-status-pill__dot {
+  background: var(--color-success-500);
+}
+
+.run-status-pill--failed {
+  background: var(--color-error-100);
+  color: var(--color-error-700);
+}
+
+.run-status-pill--failed .run-status-pill__dot {
+  background: var(--color-error-500);
+}
+
+.run-status-pill--stopped {
+  background: var(--color-warning-100);
+  color: var(--color-warning-700);
+}
+
+.run-status-pill--stopped .run-status-pill__dot {
+  background: var(--color-warning-500);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .run-status-pill--running .run-status-pill__dot {
+    animation: none;
+  }
+}
+
+/* ---- 実行 1 件の行（Prompts タブ / Dashboard 共用） ----
+ * 主役はプロンプト本文。メタ情報は 2 行目に淡色で降格し、
+ * 1 行あたりの要素数を抑える（機能的ミニマリズム）。 */
 
 .prompt-runs-row {
   display: flex;
   align-items: flex-start;
   gap: var(--spacing-3);
-  padding: var(--spacing-4);
+  padding: var(--spacing-3) var(--spacing-4);
   background: #fff;
   border: 1px solid var(--color-gray-200);
-  border-left: 4px solid var(--color-gray-300);
   border-radius: var(--radius-md);
 }
 
-.prompt-runs-row--running {
-  border-left-color: var(--color-primary-500);
-}
-
-.prompt-runs-row--completed {
-  border-left-color: var(--color-success-500);
-}
-
+/* 高注意（失敗）だけ左枠でも強調する（Carbon の注意階層） */
 .prompt-runs-row--failed {
-  border-left-color: var(--color-error-500);
-}
-
-.prompt-runs-row--stopped {
-  border-left-color: var(--color-warning-500);
-}
-
-.prompt-runs-row__icon {
-  flex-shrink: 0;
-  font-size: 1.1rem;
-  line-height: 1.5;
-}
-
-.prompt-runs-row__icon--running {
-  animation: prompt-runs-pulse 1.2s ease-in-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .prompt-runs-row__icon--running {
-    animation: none;
-  }
+  border-left: 3px solid var(--color-error-500);
 }
 
 .prompt-runs-row__body {
@@ -178,37 +254,57 @@
   min-width: 0;
 }
 
-.prompt-runs-row__title {
+.prompt-runs-row__primary {
   display: flex;
-  flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--spacing-2);
+  gap: var(--spacing-3);
 }
 
-.prompt-runs-row__project {
-  color: var(--color-gray-800);
-  font-weight: 700;
-}
-
-.prompt-runs-row__meta {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-2);
-  color: var(--color-secondary-500);
-  font-size: var(--font-size-xs);
-}
-
+/* 可読行長の研究（50〜75 字）に基づき本文の伸長を抑える */
 .prompt-runs-row__prompt {
-  margin-top: 2px;
+  flex: 1;
+  max-width: 60ch;
   overflow: hidden;
   color: var(--color-gray-800);
   font-size: var(--font-size-sm);
+  font-weight: 600;
+  line-height: 1.55;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.prompt-runs-row__when {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--color-secondary-400);
+  font-size: var(--font-size-xs);
+}
+
+.prompt-runs-row__secondary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+  margin-top: 2px;
+  color: var(--color-secondary-500);
+  font-size: var(--font-size-xs);
+}
+
+.prompt-runs-row__project {
+  font-weight: 600;
+  color: var(--color-secondary-600);
+}
+
+.prompt-runs-row__danger-mode {
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--color-error-100);
+  color: var(--color-error-700);
+  font-weight: 700;
+}
+
 .prompt-runs-row__activity {
   margin-top: 4px;
+  max-width: 60ch;
   overflow: hidden;
   color: var(--color-secondary-500);
   font-family: var(--font-family-mono, monospace);
@@ -220,16 +316,17 @@
 .prompt-runs-row__actions {
   display: flex;
   flex-shrink: 0;
+  align-self: center;
   gap: var(--spacing-2);
 }
 
 .prompt-runs-row__button {
-  padding: 5px 14px;
+  padding: 4px 12px;
   background: #fff;
   border: 1px solid var(--color-gray-300);
   border-radius: 6px;
   color: var(--color-gray-800);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   font-weight: 600;
   cursor: pointer;
 }
@@ -344,12 +441,26 @@
 /* ---- Dashboard: プロジェクトカードの直近アクティビティ行 ---- */
 
 .project-latest-prompt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin-top: 6px;
   padding: 4px 10px;
   border-radius: var(--radius-sm);
   background: var(--color-secondary-100);
   color: var(--color-gray-800);
   font-size: 0.82rem;
+}
+
+.project-latest-prompt__label {
+  flex-shrink: 0;
+  font-weight: 700;
+  font-size: 0.72rem;
+}
+
+.project-latest-prompt__text {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -359,50 +470,34 @@
   background: var(--color-primary-100);
 }
 
+.project-latest-prompt--running .project-latest-prompt__label {
+  color: var(--color-primary-700);
+}
+
 .project-latest-prompt--completed {
   background: var(--color-success-100);
+}
+
+.project-latest-prompt--completed .project-latest-prompt__label {
+  color: var(--color-success-700);
 }
 
 .project-latest-prompt--failed {
   background: var(--color-error-100);
 }
 
+.project-latest-prompt--failed .project-latest-prompt__label {
+  color: var(--color-error-700);
+}
+
 .project-latest-prompt--stopped {
   background: var(--color-warning-100);
 }
 
+.project-latest-prompt--stopped .project-latest-prompt__label {
+  color: var(--color-warning-700);
+}
+
 .project-latest-prompt--session {
   color: var(--color-secondary-600);
-}
-
-/* ---- Dashboard: プロジェクトカードの状態バッジ ---- */
-
-.project-run-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 10px;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  font-weight: 700;
-}
-
-.project-run-badge--running {
-  background: var(--color-primary-100);
-  color: var(--color-primary-700);
-}
-
-.project-run-badge--completed {
-  background: var(--color-success-100);
-  color: var(--color-success-700);
-}
-
-.project-run-badge--failed {
-  background: var(--color-error-100);
-  color: var(--color-error-700);
-}
-
-.project-run-badge--stopped {
-  background: var(--color-warning-100);
-  color: var(--color-warning-700);
 }

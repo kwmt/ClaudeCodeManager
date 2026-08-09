@@ -6,7 +6,6 @@
  */
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  RUN_STATUS_META,
   usePromptRuns,
   type PromptRunStatus,
 } from "../contexts/PromptRunsContext";
@@ -92,7 +91,10 @@ export const PromptsOverview: React.FC<PromptsOverviewProps> = ({
             onClick={() => setFilter(key)}
           >
             {key !== "all" && (
-              <span aria-hidden="true">{RUN_STATUS_META[key].icon} </span>
+              <span
+                className={`run-status-dot run-status-dot--${key}`}
+                aria-hidden="true"
+              />
             )}
             {label}
             <span className="prompts-overview__filter-count">

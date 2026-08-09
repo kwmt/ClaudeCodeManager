@@ -598,12 +598,31 @@ export function formatElapsed(ms: number): string {
   return `${minutes}m${String(seconds).padStart(2, "0")}s`;
 }
 
-export const RUN_STATUS_META: Record<
-  PromptRunStatus,
-  { icon: string; label: string }
-> = {
-  running: { icon: "⏳", label: "実行中" },
-  completed: { icon: "✅", label: "完了" },
-  failed: { icon: "❌", label: "失敗" },
-  stopped: { icon: "⏹", label: "停止" },
+/**
+ * 相対時刻の短縮表記（「3分前」）。
+ * アクティビティフィードの研究より、正確な時刻ではなく
+ * 「どれくらい前か」の大まかな手掛かりが最も速く読み取れる。
+ * 正確な時刻はツールチップ（title 属性）で補う。
+ */
+export function formatRelativeTime(timestamp: number, now: number): string {
+  const diffSeconds = Math.max(0, Math.floor((now - timestamp) / 1000));
+  if (diffSeconds < 60) return "たった今";
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  if (diffMinutes < 60) return `${diffMinutes}分前`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}時間前`;
+  return `${Math.floor(diffHours / 24)}日前`;
+}
+
+/**
+ * 状態の表示ラベル。
+ * 状態は「色ドット＋文字ラベル」で表現する（色・形・ラベルの 3 要素、
+ * WCAG 1.4.1 / IBM Carbon の状態インジケータ指針に従う）。
+ * 絵文字は環境依存で見た目が変わり、走査時のノイズにもなるため使わない。
+ */
+export const RUN_STATUS_META: Record<PromptRunStatus, { label: string }> = {
+  running: { label: "実行中" },
+  completed: { label: "完了" },
+  failed: { label: "失敗" },
+  stopped: { label: "停止" },
 };

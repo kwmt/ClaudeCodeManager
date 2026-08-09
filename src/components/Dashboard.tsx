@@ -87,8 +87,11 @@ const PromptStatusSection: React.FC<{
                   key={status}
                   className={`dashboard-prompt-status__count dashboard-prompt-status__count--${status}`}
                 >
-                  {RUN_STATUS_META[status].icon} {RUN_STATUS_META[status].label}{" "}
-                  {counts[status]}
+                  <span
+                    className={`run-status-dot run-status-dot--${status}`}
+                    aria-hidden="true"
+                  />
+                  {RUN_STATUS_META[status].label} {counts[status]}
                 </span>
               ),
           )}
@@ -213,15 +216,6 @@ const ProjectCard: React.FC<{
                 Active
               </span>
             )}
-            {latestRun && (
-              <span
-                className={`project-run-badge project-run-badge--${latestRun.status}`}
-                title={`プロンプト: ${latestRun.prompt}`}
-              >
-                {RUN_STATUS_META[latestRun.status].icon}{" "}
-                {RUN_STATUS_META[latestRun.status].label}
-              </span>
-            )}
           </div>
         </header>
 
@@ -229,26 +223,41 @@ const ProjectCard: React.FC<{
           {project.project_path}
         </div>
 
-        {/* 直近のプロンプト実行（アプリ内）、無ければ最新セッションのプレビュー */}
+        {/*
+          直近のプロンプト実行（アプリ内）、無ければ最新セッションのプレビュー。
+          状態バッジと本文行を 1 要素に統合し、状態は色ドット＋ラベルで示す
+          （タイトル横のバッジと二重に出さない — 冗長要素の削減）。
+        */}
         {latestRun ? (
           <div
             className={`project-latest-prompt project-latest-prompt--${latestRun.status}`}
-            title={latestRun.prompt}
+            title={`${RUN_STATUS_META[latestRun.status].label}: ${latestRun.prompt}`}
           >
-            <span aria-hidden="true">
-              {RUN_STATUS_META[latestRun.status].icon}
-            </span>{" "}
-            {latestRun.prompt}
+            <span
+              className={`run-status-dot run-status-dot--${latestRun.status}`}
+              aria-hidden="true"
+            />
+            <span className="project-latest-prompt__label">
+              {RUN_STATUS_META[latestRun.status].label}
+            </span>
+            <span className="project-latest-prompt__text">
+              {latestRun.prompt}
+            </span>
           </div>
         ) : latestSession?.latest_content_preview ? (
           <div
             className="project-latest-prompt project-latest-prompt--session"
             title={latestSession.latest_content_preview}
           >
-            <span aria-hidden="true">
-              {latestSession.is_processing ? "⏳" : "💬"}
-            </span>{" "}
-            {latestSession.latest_content_preview}
+            {latestSession.is_processing && (
+              <span
+                className="run-status-dot run-status-dot--running"
+                aria-hidden="true"
+              />
+            )}
+            <span className="project-latest-prompt__text">
+              {latestSession.latest_content_preview}
+            </span>
           </div>
         ) : null}
 
