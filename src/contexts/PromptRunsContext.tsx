@@ -111,7 +111,10 @@ interface PromptRunsContextValue {
   registerRun: (runId: string, meta: RegisterRunMeta) => void;
   stopRun: (runId: string) => Promise<void>;
   /** プロンプトを送信する（会話へのエントリ追加〜実行登録まで担う） */
-  sendPrompt: (projectPath: string, params: SendPromptParams) => Promise<void>;
+  sendPrompt: (
+    projectPath: string,
+    params: SendPromptParams,
+  ) => Promise<string | null>;
   /** 会話ログをクリアして新しい会話を始める */
   resetConversation: (projectPath: string) => void;
 }
@@ -444,11 +447,18 @@ export const PromptRunsProvider: React.FC<{ children: React.ReactNode }> = ({
    * プロンプト送信の一連の流れを担う:
    * ユーザー発言の追加 → CLI 起動 → 実行の登録（バッファ済みイベントの反映）。
    * 失敗時はエラー行を会話に追加して実行中フラグを下ろす。
+   *
+   * @returns 起動に失敗した場合はエラーメッセージ、成功時は null。
+   *   Dashboard のクイック実行など、会話ビューの外から呼ぶ場合の
+   *   フィードバックに使う。
    */
   const sendPrompt = useCallback(
-    async (projectPath: string, params: SendPromptParams) => {
+    async (
+      projectPath: string,
+      params: SendPromptParams,
+    ): Promise<string | null> => {
       const text = params.prompt.trim();
-      if (!text) return;
+      if (!text) return null;
 
       const conversations = conversationsRef.current;
       const before = conversations.get(projectPath) ?? EMPTY_CONVERSATION;
@@ -479,7 +489,9 @@ export const PromptRunsProvider: React.FC<{ children: React.ReactNode }> = ({
           permissionMode: params.permissionMode,
           model: params.model,
         });
+        return null;
       } catch (error: unknown) {
+        const message = toErrorMessage(error);
         const current = conversations.get(projectPath) ?? EMPTY_CONVERSATION;
         conversations.set(projectPath, {
           ...current,
@@ -490,11 +502,12 @@ export const PromptRunsProvider: React.FC<{ children: React.ReactNode }> = ({
             {
               id: nextEntryId(),
               kind: "error",
-              text: `実行を開始できませんでした: ${toErrorMessage(error)}`,
+              text: `実行を開始できませんでした: ${message}`,
             },
           ],
         });
         bump();
+        return message;
       }
     },
     [bump, registerRun],

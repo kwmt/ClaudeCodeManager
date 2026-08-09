@@ -170,4 +170,75 @@ describe("Dashboard prompt status board", () => {
       ).toBeInTheDocument();
     });
   });
+
+  it("実行が無いプロジェクトのカードには「プロンプト未実行」が出る", async () => {
+    renderDashboard();
+    await waitFor(() => {
+      expect(screen.getByText("Recent Projects")).toBeInTheDocument();
+    });
+    expect(screen.getByText("プロンプト未実行")).toBeInTheDocument();
+  });
+
+  it("カードのクイック実行からプロンプトを送信できる", async () => {
+    mockApi.startPromptRun.mockResolvedValue("run-quick");
+    renderDashboard();
+    await waitFor(() => {
+      expect(screen.getByText("Recent Projects")).toBeInTheDocument();
+    });
+
+    // 「▷ プロンプトを実行…」を開いて送信
+    fireEvent.click(
+      screen.getByRole("button", { name: "alpha にプロンプトを実行" }),
+    );
+    const textarea = screen.getByPlaceholderText(
+      "Claude への指示…（Cmd/Ctrl + Enter で送信）",
+    );
+    fireEvent.change(textarea, { target: { value: "カードから実行" } });
+    fireEvent.click(screen.getByRole("button", { name: "送信" }));
+
+    await waitFor(() => {
+      expect(mockApi.startPromptRun).toHaveBeenCalledWith({
+        projectPath: "/Users/john/projects/alpha",
+        prompt: "カードから実行",
+        permissionMode: "plan",
+        resumeSessionId: null,
+        model: null,
+      });
+    });
+
+    // 送信後は実行中としてカード・セクションに反映される
+    expect(screen.getByText("プロンプト実行状況")).toBeInTheDocument();
+    expect(screen.getAllByText("カードから実行").length).toBeGreaterThanOrEqual(
+      1,
+    );
+    // 実行中のカードにはコンポーザーを出さない
+    expect(
+      screen.queryByRole("button", { name: "alpha にプロンプトを実行" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("クイック実行の起動失敗はカード内にエラー表示される", async () => {
+    mockApi.startPromptRun.mockRejectedValue(new Error("spawn failed"));
+    renderDashboard();
+    await waitFor(() => {
+      expect(screen.getByText("Recent Projects")).toBeInTheDocument();
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "alpha にプロンプトを実行" }),
+    );
+    fireEvent.change(
+      screen.getByPlaceholderText(
+        "Claude への指示…（Cmd/Ctrl + Enter で送信）",
+      ),
+      { target: { value: "失敗するはず" } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "送信" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/実行を開始できませんでした: spawn failed/),
+      ).toBeInTheDocument();
+    });
+  });
 });

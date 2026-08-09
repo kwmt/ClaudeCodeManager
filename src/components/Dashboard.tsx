@@ -7,8 +7,15 @@ import {
   type PromptRunStatus,
 } from "../contexts/PromptRunsContext";
 import { formatDateForContext } from "../utils/dateUtils";
+import { getProjectDisplayName } from "../utils/pathUtils";
 import { PromptRunRow } from "./PromptRunRow";
-import type { ClaudeSession, SessionStats, ProjectSummary } from "../types";
+import { SafeConfirmDialog } from "./SafeConfirmDialog";
+import type {
+  ClaudeSession,
+  PermissionMode,
+  SessionStats,
+  ProjectSummary,
+} from "../types";
 
 interface DashboardProps {
   onProjectClick?: (projectPath: string) => void;
@@ -158,6 +165,141 @@ const StatCard: React.FC<{
   );
 };
 
+/**
+ * カード上のクイック実行コンポーザー。
+ * プロジェクト画面へ移動せずに、Dashboard から直接プロンプトを送れる。
+ * 送信処理はストア（sendPrompt）が担うため、実行状況は自動的に
+ * カードの状態行・実行状況セクションに反映される。
+ */
+const QuickPromptComposer: React.FC<{
+  projectPath: string;
+  /** 送信。失敗時はエラーメッセージを返す（成功時は null） */
+  onSend: (
+    prompt: string,
+    permissionMode: PermissionMode,
+  ) => Promise<string | null>;
+}> = ({ projectPath, onSend }) => {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [mode, setMode] = useState<PermissionMode>("plan");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const doSend = useCallback(async () => {
+    const prompt = text.trim();
+    if (!prompt) return;
+    setSending(true);
+    setError(null);
+    try {
+      const failure = await onSend(prompt, mode);
+      if (failure) {
+        setError(failure);
+      } else {
+        setText("");
+        setOpen(false);
+      }
+    } finally {
+      setSending(false);
+    }
+  }, [text, mode, onSend]);
+
+  const handleSubmit = useCallback(() => {
+    if (!text.trim() || sending) return;
+    if (mode === "bypassPermissions") {
+      setConfirmOpen(true);
+      return;
+    }
+    void doSend();
+  }, [text, sending, mode, doSend]);
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        className="quick-prompt__toggle"
+        aria-label={`${getProjectDisplayName(projectPath)} にプロンプトを実行`}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen(true);
+        }}
+      >
+        ▷ プロンプトを実行…
+      </button>
+    );
+  }
+
+  return (
+    // カード自体がクリック/キーボードで開くため、入力操作が伝播しないよう遮断する
+    // biome-ignore lint/a11y/noStaticElementInteractions: イベント伝播の遮断のみが目的
+    <div
+      className="quick-prompt"
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+    >
+      <textarea
+        className="quick-prompt__textarea"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+            e.preventDefault();
+            handleSubmit();
+          }
+        }}
+        placeholder="Claude への指示…（Cmd/Ctrl + Enter で送信）"
+        rows={2}
+        // biome-ignore lint/a11y/noAutofocus: 「実行…」クリック直後の入力開始のため
+        autoFocus
+      />
+      <div className="quick-prompt__controls">
+        <select
+          aria-label="権限モード"
+          value={mode}
+          onChange={(e) => setMode(e.target.value as PermissionMode)}
+        >
+          <option value="plan">読み取り専用</option>
+          <option value="acceptEdits">編集を自動承認</option>
+          <option value="bypassPermissions">全許可（危険）</option>
+        </select>
+        <button
+          type="button"
+          className="quick-prompt__button"
+          onClick={() => setOpen(false)}
+        >
+          キャンセル
+        </button>
+        <button
+          type="button"
+          className="quick-prompt__button quick-prompt__button--primary"
+          onClick={handleSubmit}
+          disabled={!text.trim() || sending}
+        >
+          送信
+        </button>
+      </div>
+      {error && (
+        <div className="quick-prompt__error" role="alert">
+          実行を開始できませんでした: {error}
+        </div>
+      )}
+      <SafeConfirmDialog
+        isOpen={confirmOpen}
+        title="全許可モードで実行しますか？"
+        message="「全許可（危険）」は Claude のすべてのツール実行を確認なしで許可します。ファイルの変更やコマンド実行が無条件に行われます。本当に実行しますか？"
+        confirmText="実行する"
+        cancelText="キャンセル"
+        variant="danger"
+        onConfirm={() => {
+          setConfirmOpen(false);
+          void doSend();
+        }}
+        onCancel={() => setConfirmOpen(false)}
+      />
+    </div>
+  );
+};
+
 const ProjectCard: React.FC<{
   project: ProjectSummary;
   onClick: () => void;
@@ -165,7 +307,12 @@ const ProjectCard: React.FC<{
   latestRun?: PromptRunInfo | null;
   /** ~/.claude 上の最新セッション（アプリ外での作業も含む） */
   latestSession?: ClaudeSession | null;
-}> = ({ project, onClick, latestRun, latestSession }) => {
+  /** クイック実行（Provider 配下でない場合は undefined で非表示） */
+  onQuickPrompt?: (
+    prompt: string,
+    permissionMode: PermissionMode,
+  ) => Promise<string | null>;
+}> = ({ project, onClick, latestRun, latestSession, onQuickPrompt }) => {
   const projectName =
     project.project_path.split("/").pop() || project.project_path;
   const isActive = project.ide_info?.pid;
@@ -224,9 +371,9 @@ const ProjectCard: React.FC<{
         </div>
 
         {/*
-          直近のプロンプト実行（アプリ内）、無ければ最新セッションのプレビュー。
-          状態バッジと本文行を 1 要素に統合し、状態は色ドット＋ラベルで示す
-          （タイトル横のバッジと二重に出さない — 冗長要素の削減）。
+          プロンプト実行状態の行（常時表示）。
+          実行が無いプロジェクトも「未実行」を明示し、
+          動かしていないことがひと目で分かるようにする。
         */}
         {latestRun ? (
           <div
@@ -244,7 +391,17 @@ const ProjectCard: React.FC<{
               {latestRun.prompt}
             </span>
           </div>
-        ) : latestSession?.latest_content_preview ? (
+        ) : (
+          <div className="project-latest-prompt project-latest-prompt--none">
+            <span className="run-status-dot" aria-hidden="true" />
+            <span className="project-latest-prompt__label">
+              プロンプト未実行
+            </span>
+          </div>
+        )}
+
+        {/* アプリ外での作業も含む最新セッションのプレビュー（あれば） */}
+        {!latestRun && latestSession?.latest_content_preview && (
           <div
             className="project-latest-prompt project-latest-prompt--session"
             title={latestSession.latest_content_preview}
@@ -259,7 +416,15 @@ const ProjectCard: React.FC<{
               {latestSession.latest_content_preview}
             </span>
           </div>
-        ) : null}
+        )}
+
+        {/* カードから直接プロンプトを実行（実行中は状態行が担うため非表示） */}
+        {onQuickPrompt && latestRun?.status !== "running" && (
+          <QuickPromptComposer
+            projectPath={project.project_path}
+            onSend={onQuickPrompt}
+          />
+        )}
 
         <div className="project-metrics-modern">
           <div className="metric-grid">
@@ -600,6 +765,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     latestSessionByProject.get(project.project_path) ?? null
                   }
                   onClick={() => onProjectClick?.(project.project_path)}
+                  onQuickPrompt={
+                    runsStore
+                      ? (prompt, permissionMode) =>
+                          runsStore.sendPrompt(project.project_path, {
+                            prompt,
+                            permissionMode,
+                            model: null,
+                          })
+                      : undefined
+                  }
                 />
               ))}
             </div>
