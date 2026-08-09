@@ -1,11 +1,102 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { api } from "../api";
+import {
+  formatElapsed,
+  RUN_STATUS_META,
+  usePromptRunsOptional,
+  type PromptRunInfo,
+} from "../contexts/PromptRunsContext";
 import { formatDateForContext } from "../utils/dateUtils";
+import { getProjectDisplayName } from "../utils/pathUtils";
 import type { SessionStats, ProjectSummary } from "../types";
 
 interface DashboardProps {
   onProjectClick?: (projectPath: string) => void;
+  /** 実行中プロンプトの行やバッジから Prompt タブ直行で開く */
+  onOpenPromptRun?: (projectPath: string) => void;
 }
+
+/** Dashboard 上部の「実行中のプロンプト」セクション */
+const RunningPromptsSection: React.FC<{
+  runs: PromptRunInfo[];
+  onOpen?: (projectPath: string) => void;
+  onStop: (runId: string) => void;
+}> = ({ runs, onOpen, onStop }) => {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  if (runs.length === 0) return null;
+
+  return (
+    <section
+      className="dashboard-running-section"
+      aria-labelledby="running-prompts-heading"
+    >
+      <div className="section-header">
+        <h2 id="running-prompts-heading" className="section-title">
+          ▶ 実行中のプロンプト ({runs.length})
+        </h2>
+      </div>
+      <ul className="dashboard-running-section__list">
+        {runs.map((run) => (
+          <li
+            key={run.runId}
+            className="prompt-runs-row prompt-runs-row--running"
+          >
+            <span
+              className="prompt-runs-row__icon prompt-runs-row__icon--running"
+              role="img"
+              aria-label="実行中"
+            >
+              {RUN_STATUS_META.running.icon}
+            </span>
+            <div className="prompt-runs-row__body">
+              <div className="prompt-runs-row__title">
+                <span className="prompt-runs-row__project">
+                  {getProjectDisplayName(run.projectPath)}
+                </span>
+                <span className="prompt-runs-row__meta">
+                  <span>{formatElapsed(now - run.startedAt)}</span>
+                  <span>{run.permissionMode}</span>
+                </span>
+              </div>
+              <div className="prompt-runs-row__prompt" title={run.prompt}>
+                {run.prompt}
+              </div>
+              {run.lastActivity && (
+                <div className="prompt-runs-row__activity">
+                  {run.lastActivity}
+                </div>
+              )}
+            </div>
+            <div className="prompt-runs-row__actions">
+              <button
+                type="button"
+                className="prompt-runs-row__button"
+                onClick={() => onStop(run.runId)}
+              >
+                停止
+              </button>
+              {onOpen && (
+                <button
+                  type="button"
+                  className="prompt-runs-row__button prompt-runs-row__button--primary"
+                  onClick={() => onOpen(run.projectPath)}
+                >
+                  開く
+                </button>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+};
 
 const StatCard: React.FC<{
   title: string;
@@ -38,7 +129,9 @@ const StatCard: React.FC<{
 const ProjectCard: React.FC<{
   project: ProjectSummary;
   onClick: () => void;
-}> = ({ project, onClick }) => {
+  /** このプロジェクトの最新のプロンプト実行（無ければ null） */
+  latestRun?: PromptRunInfo | null;
+}> = ({ project, onClick, latestRun }) => {
   const projectName =
     project.project_path.split("/").pop() || project.project_path;
   const isActive = project.ide_info?.pid;
@@ -87,6 +180,15 @@ const ProjectCard: React.FC<{
               <span className="active-badge">
                 <span className="active-pulse"></span>
                 Active
+              </span>
+            )}
+            {latestRun && (
+              <span
+                className={`project-run-badge project-run-badge--${latestRun.status}`}
+                title={`プロンプト: ${latestRun.prompt}`}
+              >
+                {RUN_STATUS_META[latestRun.status].icon}{" "}
+                {RUN_STATUS_META[latestRun.status].label}
               </span>
             )}
           </div>
@@ -184,7 +286,24 @@ const LoadingSkeleton: React.FC = () => (
   </div>
 );
 
-export const Dashboard: React.FC<DashboardProps> = ({ onProjectClick }) => {
+export const Dashboard: React.FC<DashboardProps> = ({
+  onProjectClick,
+  onOpenPromptRun,
+}) => {
+  // Provider 配下でなければ null（既存テストの単体レンダリング等）
+  const runsStore = usePromptRunsOptional();
+  const runningRuns =
+    runsStore?.runs.filter((run) => run.status === "running") ?? [];
+
+  const handleStopRun = useCallback(
+    (runId: string) => {
+      runsStore?.stopRun(runId).catch((error: unknown) => {
+        console.error("Failed to stop prompt run:", error);
+      });
+    },
+    [runsStore],
+  );
+
   const [stats, setStats] = useState<SessionStats | null>(null);
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -299,6 +418,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onProjectClick }) => {
         </div>
       </header>
 
+      <RunningPromptsSection
+        runs={runningRuns}
+        onOpen={onOpenPromptRun}
+        onStop={handleStopRun}
+      />
+
       <section className="stats-section" aria-labelledby="stats-heading">
         <div className="section-header">
           <h2 id="stats-heading" className="section-title">
@@ -375,6 +500,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onProjectClick }) => {
               <ProjectCard
                 key={project.project_path}
                 project={project}
+                latestRun={
+                  runsStore?.latestRunByProject.get(project.project_path) ??
+                  null
+                }
                 onClick={() => onProjectClick?.(project.project_path)}
               />
             ))}

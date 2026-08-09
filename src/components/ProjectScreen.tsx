@@ -6,6 +6,7 @@ import {
   getProjectDisplayName,
 } from "../utils/pathUtils";
 import { useToast, ToastContainer } from "./Toast";
+import { PromptRunner } from "./PromptRunner";
 import { formatDateTime, formatDateTooltip } from "../utils/dateUtils";
 import type {
   ClaudeSession,
@@ -18,10 +19,16 @@ import type {
 
 interface ProjectScreenProps {
   projectPath: string;
+  /**
+   * Prompt タブを開いた状態で表示するリクエスト（Dashboard / Prompts 一覧から）。
+   * nonce が変わるたびに Prompt タブへ切り替える。0 は「リクエストなし」。
+   */
+  promptTabRequest?: { nonce: number };
 }
 
 export const ProjectScreen: React.FC<ProjectScreenProps> = ({
   projectPath,
+  promptTabRequest,
 }) => {
   const [sessions, setSessions] = useState<ClaudeSession[]>([]);
   const [selectedSession, setSelectedSession] = useState<ClaudeSession | null>(
@@ -34,9 +41,11 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
   const [loading, setLoading] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"sessions" | "directory">(
-    "sessions",
-  );
+  const [activeTab, setActiveTab] = useState<
+    "sessions" | "directory" | "prompt"
+  >("sessions");
+  // Prompt タブを一度でも開いたか（開くまで PromptRunner をマウントしない）
+  const [promptTabVisited, setPromptTabVisited] = useState(false);
   const [knownProjectPaths, setKnownProjectPaths] = useState<string[]>([]);
   const [claudeDirectoryInfo, setClaudeDirectoryInfo] =
     useState<ClaudeDirectoryInfo | null>(null);
@@ -120,6 +129,15 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
   useEffect(() => {
     loadProjectData();
   }, [projectPath]);
+
+  // Dashboard / Prompts 一覧からの「Prompt タブで開く」リクエストに応える
+  const promptTabRequestNonce = promptTabRequest?.nonce ?? 0;
+  useEffect(() => {
+    if (promptTabRequestNonce > 0) {
+      setPromptTabVisited(true);
+      setActiveTab("prompt");
+    }
+  }, [promptTabRequestNonce]);
 
   useEffect(() => {
     if (activeTab === "directory") {
@@ -318,6 +336,31 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
       setIsRefreshing(false);
     }
   }, [activeTab, selectedSession, projectPath, toast]);
+
+  /**
+   * プロンプト実行の完了後にセッション一覧だけを静かに更新する。
+   *
+   * loadProjectData は `loading` を立てて画面全体をローディング表示に
+   * 差し替えるため、Prompt タブごと unmount され会話ログが消えてしまう。
+   * ここでは表示を保ったままデータだけ差し替える。
+   */
+  const reloadSessionsQuietly = useCallback(async () => {
+    try {
+      await api.clearCache();
+      const [allSessions, projectSummaries] = await Promise.all([
+        api.getAllSessions(),
+        api.getProjectSummary(),
+      ]);
+      setSessions(
+        allSessions.filter((session) => session.project_path === projectPath),
+      );
+      setProjectSummary(
+        projectSummaries.find((p) => p.project_path === projectPath) ?? null,
+      );
+    } catch (err) {
+      console.error("Failed to refresh sessions after prompt run:", err);
+    }
+  }, [projectPath]);
 
   // Keyboard shortcut for refresh
   useEffect(() => {
@@ -801,6 +844,20 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
             <div className="tab-subtitle">Project configuration</div>
           </div>
         </button>
+        <button
+          className={`tab-button ${activeTab === "prompt" ? "active" : ""}`}
+          onClick={() => {
+            setPromptTabVisited(true);
+            setActiveTab("prompt");
+          }}
+          aria-label="Run a prompt against this project"
+        >
+          <div className="tab-icon">✨</div>
+          <div className="tab-content">
+            <div className="tab-title">Prompt</div>
+            <div className="tab-subtitle">Claude に指示を出す</div>
+          </div>
+        </button>
       </div>
 
       {activeTab === "sessions" ? (
@@ -1028,7 +1085,7 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
             )}
           </div>
         </div>
-      ) : (
+      ) : activeTab === "prompt" ? null : (
         <div className="project-directory-content">
           <div className="claude-directory-files">
             <h3>.claude Directory</h3>
@@ -1214,6 +1271,23 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/*
+        Prompt タブは一度開いたらマウントしたままにし、非表示にするだけにする。
+        タブを行き来しても会話ログと実行中のセッションが失われないようにするため。
+        未訪問のうちはマウントしない（CLI 検出のためのプロセス起動を避ける）。
+      */}
+      {promptTabVisited && (
+        <div
+          className="project-prompt-content"
+          style={activeTab === "prompt" ? undefined : { display: "none" }}
+        >
+          <PromptRunner
+            projectPath={normalizedPath}
+            onRunFinished={reloadSessionsQuietly}
+          />
         </div>
       )}
 
