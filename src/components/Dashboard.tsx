@@ -16,6 +16,9 @@ interface DashboardProps {
   onOpenPromptRun?: (projectPath: string) => void;
 }
 
+/** Recent Projects を折りたたみ表示するときの件数 */
+const COLLAPSED_PROJECT_COUNT = 6;
+
 /** Dashboard 上部の「実行中のプロンプト」セクション */
 const RunningPromptsSection: React.FC<{
   runs: PromptRunInfo[];
@@ -306,6 +309,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const [stats, setStats] = useState<SessionStats | null>(null);
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
+  const [showAllProjects, setShowAllProjects] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState<{
@@ -493,21 +497,40 @@ export const Dashboard: React.FC<DashboardProps> = ({
             description="No Claude Code projects have been created yet"
           />
         ) : (
-          <div
-            className={`projects-grid ${updating.projects ? "updating" : ""}`}
-          >
-            {projects.slice(0, 6).map((project) => (
-              <ProjectCard
-                key={project.project_path}
-                project={project}
-                latestRun={
-                  runsStore?.latestRunByProject.get(project.project_path) ??
-                  null
-                }
-                onClick={() => onProjectClick?.(project.project_path)}
-              />
-            ))}
-          </div>
+          <>
+            <div
+              className={`projects-grid ${updating.projects ? "updating" : ""}`}
+            >
+              {(showAllProjects
+                ? projects
+                : projects.slice(0, COLLAPSED_PROJECT_COUNT)
+              ).map((project) => (
+                <ProjectCard
+                  key={project.project_path}
+                  project={project}
+                  latestRun={
+                    runsStore?.latestRunByProject.get(project.project_path) ??
+                    null
+                  }
+                  onClick={() => onProjectClick?.(project.project_path)}
+                />
+              ))}
+            </div>
+            {projects.length > COLLAPSED_PROJECT_COUNT && (
+              <div className="projects-show-all">
+                <button
+                  type="button"
+                  className="show-all-projects-button"
+                  aria-expanded={showAllProjects}
+                  onClick={() => setShowAllProjects((prev) => !prev)}
+                >
+                  {showAllProjects
+                    ? "Show less"
+                    : `Show all ${projects.length} projects`}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </section>
     </div>
