@@ -8,6 +8,7 @@ vi.mock("../api", () => ({
   api: {
     getSessionStats: vi.fn(),
     getProjectSummary: vi.fn(),
+    getAllSessions: vi.fn(),
   },
 }));
 
@@ -16,6 +17,8 @@ const mockApi = api.api as any;
 describe("Dashboard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Dashboard はカードの最新セッション表示のため getAllSessions も呼ぶ
+    mockApi.getAllSessions.mockResolvedValue([]);
   });
 
   it("renders loading state initially", () => {

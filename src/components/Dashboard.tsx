@@ -1,102 +1,128 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { api } from "../api";
 import {
-  formatElapsed,
   RUN_STATUS_META,
   usePromptRunsOptional,
   type PromptRunInfo,
+  type PromptRunStatus,
 } from "../contexts/PromptRunsContext";
 import { formatDateForContext } from "../utils/dateUtils";
-import { getProjectDisplayName } from "../utils/pathUtils";
-import type { SessionStats, ProjectSummary } from "../types";
+import { PromptRunRow } from "./PromptRunRow";
+import type { ClaudeSession, SessionStats, ProjectSummary } from "../types";
 
 interface DashboardProps {
   onProjectClick?: (projectPath: string) => void;
   /** 実行中プロンプトの行やバッジから Prompt タブ直行で開く */
   onOpenPromptRun?: (projectPath: string) => void;
+  /** 「すべて見る」から Prompts タブへ移動する */
+  onOpenPromptsTab?: () => void;
 }
 
 /** Recent Projects を折りたたみ表示するときの件数 */
 const COLLAPSED_PROJECT_COUNT = 6;
 
-/** Dashboard 上部の「実行中のプロンプト」セクション */
-const RunningPromptsSection: React.FC<{
+/** Dashboard の実行状況セクションに表示する最大件数 */
+const STATUS_BOARD_MAX_ROWS = 6;
+
+/**
+ * Dashboard 上部の「プロンプト実行状況」セクション。
+ * 実行中だけでなく完了・失敗・停止も含めた直近の実行を一覧し、
+ * プロジェクト横断の状況をダッシュボードだけで把握できるようにする。
+ */
+const PromptStatusSection: React.FC<{
   runs: PromptRunInfo[];
   onOpen?: (projectPath: string) => void;
   onStop: (runId: string) => void;
-}> = ({ runs, onOpen, onStop }) => {
+  onOpenAll?: () => void;
+}> = ({ runs, onOpen, onStop, onOpenAll }) => {
   const [now, setNow] = useState(() => Date.now());
 
+  const hasRunning = runs.some((run) => run.status === "running");
   useEffect(() => {
+    if (!hasRunning) return;
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [hasRunning]);
+
+  const counts = useMemo(() => {
+    const c: Record<PromptRunStatus, number> = {
+      running: 0,
+      completed: 0,
+      failed: 0,
+      stopped: 0,
+    };
+    for (const run of runs) c[run.status] += 1;
+    return c;
+  }, [runs]);
+
+  // 実行中を先頭に、あとは新しい順
+  const sorted = useMemo(
+    () =>
+      [...runs].sort(
+        (a, b) =>
+          (a.status === "running" ? 0 : 1) - (b.status === "running" ? 0 : 1) ||
+          b.startedAt - a.startedAt,
+      ),
+    [runs],
+  );
+  const visible = sorted.slice(0, STATUS_BOARD_MAX_ROWS);
+  const hiddenCount = sorted.length - visible.length;
 
   if (runs.length === 0) return null;
 
   return (
     <section
-      className="dashboard-running-section"
-      aria-labelledby="running-prompts-heading"
+      className="dashboard-prompt-status"
+      aria-labelledby="prompt-status-heading"
     >
-      <div className="section-header">
-        <h2 id="running-prompts-heading" className="section-title">
-          ▶ 実行中のプロンプト ({runs.length})
+      <div className="dashboard-prompt-status__header">
+        <h2 id="prompt-status-heading" className="section-title">
+          プロンプト実行状況
         </h2>
-      </div>
-      <ul className="dashboard-running-section__list">
-        {runs.map((run) => (
-          <li
-            key={run.runId}
-            className="prompt-runs-row prompt-runs-row--running"
-          >
-            <span
-              className="prompt-runs-row__icon prompt-runs-row__icon--running"
-              role="img"
-              aria-label="実行中"
-            >
-              {RUN_STATUS_META.running.icon}
-            </span>
-            <div className="prompt-runs-row__body">
-              <div className="prompt-runs-row__title">
-                <span className="prompt-runs-row__project">
-                  {getProjectDisplayName(run.projectPath)}
-                </span>
-                <span className="prompt-runs-row__meta">
-                  <span>{formatElapsed(now - run.startedAt)}</span>
-                  <span>{run.permissionMode}</span>
-                </span>
-              </div>
-              <div className="prompt-runs-row__prompt" title={run.prompt}>
-                {run.prompt}
-              </div>
-              {run.lastActivity && (
-                <div className="prompt-runs-row__activity">
-                  {run.lastActivity}
-                </div>
-              )}
-            </div>
-            <div className="prompt-runs-row__actions">
-              <button
-                type="button"
-                className="prompt-runs-row__button"
-                onClick={() => onStop(run.runId)}
-              >
-                停止
-              </button>
-              {onOpen && (
-                <button
-                  type="button"
-                  className="prompt-runs-row__button prompt-runs-row__button--primary"
-                  onClick={() => onOpen(run.projectPath)}
+        <div className="dashboard-prompt-status__counts">
+          {(Object.keys(counts) as PromptRunStatus[]).map(
+            (status) =>
+              counts[status] > 0 && (
+                <span
+                  key={status}
+                  className={`dashboard-prompt-status__count dashboard-prompt-status__count--${status}`}
                 >
-                  開く
-                </button>
-              )}
-            </div>
-          </li>
+                  {RUN_STATUS_META[status].icon} {RUN_STATUS_META[status].label}{" "}
+                  {counts[status]}
+                </span>
+              ),
+          )}
+        </div>
+        {onOpenAll && (
+          <button
+            type="button"
+            className="dashboard-prompt-status__all"
+            onClick={onOpenAll}
+          >
+            すべて見る →
+          </button>
+        )}
+      </div>
+      <ul className="dashboard-prompt-status__list">
+        {visible.map((run) => (
+          <PromptRunRow
+            key={run.runId}
+            run={run}
+            now={now}
+            onOpen={() => onOpen?.(run.projectPath)}
+            onStop={() => onStop(run.runId)}
+          />
         ))}
       </ul>
+      {hiddenCount > 0 && onOpenAll && (
+        <button
+          type="button"
+          className="dashboard-prompt-status__more"
+          onClick={onOpenAll}
+        >
+          他 {hiddenCount} 件を Prompts タブで見る →
+        </button>
+      )}
     </section>
   );
 };
@@ -134,7 +160,9 @@ const ProjectCard: React.FC<{
   onClick: () => void;
   /** このプロジェクトの最新のプロンプト実行（無ければ null） */
   latestRun?: PromptRunInfo | null;
-}> = ({ project, onClick, latestRun }) => {
+  /** ~/.claude 上の最新セッション（アプリ外での作業も含む） */
+  latestSession?: ClaudeSession | null;
+}> = ({ project, onClick, latestRun, latestSession }) => {
   const projectName =
     project.project_path.split("/").pop() || project.project_path;
   const isActive = project.ide_info?.pid;
@@ -200,6 +228,29 @@ const ProjectCard: React.FC<{
         <div className="project-path-modern" title={project.project_path}>
           {project.project_path}
         </div>
+
+        {/* 直近のプロンプト実行（アプリ内）、無ければ最新セッションのプレビュー */}
+        {latestRun ? (
+          <div
+            className={`project-latest-prompt project-latest-prompt--${latestRun.status}`}
+            title={latestRun.prompt}
+          >
+            <span aria-hidden="true">
+              {RUN_STATUS_META[latestRun.status].icon}
+            </span>{" "}
+            {latestRun.prompt}
+          </div>
+        ) : latestSession?.latest_content_preview ? (
+          <div
+            className="project-latest-prompt project-latest-prompt--session"
+            title={latestSession.latest_content_preview}
+          >
+            <span aria-hidden="true">
+              {latestSession.is_processing ? "⏳" : "💬"}
+            </span>{" "}
+            {latestSession.latest_content_preview}
+          </div>
+        ) : null}
 
         <div className="project-metrics-modern">
           <div className="metric-grid">
@@ -292,11 +343,11 @@ const LoadingSkeleton: React.FC = () => (
 export const Dashboard: React.FC<DashboardProps> = ({
   onProjectClick,
   onOpenPromptRun,
+  onOpenPromptsTab,
 }) => {
   // Provider 配下でなければ null（既存テストの単体レンダリング等）
   const runsStore = usePromptRunsOptional();
-  const runningRuns =
-    runsStore?.runs.filter((run) => run.status === "running") ?? [];
+  const allRuns = runsStore?.runs ?? [];
 
   const handleStopRun = useCallback(
     (runId: string) => {
@@ -309,6 +360,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const [stats, setStats] = useState<SessionStats | null>(null);
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
+  const [sessions, setSessions] = useState<ClaudeSession[]>([]);
   const [showAllProjects, setShowAllProjects] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -317,18 +369,36 @@ export const Dashboard: React.FC<DashboardProps> = ({
     projects: boolean;
   }>({ stats: false, projects: false });
 
+  // プロジェクトごとの最新セッション（アプリ外での claude 実行も含む）
+  const latestSessionByProject = useMemo(() => {
+    const map = new Map<string, ClaudeSession>();
+    for (const session of sessions) {
+      const current = map.get(session.project_path);
+      if (
+        !current ||
+        new Date(session.file_modified_time).getTime() >
+          new Date(current.file_modified_time).getTime()
+      ) {
+        map.set(session.project_path, session);
+      }
+    }
+    return map;
+  }, [sessions]);
+
   const loadInitialData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const [statsData, projectsData] = await Promise.all([
+      const [statsData, projectsData, sessionsData] = await Promise.all([
         api.getSessionStats(),
         api.getProjectSummary(),
+        api.getAllSessions(),
       ]);
 
       setStats(statsData);
       setProjects(projectsData);
+      setSessions(sessionsData ?? []);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to load dashboard data",
@@ -357,8 +427,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
     try {
       setUpdating((prev) => ({ ...prev, projects: true }));
-      const projectsData = await api.getProjectSummary();
+      const [projectsData, sessionsData] = await Promise.all([
+        api.getProjectSummary(),
+        api.getAllSessions(),
+      ]);
       setProjects(projectsData);
+      setSessions(sessionsData ?? []);
     } catch (err) {
       console.error("Failed to update projects:", err);
     } finally {
@@ -422,10 +496,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </header>
 
-      <RunningPromptsSection
-        runs={runningRuns}
+      <PromptStatusSection
+        runs={allRuns}
         onOpen={onOpenPromptRun}
         onStop={handleStopRun}
+        onOpenAll={onOpenPromptsTab}
       />
 
       <section className="stats-section" aria-labelledby="stats-heading">
@@ -511,6 +586,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   latestRun={
                     runsStore?.latestRunByProject.get(project.project_path) ??
                     null
+                  }
+                  latestSession={
+                    latestSessionByProject.get(project.project_path) ?? null
                   }
                   onClick={() => onProjectClick?.(project.project_path)}
                 />

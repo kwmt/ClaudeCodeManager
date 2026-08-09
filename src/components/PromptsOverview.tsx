@@ -6,13 +6,11 @@
  */
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  formatElapsed,
   RUN_STATUS_META,
   usePromptRuns,
-  type PromptRunInfo,
   type PromptRunStatus,
 } from "../contexts/PromptRunsContext";
-import { getProjectDisplayName } from "../utils/pathUtils";
+import { PromptRunRow } from "./PromptRunRow";
 
 interface PromptsOverviewProps {
   onOpenProject: (projectPath: string) => void;
@@ -27,72 +25,6 @@ const FILTERS: { key: Filter; label: string }[] = [
   { key: "failed", label: "失敗" },
   { key: "stopped", label: "停止" },
 ];
-
-const RunRow: React.FC<{
-  run: PromptRunInfo;
-  now: number;
-  onOpen: () => void;
-  onStop: () => void;
-}> = ({ run, now, onOpen, onStop }) => {
-  const meta = RUN_STATUS_META[run.status];
-  const elapsed =
-    run.status === "running"
-      ? formatElapsed(now - run.startedAt)
-      : run.durationMs !== null
-        ? formatElapsed(run.durationMs)
-        : null;
-
-  return (
-    <li className={`prompt-runs-row prompt-runs-row--${run.status}`}>
-      <span
-        className={`prompt-runs-row__icon prompt-runs-row__icon--${run.status}`}
-        role="img"
-        aria-label={meta.label}
-      >
-        {meta.icon}
-      </span>
-      <div className="prompt-runs-row__body">
-        <div className="prompt-runs-row__title">
-          <span className="prompt-runs-row__project">
-            {getProjectDisplayName(run.projectPath)}
-          </span>
-          <span className="prompt-runs-row__meta">
-            {elapsed && <span>{elapsed}</span>}
-            {run.numTurns !== null && <span>{run.numTurns} turns</span>}
-            {run.costUsd !== null && <span>${run.costUsd.toFixed(4)}</span>}
-            {run.status === "failed" && run.exitCode !== null && (
-              <span>終了コード {run.exitCode}</span>
-            )}
-          </span>
-        </div>
-        <div className="prompt-runs-row__prompt" title={run.prompt}>
-          {run.prompt}
-        </div>
-        {run.status === "running" && run.lastActivity && (
-          <div className="prompt-runs-row__activity">{run.lastActivity}</div>
-        )}
-      </div>
-      <div className="prompt-runs-row__actions">
-        {run.status === "running" && (
-          <button
-            type="button"
-            className="prompt-runs-row__button"
-            onClick={onStop}
-          >
-            停止
-          </button>
-        )}
-        <button
-          type="button"
-          className="prompt-runs-row__button prompt-runs-row__button--primary"
-          onClick={onOpen}
-        >
-          開く
-        </button>
-      </div>
-    </li>
-  );
-};
 
 export const PromptsOverview: React.FC<PromptsOverviewProps> = ({
   onOpenProject,
@@ -179,7 +111,7 @@ export const PromptsOverview: React.FC<PromptsOverviewProps> = ({
       ) : (
         <ul className="prompts-overview__list">
           {visibleRuns.map((run) => (
-            <RunRow
+            <PromptRunRow
               key={run.runId}
               run={run}
               now={now}
