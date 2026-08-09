@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import React from "react";
 import {
   render,
   screen,
@@ -7,6 +8,7 @@ import {
   act,
 } from "@testing-library/react";
 import { PromptRunner } from "../PromptRunner";
+import { PromptRunsProvider } from "../../contexts/PromptRunsContext";
 import { api } from "../../api";
 import type { PromptRunEvent } from "../../types";
 
@@ -33,6 +35,16 @@ const typePrompt = (value: string): void => {
 const getSendButton = (): HTMLButtonElement =>
   screen.getByRole("button", { name: "送信" }) as HTMLButtonElement;
 
+/** ストア（Provider）配下でレンダリングする。会話状態はストアが保持する */
+const renderRunner = (
+  props: Partial<React.ComponentProps<typeof PromptRunner>> = {},
+) =>
+  render(
+    <PromptRunsProvider>
+      <PromptRunner projectPath="/Users/john/projects/demo" {...props} />
+    </PromptRunsProvider>,
+  );
+
 describe("PromptRunner", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -54,7 +66,7 @@ describe("PromptRunner", () => {
   });
 
   it("should render the composer when the CLI is available", async () => {
-    render(<PromptRunner projectPath="/Users/john/projects/demo" />);
+    renderRunner();
 
     await waitFor(() => {
       expect(
@@ -69,7 +81,7 @@ describe("PromptRunner", () => {
   });
 
   it("should disable the send button while the prompt is empty", async () => {
-    render(<PromptRunner projectPath="/Users/john/projects/demo" />);
+    renderRunner();
 
     await waitFor(() => {
       expect(getSendButton()).toBeDisabled();
@@ -84,7 +96,7 @@ describe("PromptRunner", () => {
   });
 
   it("should call startPromptRun with the expected arguments", async () => {
-    render(<PromptRunner projectPath="/Users/john/projects/demo" />);
+    renderRunner();
 
     await waitFor(() => {
       expect(getSendButton()).toBeInTheDocument();
@@ -108,7 +120,7 @@ describe("PromptRunner", () => {
   });
 
   it("should render assistant text received through onPromptRunEvent", async () => {
-    render(<PromptRunner projectPath="/Users/john/projects/demo" />);
+    renderRunner();
 
     await waitFor(() => {
       expect(mockApi.onPromptRunEvent).toHaveBeenCalled();
@@ -153,12 +165,7 @@ describe("PromptRunner", () => {
     );
 
     const onRunFinished = vi.fn();
-    render(
-      <PromptRunner
-        projectPath="/Users/john/projects/demo"
-        onRunFinished={onRunFinished}
-      />,
-    );
+    renderRunner({ onRunFinished });
 
     await waitFor(() => {
       expect(mockApi.onPromptRunEvent).toHaveBeenCalled();
@@ -243,7 +250,7 @@ describe("PromptRunner", () => {
         }),
     );
 
-    render(<PromptRunner projectPath="/Users/john/projects/demo" />);
+    renderRunner();
     await waitFor(() => expect(mockApi.onPromptRunEvent).toHaveBeenCalled());
 
     typePrompt("重複確認");
@@ -284,7 +291,7 @@ describe("PromptRunner", () => {
         }),
     );
 
-    render(<PromptRunner projectPath="/Users/john/projects/demo" />);
+    renderRunner();
     await waitFor(() => expect(mockApi.onPromptRunEvent).toHaveBeenCalled());
 
     typePrompt("起動に失敗する");
@@ -320,7 +327,7 @@ describe("PromptRunner", () => {
   });
 
   it("should ignore mismatched run_id events once the run_id is settled", async () => {
-    render(<PromptRunner projectPath="/Users/john/projects/demo" />);
+    renderRunner();
 
     await waitFor(() => {
       expect(mockApi.onPromptRunEvent).toHaveBeenCalled();
@@ -350,12 +357,7 @@ describe("PromptRunner", () => {
 
   it("should clear the running state and call onRunFinished on exit", async () => {
     const onRunFinished = vi.fn();
-    render(
-      <PromptRunner
-        projectPath="/Users/john/projects/demo"
-        onRunFinished={onRunFinished}
-      />,
-    );
+    renderRunner({ onRunFinished });
 
     await waitFor(() => {
       expect(mockApi.onPromptRunEvent).toHaveBeenCalled();
@@ -391,7 +393,7 @@ describe("PromptRunner", () => {
       error: "claude コマンドが見つかりませんでした。",
     });
 
-    render(<PromptRunner projectPath="/Users/john/projects/demo" />);
+    renderRunner();
 
     await waitFor(() => {
       expect(
@@ -407,7 +409,7 @@ describe("PromptRunner", () => {
   it("should show an error row when startPromptRun rejects", async () => {
     mockApi.startPromptRun.mockRejectedValue(new Error("spawn failed"));
 
-    render(<PromptRunner projectPath="/Users/john/projects/demo" />);
+    renderRunner();
 
     await waitFor(() => {
       expect(getSendButton()).toBeInTheDocument();
@@ -426,7 +428,7 @@ describe("PromptRunner", () => {
   });
 
   it("should ask for confirmation before running in bypassPermissions mode", async () => {
-    render(<PromptRunner projectPath="/Users/john/projects/demo" />);
+    renderRunner();
 
     await waitFor(() => {
       expect(getSendButton()).toBeInTheDocument();
@@ -450,5 +452,110 @@ describe("PromptRunner", () => {
         expect.objectContaining({ permissionMode: "bypassPermissions" }),
       );
     });
+  });
+
+  it("should keep the conversation after the runner unmounts and remounts", async () => {
+    // Dashboard へ移動して戻るケースの再現:
+    // PromptRunner はアンマウントされるが Provider（ストア）は生き続ける
+    const { rerender } = render(
+      <PromptRunsProvider>
+        <PromptRunner projectPath="/Users/john/projects/demo" />
+      </PromptRunsProvider>,
+    );
+
+    await waitFor(() => {
+      expect(mockApi.onPromptRunEvent).toHaveBeenCalled();
+    });
+
+    typePrompt("最初のプロンプト");
+    fireEvent.click(getSendButton());
+    await waitFor(() => expect(mockApi.startPromptRun).toHaveBeenCalled());
+    await flush();
+
+    act(() => {
+      emit?.({
+        run_id: RUN_ID,
+        kind: "message",
+        payload: {
+          type: "assistant",
+          session_id: "aaaabbbb-cccc-dddd-eeee-ffff00001111",
+          message: {
+            role: "assistant",
+            content: [{ type: "text", text: "残っているべき応答" }],
+          },
+        },
+      });
+      emit?.({ run_id: RUN_ID, kind: "exit", exit_code: 0, success: true });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("残っているべき応答")).toBeInTheDocument();
+    });
+
+    // PromptRunner をアンマウント（Dashboard 表示に相当）
+    rerender(<PromptRunsProvider>{null}</PromptRunsProvider>);
+    expect(screen.queryByText("残っているべき応答")).not.toBeInTheDocument();
+
+    // アンマウント中に届いたイベントもストアには蓄積される…はここでは対象外
+    // （実行は終了済み）。再マウントで会話が復元されることを確認する
+    rerender(
+      <PromptRunsProvider>
+        <PromptRunner projectPath="/Users/john/projects/demo" />
+      </PromptRunsProvider>,
+    );
+
+    expect(screen.getByText("最初のプロンプト")).toBeInTheDocument();
+    expect(screen.getByText("残っているべき応答")).toBeInTheDocument();
+    expect(screen.getByText("完了")).toBeInTheDocument();
+    expect(screen.getByText("セッション継続中: aaaabbbb")).toBeInTheDocument();
+  });
+
+  it("should accumulate events into the store while the runner is unmounted", async () => {
+    // 実行中に Dashboard へ移動 → 実行が進む → 戻ると全部表示されている
+    const { rerender } = render(
+      <PromptRunsProvider>
+        <PromptRunner projectPath="/Users/john/projects/demo" />
+      </PromptRunsProvider>,
+    );
+
+    await waitFor(() => {
+      expect(mockApi.onPromptRunEvent).toHaveBeenCalled();
+    });
+
+    typePrompt("長い処理");
+    fireEvent.click(getSendButton());
+    await waitFor(() => expect(mockApi.startPromptRun).toHaveBeenCalled());
+    await flush();
+
+    // 実行中のままアンマウント
+    rerender(<PromptRunsProvider>{null}</PromptRunsProvider>);
+
+    // 不在の間に応答と終了が届く（Provider は購読を維持している）
+    act(() => {
+      emit?.({
+        run_id: RUN_ID,
+        kind: "message",
+        payload: {
+          type: "assistant",
+          message: {
+            role: "assistant",
+            content: [{ type: "text", text: "不在中に届いた応答" }],
+          },
+        },
+      });
+      emit?.({ run_id: RUN_ID, kind: "exit", exit_code: 0, success: true });
+    });
+
+    // 再マウントすると不在中のイベントも含めて表示される
+    rerender(
+      <PromptRunsProvider>
+        <PromptRunner projectPath="/Users/john/projects/demo" />
+      </PromptRunsProvider>,
+    );
+
+    expect(screen.getByText("長い処理")).toBeInTheDocument();
+    expect(screen.getByText("不在中に届いた応答")).toBeInTheDocument();
+    expect(screen.getByText("完了")).toBeInTheDocument();
+    expect(screen.queryByText("実行中…")).not.toBeInTheDocument();
   });
 });

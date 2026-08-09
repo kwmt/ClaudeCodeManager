@@ -1,10 +1,15 @@
 /**
  * アプリ全体でプロンプト実行の状態を共有するストア。
  *
- * PromptRunner（各プロジェクトの Prompt タブ）は会話の詳細表示を担い、
- * このストアは「どのプロジェクトで何が動いていて、どう終わったか」という
- * サマリーだけを保持する。`prompt-run-event` を独自に購読するため、
- * PromptRunner がアンマウントされても実行状況の追跡は継続する。
+ * 2 種類の状態をプロジェクト横断で保持する:
+ * 1. 実行サマリー（PromptRunInfo）— Prompts タブ / Dashboard の一覧用
+ * 2. 会話ログ（PromptConversation）— 各プロジェクトの Prompt タブの表示内容
+ *
+ * `prompt-run-event` はこの Provider だけが購読し、run_id → プロジェクトの
+ * 対応表（実行サマリー）を使って会話ログへ振り分ける。会話状態を
+ * コンポーネントではなくここに置くことで、Dashboard へ移動して
+ * ProjectScreen（と PromptRunner）がアンマウントされても、実行の追跡と
+ * 会話ログの蓄積が途切れない。
  *
  * 履歴はメモリ上のみ（アプリを終了すると消える）。
  */
@@ -18,7 +23,11 @@ import React, {
   useState,
 } from "react";
 import { api } from "../api";
-import type { PermissionMode, PromptRunEvent } from "../types";
+import type {
+  PermissionMode,
+  PromptRunEvent,
+  StreamContentBlock,
+} from "../types";
 
 export type PromptRunStatus = "running" | "completed" | "failed" | "stopped";
 
@@ -47,14 +56,64 @@ export interface RegisterRunMeta {
   model: string | null;
 }
 
+/** 会話ログの 1 エントリ（Prompt タブに表示する単位） */
+export type ConversationEntry =
+  | { id: string; kind: "prompt"; text: string }
+  | {
+      id: string;
+      kind: "block";
+      role: "assistant" | "user";
+      block: StreamContentBlock;
+    }
+  | {
+      id: string;
+      kind: "result";
+      durationMs?: number;
+      numTurns?: number;
+      costUsd?: number;
+      isError?: boolean;
+    }
+  | { id: string; kind: "error"; text: string }
+  | { id: string; kind: "exit"; success: boolean; exitCode?: number };
+
+/** プロジェクトごとの会話状態 */
+export interface PromptConversation {
+  entries: ConversationEntry[];
+  stderrLines: string[];
+  sessionId: string | null;
+  isRunning: boolean;
+  /** 実行中の run_id（送信〜run_id 確定までの間は null） */
+  activeRunId: string | null;
+}
+
+export interface SendPromptParams {
+  prompt: string;
+  permissionMode: PermissionMode;
+  model: string | null;
+}
+
+export const EMPTY_CONVERSATION: PromptConversation = {
+  entries: [],
+  stderrLines: [],
+  sessionId: null,
+  isRunning: false,
+  activeRunId: null,
+};
+
 interface PromptRunsContextValue {
   /** すべての実行（開始が新しい順） */
   runs: PromptRunInfo[];
   runningCount: number;
   /** プロジェクトごとの最新の実行 */
   latestRunByProject: Map<string, PromptRunInfo>;
+  /** プロジェクトごとの会話ログ */
+  conversations: Map<string, PromptConversation>;
   registerRun: (runId: string, meta: RegisterRunMeta) => void;
   stopRun: (runId: string) => Promise<void>;
+  /** プロンプトを送信する（会話へのエントリ追加〜実行登録まで担う） */
+  sendPrompt: (projectPath: string, params: SendPromptParams) => Promise<void>;
+  /** 会話ログをクリアして新しい会話を始める */
+  resetConversation: (projectPath: string) => void;
 }
 
 const PromptRunsContext = createContext<PromptRunsContextValue | null>(null);
@@ -135,12 +194,131 @@ function applyEvent(info: PromptRunInfo, event: PromptRunEvent): PromptRunInfo {
   }
 }
 
+let conversationEntrySeq = 0;
+const nextEntryId = (): string => {
+  conversationEntrySeq += 1;
+  return `prompt-entry-${conversationEntrySeq}`;
+};
+
+const toErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  return "不明なエラーが発生しました";
+};
+
+/**
+ * イベントを 1 件適用した新しい会話状態を返す。
+ * activeRunId と一致しないイベント（古い実行の残骸など）は無視する。
+ */
+function applyConversationEvent(
+  conversation: PromptConversation,
+  event: PromptRunEvent,
+): PromptConversation {
+  if (conversation.activeRunId !== event.run_id) return conversation;
+
+  switch (event.kind) {
+    case "message": {
+      const payload = event.payload;
+      if (!payload) return conversation;
+
+      let next = conversation;
+      if (payload.session_id && payload.session_id !== next.sessionId) {
+        next = { ...next, sessionId: payload.session_id };
+      }
+
+      if (payload.type === "assistant" || payload.type === "user") {
+        const role = payload.type;
+        const content = payload.message?.content;
+        const blocks: StreamContentBlock[] = Array.isArray(content)
+          ? content
+          : typeof content === "string" && content.length > 0
+            ? [{ type: "text", text: content }]
+            : [];
+
+        // user メッセージはプロンプトのエコーになるため tool_result のみ表示
+        const visible =
+          role === "user"
+            ? blocks.filter((block) => block.type === "tool_result")
+            : blocks;
+        if (visible.length === 0) return next;
+
+        return {
+          ...next,
+          entries: [
+            ...next.entries,
+            ...visible.map<ConversationEntry>((block) => ({
+              id: nextEntryId(),
+              kind: "block",
+              role,
+              block,
+            })),
+          ],
+        };
+      }
+      if (payload.type === "result") {
+        return {
+          ...next,
+          entries: [
+            ...next.entries,
+            {
+              id: nextEntryId(),
+              kind: "result",
+              durationMs: payload.duration_ms,
+              numTurns: payload.num_turns,
+              costUsd: payload.total_cost_usd,
+              isError: payload.is_error,
+            },
+          ],
+        };
+      }
+      return next;
+    }
+    case "stderr": {
+      if (!event.text) return conversation;
+      return {
+        ...conversation,
+        stderrLines: [...conversation.stderrLines, event.text],
+      };
+    }
+    case "error":
+      return {
+        ...conversation,
+        entries: [
+          ...conversation.entries,
+          {
+            id: nextEntryId(),
+            kind: "error",
+            text: event.text ?? "不明なエラーが発生しました",
+          },
+        ],
+      };
+    case "exit":
+      return {
+        ...conversation,
+        isRunning: false,
+        activeRunId: null,
+        entries: [
+          ...conversation.entries,
+          {
+            id: nextEntryId(),
+            kind: "exit",
+            success: event.success === true,
+            exitCode: event.exit_code ?? undefined,
+          },
+        ],
+      };
+    default:
+      return conversation;
+  }
+}
+
 export const PromptRunsProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   // 実データは ref に持ち、version の更新で再レンダリングを起こす。
   // 高頻度イベントの setState 連打と StrictMode の updater 二重実行を避けるため。
   const runsRef = useRef<Map<string, PromptRunInfo>>(new Map());
+  const conversationsRef = useRef<Map<string, PromptConversation>>(new Map());
   const [version, setVersion] = useState(0);
   const bump = useCallback(() => setVersion((v) => v + 1), []);
 
@@ -191,6 +369,13 @@ export const PromptRunsProvider: React.FC<{ children: React.ReactNode }> = ({
         return;
       }
       runs.set(event.run_id, applyEvent(info, event));
+      // 実行サマリーの run_id → projectPath を使って会話ログへも振り分ける
+      const conversation =
+        conversationsRef.current.get(info.projectPath) ?? EMPTY_CONVERSATION;
+      conversationsRef.current.set(
+        info.projectPath,
+        applyConversationEvent(conversation, event),
+      );
       if (event.kind === "exit") trimFinished();
       bump();
     },
@@ -216,7 +401,17 @@ export const PromptRunsProvider: React.FC<{ children: React.ReactNode }> = ({
         costUsd: null,
         exitCode: null,
       });
-      // 登録前に届いていたイベントを受信順に適用する
+      // 会話を実行に紐付ける（送信済みプロンプト表示は sendPrompt が済ませている）
+      const conversations = conversationsRef.current;
+      const conversation =
+        conversations.get(meta.projectPath) ?? EMPTY_CONVERSATION;
+      conversations.set(meta.projectPath, {
+        ...conversation,
+        isRunning: true,
+        activeRunId: runId,
+      });
+
+      // 登録前に届いていたイベントを受信順に適用する（サマリー・会話の両方）
       const buffered = pendingRef.current.get(runId);
       if (buffered) {
         pendingRef.current.delete(runId);
@@ -225,8 +420,14 @@ export const PromptRunsProvider: React.FC<{ children: React.ReactNode }> = ({
           pendingCountRef.current - buffered.length,
         );
         for (const event of buffered) {
-          const current = runs.get(runId);
-          if (current) runs.set(runId, applyEvent(current, event));
+          const currentRun = runs.get(runId);
+          if (currentRun) runs.set(runId, applyEvent(currentRun, event));
+          const currentConversation =
+            conversations.get(meta.projectPath) ?? EMPTY_CONVERSATION;
+          conversations.set(
+            meta.projectPath,
+            applyConversationEvent(currentConversation, event),
+          );
         }
         trimFinished();
       }
@@ -238,6 +439,85 @@ export const PromptRunsProvider: React.FC<{ children: React.ReactNode }> = ({
   const stopRun = useCallback(async (runId: string) => {
     await api.stopPromptRun(runId);
   }, []);
+
+  /**
+   * プロンプト送信の一連の流れを担う:
+   * ユーザー発言の追加 → CLI 起動 → 実行の登録（バッファ済みイベントの反映）。
+   * 失敗時はエラー行を会話に追加して実行中フラグを下ろす。
+   */
+  const sendPrompt = useCallback(
+    async (projectPath: string, params: SendPromptParams) => {
+      const text = params.prompt.trim();
+      if (!text) return;
+
+      const conversations = conversationsRef.current;
+      const before = conversations.get(projectPath) ?? EMPTY_CONVERSATION;
+      const resumeSessionId = before.sessionId;
+      conversations.set(projectPath, {
+        ...before,
+        entries: [
+          ...before.entries,
+          { id: nextEntryId(), kind: "prompt", text },
+        ],
+        stderrLines: [],
+        isRunning: true,
+        activeRunId: null,
+      });
+      bump();
+
+      try {
+        const runId = await api.startPromptRun({
+          projectPath,
+          prompt: text,
+          permissionMode: params.permissionMode,
+          resumeSessionId,
+          model: params.model,
+        });
+        registerRun(runId, {
+          projectPath,
+          prompt: text,
+          permissionMode: params.permissionMode,
+          model: params.model,
+        });
+      } catch (error: unknown) {
+        const current = conversations.get(projectPath) ?? EMPTY_CONVERSATION;
+        conversations.set(projectPath, {
+          ...current,
+          isRunning: false,
+          activeRunId: null,
+          entries: [
+            ...current.entries,
+            {
+              id: nextEntryId(),
+              kind: "error",
+              text: `実行を開始できませんでした: ${toErrorMessage(error)}`,
+            },
+          ],
+        });
+        bump();
+      }
+    },
+    [bump, registerRun],
+  );
+
+  /**
+   * 会話ログをクリアする。実行中の場合は実行自体は継続し、
+   * 以降のイベントは（activeRunId を保持しているため）引き続き追記される。
+   */
+  const resetConversation = useCallback(
+    (projectPath: string) => {
+      const conversations = conversationsRef.current;
+      const current = conversations.get(projectPath) ?? EMPTY_CONVERSATION;
+      conversations.set(projectPath, {
+        ...current,
+        entries: [],
+        stderrLines: [],
+        sessionId: null,
+      });
+      bump();
+    },
+    [bump],
+  );
 
   useEffect(() => {
     let disposed = false;
@@ -277,10 +557,13 @@ export const PromptRunsProvider: React.FC<{ children: React.ReactNode }> = ({
       runs,
       runningCount: runs.filter((r) => r.status === "running").length,
       latestRunByProject,
+      conversations: new Map(conversationsRef.current),
       registerRun,
       stopRun,
+      sendPrompt,
+      resetConversation,
     };
-  }, [version, registerRun, stopRun]);
+  }, [version, registerRun, stopRun, sendPrompt, resetConversation]);
 
   return (
     <PromptRunsContext.Provider value={value}>

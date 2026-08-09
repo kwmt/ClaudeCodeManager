@@ -2,6 +2,10 @@
  * PromptRunner — アプリ内から `claude` CLI をヘッドレス起動し、
  * stream-json 出力をリアルタイム表示するコンポーネント。
  *
+ * 会話ログ・実行状態は PromptRunsContext がプロジェクト単位で保持しており、
+ * このコンポーネントはその表示と入力 UI だけを担う。そのため Dashboard 等へ
+ * 移動してアンマウントされても会話は失われず、戻れば続きが表示される。
+ *
  * SECURITY: assistant の markdown は marked でレンダリングした後、
  * 必ず DOMPurify.sanitize() を通してから dangerouslySetInnerHTML に渡す。
  * CLI 出力は外部由来の信頼できない入力とみなす。
@@ -17,13 +21,12 @@ import React, {
   useState,
 } from "react";
 import { api } from "../api";
-import { usePromptRunsOptional } from "../contexts/PromptRunsContext";
-import type {
-  ClaudeCliStatus,
-  PermissionMode,
-  PromptRunEvent,
-  StreamContentBlock,
-} from "../types";
+import {
+  EMPTY_CONVERSATION,
+  usePromptRuns,
+  type ConversationEntry,
+} from "../contexts/PromptRunsContext";
+import type { ClaudeCliStatus, PermissionMode } from "../types";
 import { SafeConfirmDialog } from "./SafeConfirmDialog";
 
 // ============================================================================
@@ -48,12 +51,6 @@ const TOOL_RESULT_MAX_LENGTH = 4000;
 /** 自動スクロールを追従させる下端からの距離(px) */
 const STICK_TO_BOTTOM_THRESHOLD = 80;
 
-/**
- * run_id 確定前に届いたイベントを溜めるバッファの上限。
- * 超えた分は古いものから捨てる（メモリリーク防止）。
- */
-const BUFFERED_EVENT_LIMIT = 500;
-
 const PERMISSION_MODE_OPTIONS: ReadonlyArray<{
   value: PermissionMode;
   label: string;
@@ -69,35 +66,6 @@ const MODEL_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
   { value: "sonnet", label: "sonnet" },
   { value: "haiku", label: "haiku" },
 ];
-
-// ============================================================================
-// 会話ログのエントリ型
-// ============================================================================
-
-type LogEntry =
-  | { id: string; kind: "prompt"; text: string }
-  | {
-      id: string;
-      kind: "block";
-      role: "assistant" | "user";
-      block: StreamContentBlock;
-    }
-  | {
-      id: string;
-      kind: "result";
-      durationMs?: number;
-      numTurns?: number;
-      costUsd?: number;
-      isError?: boolean;
-    }
-  | { id: string; kind: "error"; text: string }
-  | { id: string; kind: "exit"; success: boolean; exitCode?: number };
-
-let entrySeq = 0;
-const nextEntryId = (): string => {
-  entrySeq += 1;
-  return `prompt-entry-${entrySeq}`;
-};
 
 // ============================================================================
 // ユーティリティ（副作用なしの純粋関数：テストしやすさのため外出し）
@@ -290,7 +258,7 @@ const ResultSummary = React.memo<{
 });
 ResultSummary.displayName = "ResultSummary";
 
-const LogEntryRow = React.memo<{ entry: LogEntry }>(({ entry }) => {
+const LogEntryRow = React.memo<{ entry: ConversationEntry }>(({ entry }) => {
   switch (entry.kind) {
     case "prompt":
       return (
@@ -385,33 +353,23 @@ export const PromptRunner: React.FC<PromptRunnerProps> = ({
   onRunFinished,
 }) => {
   const [cliStatus, setCliStatus] = useState<ClaudeCliStatus | null>(null);
-  const [entries, setEntries] = useState<LogEntry[]>([]);
-  const [stderrLines, setStderrLines] = useState<string[]>([]);
-  const [isRunning, setIsRunning] = useState(false);
   const [promptText, setPromptText] = useState("");
   const [permissionMode, setPermissionMode] = useState<PermissionMode>("plan");
   const [model, setModel] = useState("");
-  const [sessionId, setSessionId] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [stopError, setStopError] = useState<string | null>(null);
 
-  // アプリ全体の実行状況ストア（Provider 配下でない場合は null で無効化）
-  const runsStore = usePromptRunsOptional();
+  // 会話ログ・実行状態はストアがプロジェクト単位で保持している
+  const { conversations, sendPrompt, resetConversation, stopRun } =
+    usePromptRuns();
+  const conversation = conversations.get(projectPath) ?? EMPTY_CONVERSATION;
+  const { entries, stderrLines, sessionId, isRunning, activeRunId } =
+    conversation;
 
-  // イベントハンドラを張り替えないための ref 群
-  const runIdRef = useRef<string | null>(null);
-  const sessionIdRef = useRef<string | null>(null);
   const onRunFinishedRef = useRef(onRunFinished);
   const logRef = useRef<HTMLDivElement>(null);
   const stickToBottomRef = useRef(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  /**
-   * 送信してから startPromptRun が resolve するまでの間は run_id が未確定。
-   * その間に届いたイベントは捨てずにバッファへ積む。
-   */
-  const pendingRef = useRef(false);
-  const eventBufferRef = useRef<Map<string, PromptRunEvent[]>>(new Map());
-  const bufferedCountRef = useRef(0);
 
   useEffect(() => {
     onRunFinishedRef.current = onRunFinished;
@@ -435,190 +393,14 @@ export const PromptRunner: React.FC<PromptRunnerProps> = ({
     };
   }, []);
 
-  // --- イベント処理（run_id の照合は呼び出し側の責務） --------------------
-  const applyEvent = useCallback((event: PromptRunEvent) => {
-    switch (event.kind) {
-      case "message": {
-        const payload = event.payload;
-        if (!payload) return;
-
-        if (payload.session_id) {
-          sessionIdRef.current = payload.session_id;
-          setSessionId(payload.session_id);
-        }
-
-        if (payload.type === "assistant" || payload.type === "user") {
-          const role = payload.type;
-          const content = payload.message?.content;
-          const blocks: StreamContentBlock[] = Array.isArray(content)
-            ? content
-            : typeof content === "string" && content.length > 0
-              ? [{ type: "text", text: content }]
-              : [];
-
-          // user メッセージはプロンプトのエコーになるため tool_result のみ表示
-          const visible =
-            role === "user"
-              ? blocks.filter((block) => block.type === "tool_result")
-              : blocks;
-          if (visible.length === 0) return;
-
-          setEntries((prev) => [
-            ...prev,
-            ...visible.map<LogEntry>((block) => ({
-              id: nextEntryId(),
-              kind: "block",
-              role,
-              block,
-            })),
-          ]);
-        } else if (payload.type === "result") {
-          setEntries((prev) => [
-            ...prev,
-            {
-              id: nextEntryId(),
-              kind: "result",
-              durationMs: payload.duration_ms,
-              numTurns: payload.num_turns,
-              costUsd: payload.total_cost_usd,
-              isError: payload.is_error,
-            },
-          ]);
-        }
-        return;
-      }
-      case "stderr": {
-        const text = event.text;
-        if (!text) return;
-        setStderrLines((prev) => [...prev, text]);
-        return;
-      }
-      case "error": {
-        setEntries((prev) => [
-          ...prev,
-          {
-            id: nextEntryId(),
-            kind: "error",
-            text: event.text ?? "不明なエラーが発生しました",
-          },
-        ]);
-        return;
-      }
-      case "exit": {
-        runIdRef.current = null;
-        setIsRunning(false);
-        setEntries((prev) => [
-          ...prev,
-          {
-            id: nextEntryId(),
-            kind: "exit",
-            success: event.success === true,
-            exitCode: event.exit_code ?? undefined,
-          },
-        ]);
-        onRunFinishedRef.current?.();
-        return;
-      }
-      default:
-        return;
-    }
-  }, []);
-
-  // --- run_id 未確定中のイベントバッファ ---------------------------------
-
-  const clearEventBuffer = useCallback(() => {
-    eventBufferRef.current.clear();
-    bufferedCountRef.current = 0;
-  }, []);
-
-  /** pending 中に届いたイベントを run_id ごとに受信順で積む */
-  const bufferEvent = useCallback((event: PromptRunEvent) => {
-    const buffer = eventBufferRef.current;
-    const queued = buffer.get(event.run_id);
-    if (queued) {
-      queued.push(event);
-    } else {
-      buffer.set(event.run_id, [event]);
-    }
-    bufferedCountRef.current += 1;
-
-    // 上限超過分は古いものから捨てる（Map は挿入順を保つ）
-    while (bufferedCountRef.current > BUFFERED_EVENT_LIMIT) {
-      const oldestRunId: string | undefined = buffer.keys().next().value;
-      if (oldestRunId === undefined) {
-        bufferedCountRef.current = 0;
-        break;
-      }
-      const oldest = buffer.get(oldestRunId);
-      if (!oldest || oldest.length === 0) {
-        buffer.delete(oldestRunId);
-        continue;
-      }
-      oldest.shift();
-      bufferedCountRef.current -= 1;
-      if (oldest.length === 0) {
-        buffer.delete(oldestRunId);
-      }
-    }
-  }, []);
-
-  /**
-   * run_id 確定直後に呼ぶ。該当 run_id のバッファを受信順どおりに流し、
-   * バッファ全体をクリアする（二重処理・リークの防止）。
-   */
-  const flushEventBuffer = useCallback(
-    (runId: string) => {
-      const buffered = eventBufferRef.current.get(runId) ?? [];
-      clearEventBuffer();
-      for (const event of buffered) {
-        applyEvent(event);
-      }
-    },
-    [applyEvent, clearEventBuffer],
-  );
-
-  // --- イベント購読（マウント時に一度だけ） ------------------------------
-  const handleEvent = useCallback(
-    (event: PromptRunEvent) => {
-      const currentRunId = runIdRef.current;
-      if (currentRunId !== null) {
-        // run_id 確定済み: 一致するものだけ処理する
-        if (event.run_id === currentRunId) {
-          applyEvent(event);
-        }
-        return;
-      }
-      // run_id 未確定かつ実行開始待ち: 捨てずにバッファへ
-      if (pendingRef.current) {
-        bufferEvent(event);
-      }
-      // どちらでもなければ無視
-    },
-    [applyEvent, bufferEvent],
-  );
-
+  // --- 実行完了の検知（isRunning の true → false 遷移で通知） -------------
+  const prevRunningRef = useRef(isRunning);
   useEffect(() => {
-    let disposed = false;
-    let unlisten: (() => void) | undefined;
-
-    api
-      .onPromptRunEvent(handleEvent)
-      .then((fn) => {
-        if (disposed) {
-          fn();
-        } else {
-          unlisten = fn;
-        }
-      })
-      .catch((error: unknown) => {
-        console.error("Failed to subscribe prompt-run-event:", error);
-      });
-
-    return () => {
-      disposed = true;
-      unlisten?.();
-    };
-  }, [handleEvent]);
+    if (prevRunningRef.current && !isRunning) {
+      onRunFinishedRef.current?.();
+    }
+    prevRunningRef.current = isRunning;
+  }, [isRunning]);
 
   // --- 自動スクロール（最下部付近にいるときだけ追従） --------------------
   const handleLogScroll = useCallback(() => {
@@ -642,66 +424,19 @@ export const PromptRunner: React.FC<PromptRunnerProps> = ({
     const text = promptText.trim();
     if (!text) return;
 
-    setEntries((prev) => [
-      ...prev,
-      { id: nextEntryId(), kind: "prompt", text },
-    ]);
     setPromptText("");
-    setStderrLines([]);
-    setIsRunning(true);
+    setStopError(null);
     stickToBottomRef.current = true;
-
-    // run_id が返るまでのイベントを取りこぼさないよう pending に入る
-    runIdRef.current = null;
-    clearEventBuffer();
-    pendingRef.current = true;
-
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
 
-    try {
-      const runId = await api.startPromptRun({
-        projectPath,
-        prompt: text,
-        permissionMode,
-        resumeSessionId: sessionIdRef.current,
-        model: model === "" ? null : model,
-      });
-      // runIdRef の設定とフラッシュの間に await を挟まないこと（順序保証）
-      runIdRef.current = runId;
-      pendingRef.current = false;
-      flushEventBuffer(runId);
-      // アプリ全体の実行状況ストアにも登録する（Prompts タブ / Dashboard 用）
-      runsStore?.registerRun(runId, {
-        projectPath,
-        prompt: text,
-        permissionMode,
-        model: model === "" ? null : model,
-      });
-    } catch (error: unknown) {
-      runIdRef.current = null;
-      pendingRef.current = false;
-      clearEventBuffer();
-      setIsRunning(false);
-      setEntries((prev) => [
-        ...prev,
-        {
-          id: nextEntryId(),
-          kind: "error",
-          text: `実行を開始できませんでした: ${toErrorMessage(error)}`,
-        },
-      ]);
-    }
-  }, [
-    promptText,
-    projectPath,
-    permissionMode,
-    model,
-    clearEventBuffer,
-    flushEventBuffer,
-    runsStore,
-  ]);
+    await sendPrompt(projectPath, {
+      prompt: text,
+      permissionMode,
+      model: model === "" ? null : model,
+    });
+  }, [promptText, projectPath, permissionMode, model, sendPrompt]);
 
   const handleSubmit = useCallback(() => {
     if (!canSend) return;
@@ -722,29 +457,17 @@ export const PromptRunner: React.FC<PromptRunnerProps> = ({
   }, []);
 
   const handleStop = useCallback(async () => {
-    const runId = runIdRef.current;
-    if (!runId) return;
+    if (!activeRunId) return;
     try {
-      await api.stopPromptRun(runId);
+      await stopRun(activeRunId);
     } catch (error: unknown) {
-      setEntries((prev) => [
-        ...prev,
-        {
-          id: nextEntryId(),
-          kind: "error",
-          text: `停止に失敗しました: ${toErrorMessage(error)}`,
-        },
-      ]);
+      setStopError(`停止に失敗しました: ${toErrorMessage(error)}`);
     }
-  }, []);
+  }, [activeRunId, stopRun]);
 
   const handleNewConversation = useCallback(() => {
-    sessionIdRef.current = null;
-    setSessionId(null);
-    setEntries([]);
-    setStderrLines([]);
-    clearEventBuffer();
-  }, [clearEventBuffer]);
+    resetConversation(projectPath);
+  }, [resetConversation, projectPath]);
 
   const handlePromptChange = useCallback(
     (event: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -817,6 +540,11 @@ export const PromptRunner: React.FC<PromptRunnerProps> = ({
           <LogEntryRow key={entry.id} entry={entry} />
         ))}
         <StderrSection lines={stderrLines} />
+        {stopError && (
+          <div className="prompt-runner__error-row" role="alert">
+            {stopError}
+          </div>
+        )}
         {isRunning && (
           <div className="prompt-runner__running">
             <span className="prompt-runner__spinner" aria-hidden="true" />
