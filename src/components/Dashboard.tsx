@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { api } from "../api";
 import {
+  formatElapsed,
   RUN_STATUS_META,
   usePromptRunsOptional,
   type PromptRunInfo,
@@ -300,6 +301,34 @@ const QuickPromptComposer: React.FC<{
   );
 };
 
+/**
+ * カード上の実行中プログレス表示。
+ * プロンプト本文は実行中変化しないため、「いま何をしているか」
+ * （最後に観測したツール実行など）と経過時間を添えて進捗を可視化する。
+ */
+const CardRunProgress: React.FC<{ run: PromptRunInfo }> = ({ run }) => {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="project-run-progress">
+      <span
+        className="project-run-progress__activity"
+        title={run.lastActivity ?? undefined}
+      >
+        {run.lastActivity ?? "起動中…"}
+      </span>
+      <span className="project-run-progress__elapsed">
+        {formatElapsed(now - run.startedAt)}
+      </span>
+    </div>
+  );
+};
+
 const ProjectCard: React.FC<{
   project: ProjectSummary;
   onClick: () => void;
@@ -399,6 +428,9 @@ const ProjectCard: React.FC<{
             </span>
           </div>
         )}
+
+        {/* 実行中はプロンプト本文に加えて「いま何をしているか」と経過時間を出す */}
+        {latestRun?.status === "running" && <CardRunProgress run={latestRun} />}
 
         {/* アプリ外での作業も含む最新セッションのプレビュー（あれば） */}
         {!latestRun && latestSession?.latest_content_preview && (

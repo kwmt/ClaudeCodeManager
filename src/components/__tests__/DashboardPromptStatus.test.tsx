@@ -122,6 +122,46 @@ describe("Dashboard prompt status board", () => {
     expect(screen.getAllByText("READMEを更新して").length).toBeGreaterThan(0);
   });
 
+  it("実行中のカードには進捗（活動と経過時間）が表示される", async () => {
+    renderDashboard();
+    await waitFor(() => {
+      expect(screen.getByText("Recent Projects")).toBeInTheDocument();
+    });
+
+    register("run-1", "/Users/john/projects/alpha", "テストを追加して");
+
+    // 活動がまだ無い間は起動中と出る
+    expect(screen.getByText("起動中…")).toBeInTheDocument();
+
+    // ツール実行イベントが届くと「いま何をしているか」に置き換わる
+    emit({
+      run_id: "run-1",
+      kind: "message",
+      payload: {
+        type: "assistant",
+        message: {
+          role: "assistant",
+          content: [
+            {
+              type: "tool_use",
+              id: "t1",
+              name: "Read",
+              input: { file_path: "src/api.ts" },
+            },
+          ],
+        },
+      },
+    });
+
+    // セクションの行とカードの進捗行の両方に出る
+    expect(screen.getAllByText("⚙ Read src/api.ts").length).toBeGreaterThan(1);
+
+    // 完了すると進捗表示は消える
+    emit({ run_id: "run-1", kind: "exit", exit_code: 0, success: true });
+    expect(screen.queryByText("起動中…")).not.toBeInTheDocument();
+    expect(screen.queryByText("⚙ Read src/api.ts")).not.toBeInTheDocument();
+  });
+
   it("すべて見るで onOpenPromptsTab が呼ばれる", async () => {
     const onOpenPromptsTab = vi.fn();
     renderDashboard({ onOpenPromptsTab });

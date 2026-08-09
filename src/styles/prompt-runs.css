@@ -607,3 +607,30 @@
   color: var(--color-error-700);
   font-size: 0.75rem;
 }
+
+/* ---- Dashboard: カードの実行中プログレス ---- */
+
+.project-run-progress {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 0 10px;
+}
+
+.project-run-progress__activity {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-secondary-500);
+  font-family: var(--font-family-mono, monospace);
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-run-progress__elapsed {
+  flex-shrink: 0;
+  color: var(--color-secondary-400);
+  font-size: 0.72rem;
+}
