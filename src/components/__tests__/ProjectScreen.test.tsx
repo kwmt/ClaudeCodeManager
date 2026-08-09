@@ -119,10 +119,14 @@ describe("ProjectScreen", () => {
       ).toBeInTheDocument();
     });
 
-    // Verify that the empty directory message is shown since we mocked an empty directory
-    expect(
-      screen.getByText(".claude directory exists but is empty."),
-    ).toBeInTheDocument();
+    // Verify that the empty directory message is shown since we mocked an empty directory.
+    // ディレクトリ情報は非同期取得のため、見出し表示より遅れて描画される
+    // （遅い CI ランナーで顕在化するレース）。waitFor で解決を待つ。
+    await waitFor(() => {
+      expect(
+        screen.getByText(".claude directory exists but is empty."),
+      ).toBeInTheDocument();
+    });
   });
 
   it("should render sessions list", async () => {
