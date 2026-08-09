@@ -262,6 +262,29 @@ body {
   border-radius: 2rem;
 }
 
+.projects-show-all {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+
+.show-all-projects-button {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  border-radius: 2rem;
+  padding: 0.5rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.show-all-projects-button:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
 .section-title {
   font-size: 1.5rem;
   font-weight: 600;

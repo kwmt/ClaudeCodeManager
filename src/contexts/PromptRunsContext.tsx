@@ -111,7 +111,10 @@ interface PromptRunsContextValue {
   registerRun: (runId: string, meta: RegisterRunMeta) => void;
   stopRun: (runId: string) => Promise<void>;
   /** プロンプトを送信する（会話へのエントリ追加〜実行登録まで担う） */
-  sendPrompt: (projectPath: string, params: SendPromptParams) => Promise<void>;
+  sendPrompt: (
+    projectPath: string,
+    params: SendPromptParams,
+  ) => Promise<string | null>;
   /** 会話ログをクリアして新しい会話を始める */
   resetConversation: (projectPath: string) => void;
 }
@@ -312,6 +315,143 @@ function applyConversationEvent(
   }
 }
 
+// ---------------------------------------------------------------------------
+// 永続化（localStorage）
+// アプリを再起動しても、実行履歴・会話ログ・セッションの紐付けが残り、
+// 過去の会話の続きから再開（--resume）できるようにする。
+// ---------------------------------------------------------------------------
+
+const STORAGE_KEY = "ccm-prompt-runs-v1";
+/** 保存する会話エントリの上限（プロジェクトごと・新しい順に残す） */
+const PERSIST_ENTRIES_LIMIT = 100;
+/** 保存する tool_result 本文の上限（表示上限と同じ） */
+const PERSIST_TOOL_RESULT_LIMIT = 4000;
+/** localStorage へ書き込む JSON のおおよその上限（バイト） */
+const PERSIST_SIZE_LIMIT = 3_000_000;
+
+interface PersistedConversation {
+  sessionId: string | null;
+  entries: ConversationEntry[];
+}
+
+interface PersistedState {
+  runs: PromptRunInfo[];
+  conversations: Record<string, PersistedConversation>;
+}
+
+/** 保存用にエントリを軽量化する（巨大な tool_result を刈り込む） */
+function slimEntry(entry: ConversationEntry): ConversationEntry {
+  if (entry.kind !== "block" || entry.block.type !== "tool_result") {
+    return entry;
+  }
+  const content = entry.block.content;
+  if (
+    typeof content === "string" &&
+    content.length > PERSIST_TOOL_RESULT_LIMIT
+  ) {
+    return {
+      ...entry,
+      block: {
+        ...entry.block,
+        content: `${content.slice(0, PERSIST_TOOL_RESULT_LIMIT)}…（保存時に省略）`,
+      },
+    };
+  }
+  return entry;
+}
+
+function buildPersistedState(
+  runs: Map<string, PromptRunInfo>,
+  conversations: Map<string, PromptConversation>,
+): string | null {
+  try {
+    const state: PersistedState = {
+      runs: [...runs.values()],
+      conversations: Object.fromEntries(
+        [...conversations.entries()].map(([projectPath, conversation]) => [
+          projectPath,
+          {
+            sessionId: conversation.sessionId,
+            entries: conversation.entries
+              .slice(-PERSIST_ENTRIES_LIMIT)
+              .map(slimEntry),
+          },
+        ]),
+      ),
+    };
+    let json = JSON.stringify(state);
+    if (json.length > PERSIST_SIZE_LIMIT) {
+      // 大きすぎる場合は会話ログを落とし、履歴と紐付けだけ残す
+      for (const key of Object.keys(state.conversations)) {
+        state.conversations[key].entries = [];
+      }
+      json = JSON.stringify(state);
+    }
+    return json;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 保存済み状態を読み込む。
+ * 前回終了時に実行中だった run は、アプリ終了と同時に CLI プロセスも
+ * 終了している（kill_on_drop）ため「停止」として復元する。
+ */
+function hydrateFromStorage(): {
+  runs: Map<string, PromptRunInfo>;
+  conversations: Map<string, PromptConversation>;
+} {
+  const runs = new Map<string, PromptRunInfo>();
+  const conversations = new Map<string, PromptConversation>();
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { runs, conversations };
+    const state = JSON.parse(raw) as PersistedState;
+
+    for (const run of state.runs ?? []) {
+      if (!run?.runId || !run.projectPath) continue;
+      runs.set(
+        run.runId,
+        run.status === "running"
+          ? {
+              ...run,
+              status: "stopped",
+              finishedAt: run.finishedAt ?? Date.now(),
+            }
+          : run,
+      );
+    }
+
+    const interruptedProjects = new Set(
+      [...runs.values()]
+        .filter((r) => r.status === "stopped" && r.exitCode === null)
+        .map((r) => r.projectPath),
+    );
+
+    for (const [projectPath, persisted] of Object.entries(
+      state.conversations ?? {},
+    )) {
+      const entries = [...(persisted.entries ?? [])];
+      if (interruptedProjects.has(projectPath)) {
+        entries.push({
+          id: nextEntryId(),
+          kind: "error",
+          text: "アプリ終了により実行が中断されました",
+        });
+      }
+      conversations.set(projectPath, {
+        ...EMPTY_CONVERSATION,
+        sessionId: persisted.sessionId ?? null,
+        entries,
+      });
+    }
+  } catch {
+    // 壊れた保存データは無視して空から始める
+  }
+  return { runs, conversations };
+}
+
 export const PromptRunsProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -321,6 +461,28 @@ export const PromptRunsProvider: React.FC<{ children: React.ReactNode }> = ({
   const conversationsRef = useRef<Map<string, PromptConversation>>(new Map());
   const [version, setVersion] = useState(0);
   const bump = useCallback(() => setVersion((v) => v + 1), []);
+
+  // 初回レンダリング時に保存済み状態を復元する（マウントごとに 1 回）
+  const hydratedRef = useRef(false);
+  if (!hydratedRef.current) {
+    hydratedRef.current = true;
+    const { runs, conversations } = hydrateFromStorage();
+    runsRef.current = runs;
+    conversationsRef.current = conversations;
+  }
+
+  // 変更のたびに保存する（軽量 JSON。失敗しても機能には影響させない）
+  useEffect(() => {
+    if (version === 0) return;
+    const json = buildPersistedState(runsRef.current, conversationsRef.current);
+    if (json !== null) {
+      try {
+        localStorage.setItem(STORAGE_KEY, json);
+      } catch {
+        // 容量超過などは無視（次回の書き込みで再試行される）
+      }
+    }
+  }, [version]);
 
   // registerRun 前に届いたイベントの一時バッファ（run_id ごと・受信順）
   const pendingRef = useRef<Map<string, PromptRunEvent[]>>(new Map());
@@ -444,11 +606,18 @@ export const PromptRunsProvider: React.FC<{ children: React.ReactNode }> = ({
    * プロンプト送信の一連の流れを担う:
    * ユーザー発言の追加 → CLI 起動 → 実行の登録（バッファ済みイベントの反映）。
    * 失敗時はエラー行を会話に追加して実行中フラグを下ろす。
+   *
+   * @returns 起動に失敗した場合はエラーメッセージ、成功時は null。
+   *   Dashboard のクイック実行など、会話ビューの外から呼ぶ場合の
+   *   フィードバックに使う。
    */
   const sendPrompt = useCallback(
-    async (projectPath: string, params: SendPromptParams) => {
+    async (
+      projectPath: string,
+      params: SendPromptParams,
+    ): Promise<string | null> => {
       const text = params.prompt.trim();
-      if (!text) return;
+      if (!text) return null;
 
       const conversations = conversationsRef.current;
       const before = conversations.get(projectPath) ?? EMPTY_CONVERSATION;
@@ -479,7 +648,9 @@ export const PromptRunsProvider: React.FC<{ children: React.ReactNode }> = ({
           permissionMode: params.permissionMode,
           model: params.model,
         });
+        return null;
       } catch (error: unknown) {
+        const message = toErrorMessage(error);
         const current = conversations.get(projectPath) ?? EMPTY_CONVERSATION;
         conversations.set(projectPath, {
           ...current,
@@ -490,11 +661,12 @@ export const PromptRunsProvider: React.FC<{ children: React.ReactNode }> = ({
             {
               id: nextEntryId(),
               kind: "error",
-              text: `実行を開始できませんでした: ${toErrorMessage(error)}`,
+              text: `実行を開始できませんでした: ${message}`,
             },
           ],
         });
         bump();
+        return message;
       }
     },
     [bump, registerRun],
@@ -598,12 +770,31 @@ export function formatElapsed(ms: number): string {
   return `${minutes}m${String(seconds).padStart(2, "0")}s`;
 }
 
-export const RUN_STATUS_META: Record<
-  PromptRunStatus,
-  { icon: string; label: string }
-> = {
-  running: { icon: "⏳", label: "実行中" },
-  completed: { icon: "✅", label: "完了" },
-  failed: { icon: "❌", label: "失敗" },
-  stopped: { icon: "⏹", label: "停止" },
+/**
+ * 相対時刻の短縮表記（「3分前」）。
+ * アクティビティフィードの研究より、正確な時刻ではなく
+ * 「どれくらい前か」の大まかな手掛かりが最も速く読み取れる。
+ * 正確な時刻はツールチップ（title 属性）で補う。
+ */
+export function formatRelativeTime(timestamp: number, now: number): string {
+  const diffSeconds = Math.max(0, Math.floor((now - timestamp) / 1000));
+  if (diffSeconds < 60) return "たった今";
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  if (diffMinutes < 60) return `${diffMinutes}分前`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}時間前`;
+  return `${Math.floor(diffHours / 24)}日前`;
+}
+
+/**
+ * 状態の表示ラベル。
+ * 状態は「色ドット＋文字ラベル」で表現する（色・形・ラベルの 3 要素、
+ * WCAG 1.4.1 / IBM Carbon の状態インジケータ指針に従う）。
+ * 絵文字は環境依存で見た目が変わり、走査時のノイズにもなるため使わない。
+ */
+export const RUN_STATUS_META: Record<PromptRunStatus, { label: string }> = {
+  running: { label: "実行中" },
+  completed: { label: "完了" },
+  failed: { label: "失敗" },
+  stopped: { label: "停止" },
 };

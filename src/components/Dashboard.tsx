@@ -1,99 +1,139 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { api } from "../api";
 import {
   formatElapsed,
   RUN_STATUS_META,
   usePromptRunsOptional,
   type PromptRunInfo,
+  type PromptRunStatus,
 } from "../contexts/PromptRunsContext";
 import { formatDateForContext } from "../utils/dateUtils";
 import { getProjectDisplayName } from "../utils/pathUtils";
-import type { SessionStats, ProjectSummary } from "../types";
+import { PromptRunRow } from "./PromptRunRow";
+import { SafeConfirmDialog } from "./SafeConfirmDialog";
+import type {
+  ClaudeSession,
+  PermissionMode,
+  SessionStats,
+  ProjectSummary,
+} from "../types";
 
 interface DashboardProps {
   onProjectClick?: (projectPath: string) => void;
   /** 実行中プロンプトの行やバッジから Prompt タブ直行で開く */
   onOpenPromptRun?: (projectPath: string) => void;
+  /** 「すべて見る」から Prompts タブへ移動する */
+  onOpenPromptsTab?: () => void;
 }
 
-/** Dashboard 上部の「実行中のプロンプト」セクション */
-const RunningPromptsSection: React.FC<{
+/** Recent Projects を折りたたみ表示するときの件数 */
+const COLLAPSED_PROJECT_COUNT = 6;
+
+/** Dashboard の実行状況セクションに表示する最大件数 */
+const STATUS_BOARD_MAX_ROWS = 6;
+
+/**
+ * Dashboard 上部の「プロンプト実行状況」セクション。
+ * 実行中だけでなく完了・失敗・停止も含めた直近の実行を一覧し、
+ * プロジェクト横断の状況をダッシュボードだけで把握できるようにする。
+ */
+const PromptStatusSection: React.FC<{
   runs: PromptRunInfo[];
   onOpen?: (projectPath: string) => void;
   onStop: (runId: string) => void;
-}> = ({ runs, onOpen, onStop }) => {
+  onOpenAll?: () => void;
+}> = ({ runs, onOpen, onStop, onOpenAll }) => {
   const [now, setNow] = useState(() => Date.now());
 
+  const hasRunning = runs.some((run) => run.status === "running");
   useEffect(() => {
+    if (!hasRunning) return;
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [hasRunning]);
+
+  const counts = useMemo(() => {
+    const c: Record<PromptRunStatus, number> = {
+      running: 0,
+      completed: 0,
+      failed: 0,
+      stopped: 0,
+    };
+    for (const run of runs) c[run.status] += 1;
+    return c;
+  }, [runs]);
+
+  // 実行中を先頭に、あとは新しい順
+  const sorted = useMemo(
+    () =>
+      [...runs].sort(
+        (a, b) =>
+          (a.status === "running" ? 0 : 1) - (b.status === "running" ? 0 : 1) ||
+          b.startedAt - a.startedAt,
+      ),
+    [runs],
+  );
+  const visible = sorted.slice(0, STATUS_BOARD_MAX_ROWS);
+  const hiddenCount = sorted.length - visible.length;
 
   if (runs.length === 0) return null;
 
   return (
     <section
-      className="dashboard-running-section"
-      aria-labelledby="running-prompts-heading"
+      className="dashboard-prompt-status"
+      aria-labelledby="prompt-status-heading"
     >
-      <div className="section-header">
-        <h2 id="running-prompts-heading" className="section-title">
-          ▶ 実行中のプロンプト ({runs.length})
+      <div className="dashboard-prompt-status__header">
+        <h2 id="prompt-status-heading" className="section-title">
+          プロンプト実行状況
         </h2>
-      </div>
-      <ul className="dashboard-running-section__list">
-        {runs.map((run) => (
-          <li
-            key={run.runId}
-            className="prompt-runs-row prompt-runs-row--running"
-          >
-            <span
-              className="prompt-runs-row__icon prompt-runs-row__icon--running"
-              role="img"
-              aria-label="実行中"
-            >
-              {RUN_STATUS_META.running.icon}
-            </span>
-            <div className="prompt-runs-row__body">
-              <div className="prompt-runs-row__title">
-                <span className="prompt-runs-row__project">
-                  {getProjectDisplayName(run.projectPath)}
-                </span>
-                <span className="prompt-runs-row__meta">
-                  <span>{formatElapsed(now - run.startedAt)}</span>
-                  <span>{run.permissionMode}</span>
-                </span>
-              </div>
-              <div className="prompt-runs-row__prompt" title={run.prompt}>
-                {run.prompt}
-              </div>
-              {run.lastActivity && (
-                <div className="prompt-runs-row__activity">
-                  {run.lastActivity}
-                </div>
-              )}
-            </div>
-            <div className="prompt-runs-row__actions">
-              <button
-                type="button"
-                className="prompt-runs-row__button"
-                onClick={() => onStop(run.runId)}
-              >
-                停止
-              </button>
-              {onOpen && (
-                <button
-                  type="button"
-                  className="prompt-runs-row__button prompt-runs-row__button--primary"
-                  onClick={() => onOpen(run.projectPath)}
+        <div className="dashboard-prompt-status__counts">
+          {(Object.keys(counts) as PromptRunStatus[]).map(
+            (status) =>
+              counts[status] > 0 && (
+                <span
+                  key={status}
+                  className={`dashboard-prompt-status__count dashboard-prompt-status__count--${status}`}
                 >
-                  開く
-                </button>
-              )}
-            </div>
-          </li>
+                  <span
+                    className={`run-status-dot run-status-dot--${status}`}
+                    aria-hidden="true"
+                  />
+                  {RUN_STATUS_META[status].label} {counts[status]}
+                </span>
+              ),
+          )}
+        </div>
+        {onOpenAll && (
+          <button
+            type="button"
+            className="dashboard-prompt-status__all"
+            onClick={onOpenAll}
+          >
+            すべて見る →
+          </button>
+        )}
+      </div>
+      <ul className="dashboard-prompt-status__list">
+        {visible.map((run) => (
+          <PromptRunRow
+            key={run.runId}
+            run={run}
+            now={now}
+            onOpen={() => onOpen?.(run.projectPath)}
+            onStop={() => onStop(run.runId)}
+          />
         ))}
       </ul>
+      {hiddenCount > 0 && onOpenAll && (
+        <button
+          type="button"
+          className="dashboard-prompt-status__more"
+          onClick={onOpenAll}
+        >
+          他 {hiddenCount} 件を Prompts タブで見る →
+        </button>
+      )}
     </section>
   );
 };
@@ -126,12 +166,182 @@ const StatCard: React.FC<{
   );
 };
 
+/**
+ * カード上のクイック実行コンポーザー。
+ * プロジェクト画面へ移動せずに、Dashboard から直接プロンプトを送れる。
+ * 送信処理はストア（sendPrompt）が担うため、実行状況は自動的に
+ * カードの状態行・実行状況セクションに反映される。
+ */
+const QuickPromptComposer: React.FC<{
+  projectPath: string;
+  /** 送信。失敗時はエラーメッセージを返す（成功時は null） */
+  onSend: (
+    prompt: string,
+    permissionMode: PermissionMode,
+  ) => Promise<string | null>;
+}> = ({ projectPath, onSend }) => {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [mode, setMode] = useState<PermissionMode>("plan");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const doSend = useCallback(async () => {
+    const prompt = text.trim();
+    if (!prompt) return;
+    setSending(true);
+    setError(null);
+    try {
+      const failure = await onSend(prompt, mode);
+      if (failure) {
+        setError(failure);
+      } else {
+        setText("");
+        setOpen(false);
+      }
+    } finally {
+      setSending(false);
+    }
+  }, [text, mode, onSend]);
+
+  const handleSubmit = useCallback(() => {
+    if (!text.trim() || sending) return;
+    if (mode === "bypassPermissions") {
+      setConfirmOpen(true);
+      return;
+    }
+    void doSend();
+  }, [text, sending, mode, doSend]);
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        className="quick-prompt__toggle"
+        aria-label={`${getProjectDisplayName(projectPath)} にプロンプトを実行`}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen(true);
+        }}
+      >
+        ▷ プロンプトを実行…
+      </button>
+    );
+  }
+
+  return (
+    // カード自体がクリック/キーボードで開くため、入力操作が伝播しないよう遮断する
+    // biome-ignore lint/a11y/noStaticElementInteractions: イベント伝播の遮断のみが目的
+    <div
+      className="quick-prompt"
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+    >
+      <textarea
+        className="quick-prompt__textarea"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+            e.preventDefault();
+            handleSubmit();
+          }
+        }}
+        placeholder="Claude への指示…（Cmd/Ctrl + Enter で送信）"
+        rows={2}
+        // biome-ignore lint/a11y/noAutofocus: 「実行…」クリック直後の入力開始のため
+        autoFocus
+      />
+      <div className="quick-prompt__controls">
+        <select
+          aria-label="権限モード"
+          value={mode}
+          onChange={(e) => setMode(e.target.value as PermissionMode)}
+        >
+          <option value="plan">読み取り専用</option>
+          <option value="acceptEdits">編集を自動承認</option>
+          <option value="bypassPermissions">全許可（危険）</option>
+        </select>
+        <button
+          type="button"
+          className="quick-prompt__button"
+          onClick={() => setOpen(false)}
+        >
+          キャンセル
+        </button>
+        <button
+          type="button"
+          className="quick-prompt__button quick-prompt__button--primary"
+          onClick={handleSubmit}
+          disabled={!text.trim() || sending}
+        >
+          送信
+        </button>
+      </div>
+      {error && (
+        <div className="quick-prompt__error" role="alert">
+          実行を開始できませんでした: {error}
+        </div>
+      )}
+      <SafeConfirmDialog
+        isOpen={confirmOpen}
+        title="全許可モードで実行しますか？"
+        message="「全許可（危険）」は Claude のすべてのツール実行を確認なしで許可します。ファイルの変更やコマンド実行が無条件に行われます。本当に実行しますか？"
+        confirmText="実行する"
+        cancelText="キャンセル"
+        variant="danger"
+        onConfirm={() => {
+          setConfirmOpen(false);
+          void doSend();
+        }}
+        onCancel={() => setConfirmOpen(false)}
+      />
+    </div>
+  );
+};
+
+/**
+ * カード上の実行中プログレス表示。
+ * プロンプト本文は実行中変化しないため、「いま何をしているか」
+ * （最後に観測したツール実行など）と経過時間を添えて進捗を可視化する。
+ */
+const CardRunProgress: React.FC<{ run: PromptRunInfo }> = ({ run }) => {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="project-run-progress">
+      <span
+        className="project-run-progress__activity"
+        title={run.lastActivity ?? undefined}
+      >
+        {run.lastActivity ?? "起動中…"}
+      </span>
+      <span className="project-run-progress__elapsed">
+        {formatElapsed(now - run.startedAt)}
+      </span>
+    </div>
+  );
+};
+
 const ProjectCard: React.FC<{
   project: ProjectSummary;
   onClick: () => void;
   /** このプロジェクトの最新のプロンプト実行（無ければ null） */
   latestRun?: PromptRunInfo | null;
-}> = ({ project, onClick, latestRun }) => {
+  /** ~/.claude 上の最新セッション（アプリ外での作業も含む） */
+  latestSession?: ClaudeSession | null;
+  /** クイック実行（Provider 配下でない場合は undefined で非表示） */
+  onQuickPrompt?: (
+    prompt: string,
+    permissionMode: PermissionMode,
+  ) => Promise<string | null>;
+}> = ({ project, onClick, latestRun, latestSession, onQuickPrompt }) => {
   const projectName =
     project.project_path.split("/").pop() || project.project_path;
   const isActive = project.ide_info?.pid;
@@ -182,21 +392,71 @@ const ProjectCard: React.FC<{
                 Active
               </span>
             )}
-            {latestRun && (
-              <span
-                className={`project-run-badge project-run-badge--${latestRun.status}`}
-                title={`プロンプト: ${latestRun.prompt}`}
-              >
-                {RUN_STATUS_META[latestRun.status].icon}{" "}
-                {RUN_STATUS_META[latestRun.status].label}
-              </span>
-            )}
           </div>
         </header>
 
         <div className="project-path-modern" title={project.project_path}>
           {project.project_path}
         </div>
+
+        {/*
+          プロンプト実行状態の行（常時表示）。
+          実行が無いプロジェクトも「未実行」を明示し、
+          動かしていないことがひと目で分かるようにする。
+        */}
+        {latestRun ? (
+          <div
+            className={`project-latest-prompt project-latest-prompt--${latestRun.status}`}
+            title={`${RUN_STATUS_META[latestRun.status].label}: ${latestRun.prompt}`}
+          >
+            <span
+              className={`run-status-dot run-status-dot--${latestRun.status}`}
+              aria-hidden="true"
+            />
+            <span className="project-latest-prompt__label">
+              {RUN_STATUS_META[latestRun.status].label}
+            </span>
+            <span className="project-latest-prompt__text">
+              {latestRun.prompt}
+            </span>
+          </div>
+        ) : (
+          <div className="project-latest-prompt project-latest-prompt--none">
+            <span className="run-status-dot" aria-hidden="true" />
+            <span className="project-latest-prompt__label">
+              プロンプト未実行
+            </span>
+          </div>
+        )}
+
+        {/* 実行中はプロンプト本文に加えて「いま何をしているか」と経過時間を出す */}
+        {latestRun?.status === "running" && <CardRunProgress run={latestRun} />}
+
+        {/* アプリ外での作業も含む最新セッションのプレビュー（あれば） */}
+        {!latestRun && latestSession?.latest_content_preview && (
+          <div
+            className="project-latest-prompt project-latest-prompt--session"
+            title={latestSession.latest_content_preview}
+          >
+            {latestSession.is_processing && (
+              <span
+                className="run-status-dot run-status-dot--running"
+                aria-hidden="true"
+              />
+            )}
+            <span className="project-latest-prompt__text">
+              {latestSession.latest_content_preview}
+            </span>
+          </div>
+        )}
+
+        {/* カードから直接プロンプトを実行（実行中は状態行が担うため非表示） */}
+        {onQuickPrompt && latestRun?.status !== "running" && (
+          <QuickPromptComposer
+            projectPath={project.project_path}
+            onSend={onQuickPrompt}
+          />
+        )}
 
         <div className="project-metrics-modern">
           <div className="metric-grid">
@@ -289,11 +549,11 @@ const LoadingSkeleton: React.FC = () => (
 export const Dashboard: React.FC<DashboardProps> = ({
   onProjectClick,
   onOpenPromptRun,
+  onOpenPromptsTab,
 }) => {
   // Provider 配下でなければ null（既存テストの単体レンダリング等）
   const runsStore = usePromptRunsOptional();
-  const runningRuns =
-    runsStore?.runs.filter((run) => run.status === "running") ?? [];
+  const allRuns = runsStore?.runs ?? [];
 
   const handleStopRun = useCallback(
     (runId: string) => {
@@ -306,6 +566,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const [stats, setStats] = useState<SessionStats | null>(null);
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
+  const [sessions, setSessions] = useState<ClaudeSession[]>([]);
+  const [showAllProjects, setShowAllProjects] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState<{
@@ -313,18 +575,36 @@ export const Dashboard: React.FC<DashboardProps> = ({
     projects: boolean;
   }>({ stats: false, projects: false });
 
+  // プロジェクトごとの最新セッション（アプリ外での claude 実行も含む）
+  const latestSessionByProject = useMemo(() => {
+    const map = new Map<string, ClaudeSession>();
+    for (const session of sessions) {
+      const current = map.get(session.project_path);
+      if (
+        !current ||
+        new Date(session.file_modified_time).getTime() >
+          new Date(current.file_modified_time).getTime()
+      ) {
+        map.set(session.project_path, session);
+      }
+    }
+    return map;
+  }, [sessions]);
+
   const loadInitialData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const [statsData, projectsData] = await Promise.all([
+      const [statsData, projectsData, sessionsData] = await Promise.all([
         api.getSessionStats(),
         api.getProjectSummary(),
+        api.getAllSessions(),
       ]);
 
       setStats(statsData);
       setProjects(projectsData);
+      setSessions(sessionsData ?? []);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to load dashboard data",
@@ -353,8 +633,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
     try {
       setUpdating((prev) => ({ ...prev, projects: true }));
-      const projectsData = await api.getProjectSummary();
+      const [projectsData, sessionsData] = await Promise.all([
+        api.getProjectSummary(),
+        api.getAllSessions(),
+      ]);
       setProjects(projectsData);
+      setSessions(sessionsData ?? []);
     } catch (err) {
       console.error("Failed to update projects:", err);
     } finally {
@@ -418,10 +702,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </header>
 
-      <RunningPromptsSection
-        runs={runningRuns}
+      <PromptStatusSection
+        runs={allRuns}
         onOpen={onOpenPromptRun}
         onStop={handleStopRun}
+        onOpenAll={onOpenPromptsTab}
       />
 
       <section className="stats-section" aria-labelledby="stats-heading">
@@ -493,21 +778,53 @@ export const Dashboard: React.FC<DashboardProps> = ({
             description="No Claude Code projects have been created yet"
           />
         ) : (
-          <div
-            className={`projects-grid ${updating.projects ? "updating" : ""}`}
-          >
-            {projects.slice(0, 6).map((project) => (
-              <ProjectCard
-                key={project.project_path}
-                project={project}
-                latestRun={
-                  runsStore?.latestRunByProject.get(project.project_path) ??
-                  null
-                }
-                onClick={() => onProjectClick?.(project.project_path)}
-              />
-            ))}
-          </div>
+          <>
+            <div
+              className={`projects-grid ${updating.projects ? "updating" : ""}`}
+            >
+              {(showAllProjects
+                ? projects
+                : projects.slice(0, COLLAPSED_PROJECT_COUNT)
+              ).map((project) => (
+                <ProjectCard
+                  key={project.project_path}
+                  project={project}
+                  latestRun={
+                    runsStore?.latestRunByProject.get(project.project_path) ??
+                    null
+                  }
+                  latestSession={
+                    latestSessionByProject.get(project.project_path) ?? null
+                  }
+                  onClick={() => onProjectClick?.(project.project_path)}
+                  onQuickPrompt={
+                    runsStore
+                      ? (prompt, permissionMode) =>
+                          runsStore.sendPrompt(project.project_path, {
+                            prompt,
+                            permissionMode,
+                            model: null,
+                          })
+                      : undefined
+                  }
+                />
+              ))}
+            </div>
+            {projects.length > COLLAPSED_PROJECT_COUNT && (
+              <div className="projects-show-all">
+                <button
+                  type="button"
+                  className="show-all-projects-button"
+                  aria-expanded={showAllProjects}
+                  onClick={() => setShowAllProjects((prev) => !prev)}
+                >
+                  {showAllProjects
+                    ? "Show less"
+                    : `Show all ${projects.length} projects`}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </section>
     </div>

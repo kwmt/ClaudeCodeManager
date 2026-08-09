@@ -1,4 +1,4 @@
-import { expect, afterEach, vi } from "vitest";
+import { expect, afterEach, beforeEach, vi } from "vitest";
 import { cleanup } from "@testing-library/react";
 import * as matchers from "@testing-library/jest-dom/matchers";
 import "@testing-library/jest-dom";
@@ -9,6 +9,12 @@ expect.extend(matchers);
 // runs a cleanup after each test case (e.g. clearing jsdom)
 afterEach(() => {
   cleanup();
+});
+
+// PromptRunsContext は localStorage に状態を永続化するため、
+// テスト間で状態が漏れないよう毎回クリアする
+beforeEach(() => {
+  localStorage.clear();
 });
 
 // Global setup for test environment

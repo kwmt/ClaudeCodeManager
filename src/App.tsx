@@ -122,6 +122,7 @@ function App() {
           <Dashboard
             onProjectClick={navigateToProject}
             onOpenPromptRun={navigateToProjectPrompt}
+            onOpenPromptsTab={() => setActiveTab("prompts")}
           />
         );
       case "sessions":
