@@ -315,6 +315,143 @@ function applyConversationEvent(
   }
 }
 
+// ---------------------------------------------------------------------------
+// 永続化（localStorage）
+// アプリを再起動しても、実行履歴・会話ログ・セッションの紐付けが残り、
+// 過去の会話の続きから再開（--resume）できるようにする。
+// ---------------------------------------------------------------------------
+
+const STORAGE_KEY = "ccm-prompt-runs-v1";
+/** 保存する会話エントリの上限（プロジェクトごと・新しい順に残す） */
+const PERSIST_ENTRIES_LIMIT = 100;
+/** 保存する tool_result 本文の上限（表示上限と同じ） */
+const PERSIST_TOOL_RESULT_LIMIT = 4000;
+/** localStorage へ書き込む JSON のおおよその上限（バイト） */
+const PERSIST_SIZE_LIMIT = 3_000_000;
+
+interface PersistedConversation {
+  sessionId: string | null;
+  entries: ConversationEntry[];
+}
+
+interface PersistedState {
+  runs: PromptRunInfo[];
+  conversations: Record<string, PersistedConversation>;
+}
+
+/** 保存用にエントリを軽量化する（巨大な tool_result を刈り込む） */
+function slimEntry(entry: ConversationEntry): ConversationEntry {
+  if (entry.kind !== "block" || entry.block.type !== "tool_result") {
+    return entry;
+  }
+  const content = entry.block.content;
+  if (
+    typeof content === "string" &&
+    content.length > PERSIST_TOOL_RESULT_LIMIT
+  ) {
+    return {
+      ...entry,
+      block: {
+        ...entry.block,
+        content: `${content.slice(0, PERSIST_TOOL_RESULT_LIMIT)}…（保存時に省略）`,
+      },
+    };
+  }
+  return entry;
+}
+
+function buildPersistedState(
+  runs: Map<string, PromptRunInfo>,
+  conversations: Map<string, PromptConversation>,
+): string | null {
+  try {
+    const state: PersistedState = {
+      runs: [...runs.values()],
+      conversations: Object.fromEntries(
+        [...conversations.entries()].map(([projectPath, conversation]) => [
+          projectPath,
+          {
+            sessionId: conversation.sessionId,
+            entries: conversation.entries
+              .slice(-PERSIST_ENTRIES_LIMIT)
+              .map(slimEntry),
+          },
+        ]),
+      ),
+    };
+    let json = JSON.stringify(state);
+    if (json.length > PERSIST_SIZE_LIMIT) {
+      // 大きすぎる場合は会話ログを落とし、履歴と紐付けだけ残す
+      for (const key of Object.keys(state.conversations)) {
+        state.conversations[key].entries = [];
+      }
+      json = JSON.stringify(state);
+    }
+    return json;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 保存済み状態を読み込む。
+ * 前回終了時に実行中だった run は、アプリ終了と同時に CLI プロセスも
+ * 終了している（kill_on_drop）ため「停止」として復元する。
+ */
+function hydrateFromStorage(): {
+  runs: Map<string, PromptRunInfo>;
+  conversations: Map<string, PromptConversation>;
+} {
+  const runs = new Map<string, PromptRunInfo>();
+  const conversations = new Map<string, PromptConversation>();
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { runs, conversations };
+    const state = JSON.parse(raw) as PersistedState;
+
+    for (const run of state.runs ?? []) {
+      if (!run?.runId || !run.projectPath) continue;
+      runs.set(
+        run.runId,
+        run.status === "running"
+          ? {
+              ...run,
+              status: "stopped",
+              finishedAt: run.finishedAt ?? Date.now(),
+            }
+          : run,
+      );
+    }
+
+    const interruptedProjects = new Set(
+      [...runs.values()]
+        .filter((r) => r.status === "stopped" && r.exitCode === null)
+        .map((r) => r.projectPath),
+    );
+
+    for (const [projectPath, persisted] of Object.entries(
+      state.conversations ?? {},
+    )) {
+      const entries = [...(persisted.entries ?? [])];
+      if (interruptedProjects.has(projectPath)) {
+        entries.push({
+          id: nextEntryId(),
+          kind: "error",
+          text: "アプリ終了により実行が中断されました",
+        });
+      }
+      conversations.set(projectPath, {
+        ...EMPTY_CONVERSATION,
+        sessionId: persisted.sessionId ?? null,
+        entries,
+      });
+    }
+  } catch {
+    // 壊れた保存データは無視して空から始める
+  }
+  return { runs, conversations };
+}
+
 export const PromptRunsProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -324,6 +461,28 @@ export const PromptRunsProvider: React.FC<{ children: React.ReactNode }> = ({
   const conversationsRef = useRef<Map<string, PromptConversation>>(new Map());
   const [version, setVersion] = useState(0);
   const bump = useCallback(() => setVersion((v) => v + 1), []);
+
+  // 初回レンダリング時に保存済み状態を復元する（マウントごとに 1 回）
+  const hydratedRef = useRef(false);
+  if (!hydratedRef.current) {
+    hydratedRef.current = true;
+    const { runs, conversations } = hydrateFromStorage();
+    runsRef.current = runs;
+    conversationsRef.current = conversations;
+  }
+
+  // 変更のたびに保存する（軽量 JSON。失敗しても機能には影響させない）
+  useEffect(() => {
+    if (version === 0) return;
+    const json = buildPersistedState(runsRef.current, conversationsRef.current);
+    if (json !== null) {
+      try {
+        localStorage.setItem(STORAGE_KEY, json);
+      } catch {
+        // 容量超過などは無視（次回の書き込みで再試行される）
+      }
+    }
+  }, [version]);
 
   // registerRun 前に届いたイベントの一時バッファ（run_id ごと・受信順）
   const pendingRef = useRef<Map<string, PromptRunEvent[]>>(new Map());

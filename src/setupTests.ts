@@ -1,5 +1,11 @@
 // Setup file for Vitest
-import { vi } from "vitest";
+import { beforeEach, vi } from "vitest";
+
+// PromptRunsContext は localStorage に状態を永続化するため、
+// テスト間で状態が漏れないよう毎回クリアする
+beforeEach(() => {
+  localStorage.clear();
+});
 
 // Mock navigator.clipboard globally with more aggressive approach
 const mockClipboard = {
