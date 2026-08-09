@@ -175,7 +175,7 @@ impl ClaudeDataManager {
             }
         }
 
-        sessions.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+        sessions.sort_by_key(|s| std::cmp::Reverse(s.timestamp));
         Ok(sessions)
     }
 
@@ -594,7 +594,7 @@ impl ClaudeDataManager {
             }
         }
 
-        entries.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+        entries.sort_by_key(|e| std::cmp::Reverse(e.timestamp));
         Ok(entries)
     }
 
@@ -729,7 +729,7 @@ impl ClaudeDataManager {
 
         let mut projects: Vec<ProjectSummary> = project_map.into_values().collect();
         // Sort by last_activity in descending order (most recent first)
-        projects.sort_by(|a, b| b.last_activity.cmp(&a.last_activity));
+        projects.sort_by_key(|p| std::cmp::Reverse(p.last_activity));
         Ok(projects)
     }
 
@@ -816,7 +816,7 @@ impl ClaudeDataManager {
             }
         }
 
-        changed_sessions.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+        changed_sessions.sort_by_key(|s| std::cmp::Reverse(s.timestamp));
         Ok(changed_sessions)
     }
 
