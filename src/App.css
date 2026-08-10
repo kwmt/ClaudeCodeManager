@@ -943,10 +943,9 @@ body {
 
 .project-path {
   font-size: 0.8rem;
-  color: #7f8c8d;
+  color: #495057;
   margin: 0;
   word-break: break-all;
-  opacity: 0.7;
 }
 
 .project-stats {
@@ -1271,34 +1270,33 @@ body {
 
 .message-search-input {
   padding: 0.5rem;
-  border: 1px solid #555;
+  border: 1px solid #ced4da;
   border-radius: 4px;
   font-size: 0.9rem;
   min-width: 200px;
-  background: #2d2d2d;
-  color: #f0f0f0;
+  background: #ffffff;
+  color: #212529;
   transition: border-color 0.2s, background-color 0.2s;
 }
 
 .message-search-input:focus {
   outline: none;
   border-color: #3b82f6;
-  background: #333333;
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
 .message-search-input::placeholder {
-  color: #9ca3af;
+  color: #6c757d;
   opacity: 1;
 }
 
 .message-type-select {
   padding: 0.5rem;
-  border: 1px solid #555;
+  border: 1px solid #ced4da;
   border-radius: 4px;
   font-size: 0.9rem;
-  background: #2d2d2d;
-  color: #f0f0f0;
+  background: #ffffff;
+  color: #212529;
   min-width: 120px;
   transition: border-color 0.2s, background-color 0.2s;
 }
@@ -1306,7 +1304,6 @@ body {
 .message-type-select:focus {
   outline: none;
   border-color: #3b82f6;
-  background: #333333;
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
@@ -2328,11 +2325,9 @@ button:hover:not(:disabled) {
 }
 
 .project-last-activity {
-  color: #6c757d;
+  color: #495057;
   font-size: 0.75rem;
-  font-style: italic;
   margin: 0;
-  opacity: 0.8;
 }
 
 /* Project Stats Horizontal Layout */
@@ -2652,13 +2647,8 @@ button:hover:not(:disabled) {
 }
 
 .meta-label {
-  color: var(--text-tertiary);
+  color: #495057;
   font-size: 0.75rem;
-  border-bottom: 1px solid #e9ecef;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  background: white;
-  position: relative;
 }
 
 .session-card:hover {
@@ -3699,13 +3689,23 @@ button:hover:not(:disabled) {
 /* .claude Directory Styles */
 .project-directory-content {
   display: flex;
-  gap: 2rem;
-  height: calc(100vh - 300px);
+  gap: 1.5rem;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 1.5rem 0;
+  background: #f5f7fa;
 }
 
 .claude-directory-files {
   flex: 1;
   min-width: 300px;
+  min-height: 0;
+  overflow-y: auto;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 1rem 1.5rem;
 }
 
 .claude-directory-files h3 {
@@ -3783,6 +3783,7 @@ button:hover:not(:disabled) {
 /* File Viewer/Editor */
 .claude-file-viewer {
   flex: 2;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   background: var(--bg-primary);
@@ -4193,3 +4194,121 @@ button:hover:not(:disabled) {
   }
 }
 
+
+
+/* ============================================================
+ * Project 詳細画面の UX 改善（issue #46）
+ * 既存の .session-card / .project-tabs 系は複数箇所に定義があるため、
+ * 後勝ちになるようここに集約して上書きする。
+ * 方針は Dashboard / Prompts と同じ可読性研究ベース:
+ * 内容で識別・メタ情報の降格・偽アフォーダンスの排除。
+ * ============================================================ */
+
+/* ヘッダーの統計 1 行メタ（旧 stat-card 3 枚の置き換え） */
+.project-meta-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #495057;
+  font-size: 0.85rem;
+}
+
+.project-meta-line__todos {
+  color: #b45309;
+  font-weight: 600;
+}
+
+/* タブ: 1 行のシンプルなテキストタブ */
+.project-tabs .tab-button {
+  padding: 0.65rem 1rem;
+  font-size: 0.95rem;
+}
+
+/* セッションカード: プレビュー本文が主役、メタは 1 行に降格 */
+.session-card {
+  padding: 0.75rem 1rem;
+}
+
+.session-card-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.session-preview-title {
+  flex: 1;
+  margin: 0;
+  color: #212529;
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.session-card .session-status-badge.status-processing {
+  flex-shrink: 0;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.session-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin-top: 4px;
+  color: #495057;
+  font-size: 0.75rem;
+}
+
+.session-card-meta__branch {
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-card-meta__id {
+  margin-left: auto;
+  color: #868e96;
+  font-family: "SF Mono", Monaco, Consolas, monospace;
+  font-size: 0.7rem;
+}
+
+/* 空状態: 行き止まりにせず Prompt タブへの導線を置く */
+.no-sessions {
+  padding: 2rem 1rem;
+  color: #495057;
+  text-align: center;
+}
+
+.no-sessions__cta {
+  margin-top: 0.75rem;
+  padding: 6px 14px;
+  background: none;
+  border: 1px dashed #adb5bd;
+  border-radius: 6px;
+  color: #0284c7;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.no-sessions__cta:hover {
+  background: #f0f9ff;
+  border-color: #7dd3fc;
+}
+
+/* キーボードフォーカスの可視化（session-card / file-item） */
+.session-card:focus-visible,
+.file-item:focus-visible {
+  outline: 2px solid #0ea5e9;
+  outline-offset: -2px;
+}

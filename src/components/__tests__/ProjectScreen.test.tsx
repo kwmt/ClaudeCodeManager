@@ -94,13 +94,10 @@ describe("ProjectScreen", () => {
     expect(
       screen.getByText("/Users/john.documents_test/project"),
     ).toBeInTheDocument();
-    // Check for the stat cards
-    expect(screen.getByText("3")).toBeInTheDocument();
-    expect(screen.getAllByText("Sessions")).toHaveLength(2); // One in stat card, one in tab
-    expect(screen.getByText("25")).toBeInTheDocument();
-    expect(screen.getByText("Messages")).toBeInTheDocument();
-    expect(screen.getByText("2")).toBeInTheDocument();
-    expect(screen.getByText("TODOs")).toBeInTheDocument();
+    // ヘッダー統計は 1 行のインラインメタ
+    expect(screen.getByText("3 sessions")).toBeInTheDocument();
+    expect(screen.getByText("25 messages")).toBeInTheDocument();
+    expect(screen.getByText("2 TODO")).toBeInTheDocument();
   });
 
   it("should display .claude directory information when tab is clicked", async () => {
@@ -132,25 +129,28 @@ describe("ProjectScreen", () => {
   it("should render sessions list", async () => {
     render(<ProjectScreen projectPath="-Users-john-documents-test-project" />);
 
+    // プレビュー本文がカードの主見出しになる
     await waitFor(() => {
-      expect(screen.getByText("2 conversations")).toBeInTheDocument();
+      expect(screen.getByText("Test preview content")).toBeInTheDocument();
     });
-
-    expect(screen.getAllByText(/Session session-.../)).toHaveLength(2);
-    expect(screen.getByText("Test preview content")).toBeInTheDocument();
     expect(screen.getByText("Another preview")).toBeInTheDocument();
+    // ID はメタ行の等幅サブテキストに降格（8 文字切り詰めで両カードとも "session-"）
+    expect(screen.getAllByText("session-")).toHaveLength(2);
   });
 
-  it("should load messages when session is selected", async () => {
+  it("should auto-select the latest session and load its messages", async () => {
     render(<ProjectScreen projectPath="-Users-john-documents-test-project" />);
 
+    // 最新セッション（file_modified_time が新しい方）が自動で開く
     await waitFor(() => {
-      expect(screen.getByText("2 conversations")).toBeInTheDocument();
+      expect(mockApi.getSessionMessages).toHaveBeenCalled();
     });
 
-    const sessionItems = screen.getAllByText(/Session session-.../);
-    const sessionItem = sessionItems[0];
-    fireEvent.click(sessionItem);
+    // カードをクリックすれば任意のセッションへ切り替えられる
+    await waitFor(() => {
+      expect(screen.getByText("Test preview content")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText("Test preview content"));
 
     await waitFor(() => {
       expect(mockApi.getSessionMessages).toHaveBeenCalledWith("session-123");
