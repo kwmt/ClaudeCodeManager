@@ -1,4 +1,10 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { marked } from "marked";
 import { api } from "../api";
 import {
@@ -6,6 +12,7 @@ import {
   getProjectDisplayName,
 } from "../utils/pathUtils";
 import { useToast, ToastContainer } from "./Toast";
+import { SafeConfirmDialog } from "./SafeConfirmDialog";
 import { PromptRunner } from "./PromptRunner";
 import { formatDateTime, formatDateTooltip } from "../utils/dateUtils";
 import type {
@@ -16,6 +23,19 @@ import type {
   ClaudeDirectoryInfo,
   ClaudeDirectoryFile,
 } from "../types";
+
+/** セッション一覧の日付グループ見出し（今日 / 昨日 / 今週 / それ以前） */
+const sessionDateGroup = (timestamp: string): string => {
+  const startOfDay = (d: Date) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const dayMs = 86_400_000;
+  const today = startOfDay(new Date());
+  const target = startOfDay(new Date(timestamp));
+  if (target >= today) return "今日";
+  if (target >= today - dayMs) return "昨日";
+  if (target >= today - 6 * dayMs) return "今週";
+  return "それ以前";
+};
 
 interface ProjectScreenProps {
   projectPath: string;
@@ -64,11 +84,19 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved">(
     "saved",
   );
-  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+  // 自動保存は既定 OFF。CLAUDE.md や settings.json への
+  // 意図しない書き込み（3 秒後の自動反映）を防ぐ（明示保存が既定）
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // 未保存の変更を破棄する操作の確認（window.confirm の置き換え）
+  const [discardConfirm, setDiscardConfirm] = useState<{
+    action: () => void;
+  } | null>(null);
+
   const [messageSearchQuery, setMessageSearchQuery] = useState("");
+  const [sessionSearchQuery, setSessionSearchQuery] = useState("");
   const [selectedMessageType, setSelectedMessageType] = useState<string>("all");
   const [filteredMessages, setFilteredMessages] = useState<ClaudeMessage[]>([]);
   const [renderAsMarkdown, setRenderAsMarkdown] = useState(false);
@@ -83,6 +111,24 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
     knownProjectPaths,
   );
   const displayName = getProjectDisplayName(projectPath);
+
+  // セッション一覧: 新しい順に整列し、検索語で絞り込む
+  // （プレビュー本文・ブランチ・ID を対象にしたフロント側フィルタ）
+  const visibleSessions = useMemo(() => {
+    const sorted = [...sessions].sort(
+      (a, b) =>
+        new Date(b.file_modified_time).getTime() -
+        new Date(a.file_modified_time).getTime(),
+    );
+    const query = sessionSearchQuery.trim().toLowerCase();
+    if (!query) return sorted;
+    return sorted.filter(
+      (s) =>
+        (s.latest_content_preview ?? "").toLowerCase().includes(query) ||
+        s.session_id.toLowerCase().includes(query) ||
+        (s.git_branch ?? "").toLowerCase().includes(query),
+    );
+  }, [sessions, sessionSearchQuery]);
 
   // Helper function to detect file type
   const getFileType = (filename: string): string => {
@@ -403,7 +449,7 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
     }
   };
 
-  const loadFileContent = async (file: ClaudeDirectoryFile) => {
+  const doLoadFileContent = async (file: ClaudeDirectoryFile) => {
     try {
       setIsLoading(true);
       setSelectedFile(file);
@@ -420,6 +466,15 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  /** 未保存の編集がある状態で別ファイルへ切り替える前に確認する */
+  const loadFileContent = (file: ClaudeDirectoryFile) => {
+    if (hasUnsavedChanges && selectedFile && selectedFile.path !== file.path) {
+      setDiscardConfirm({ action: () => void doLoadFileContent(file) });
+      return;
+    }
+    void doLoadFileContent(file);
   };
 
   const saveFileContent = async () => {
@@ -475,10 +530,13 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
     // Escキーでキャンセル
     if (e.key === "Escape") {
       if (hasUnsavedChanges) {
-        const confirmDiscard = window.confirm(
-          "未保存の変更があります。破棄しますか？",
-        );
-        if (!confirmDiscard) return;
+        setDiscardConfirm({
+          action: () => {
+            setIsEditingFile(false);
+            setEditedContent(fileContent);
+          },
+        });
+        return;
       }
       setIsEditingFile(false);
       setEditedContent(fileContent);
@@ -857,6 +915,23 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
       {activeTab === "sessions" ? (
         <div className="project-sessions-content">
           <div className="project-sessions-list">
+            {sessions.length > 0 && (
+              <div className="session-list-search">
+                <input
+                  type="search"
+                  className="session-list-search__input"
+                  value={sessionSearchQuery}
+                  onChange={(e) => setSessionSearchQuery(e.target.value)}
+                  placeholder="セッションを検索（内容・ブランチ・ID）"
+                  aria-label="セッションを検索"
+                />
+                {sessionSearchQuery && (
+                  <span className="session-list-search__count">
+                    {visibleSessions.length} 件
+                  </span>
+                )}
+              </div>
+            )}
             {sessions.length === 0 ? (
               <div className="no-sessions">
                 <p>このプロジェクトにはまだセッションがありません。</p>
@@ -871,76 +946,90 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
                   Prompt タブで Claude に指示を出す →
                 </button>
               </div>
+            ) : visibleSessions.length === 0 ? (
+              <div className="no-sessions">
+                <p>
+                  「{sessionSearchQuery}」に一致するセッションはありません。
+                </p>
+              </div>
             ) : (
-              sessions
-                .sort(
-                  (a, b) =>
-                    new Date(b.file_modified_time).getTime() -
-                    new Date(a.file_modified_time).getTime(),
-                )
-                .map((session) => (
-                  /*
+              visibleSessions.map((session, index) => {
+                /*
                     カードの主見出しは会話内容のプレビュー（人は ID では
                     セッションを思い出せない — 記憶より認識）。ID は
                     メタ行の末尾に等幅で置く。バッジは処理中のみ表示
                     （正常状態にバッジは不要）。
+                    一覧は「今日 / 昨日 / 今週 / それ以前」で見出しを挟む。
                   */
-                  <div
-                    key={session.session_id}
-                    className={`session-card ${selectedSession?.session_id === session.session_id ? "selected" : ""}`}
-                    onClick={() => loadSessionMessages(session)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        loadSessionMessages(session);
-                      }
-                    }}
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`Open session ${session.session_id.substring(0, 8)} with ${session.message_count} messages`}
-                  >
-                    <div className="session-card-title-row">
-                      <h4 className="session-preview-title">
-                        {session.latest_content_preview ??
-                          `Session ${session.session_id.substring(0, 8)}`}
-                      </h4>
-                      {session.is_processing && (
-                        <span
-                          className="session-status-badge status-processing"
-                          aria-label="Processing"
-                        >
-                          処理中
-                        </span>
-                      )}
-                    </div>
-                    <div className="session-card-meta">
-                      <span
-                        title={formatDateTooltip(session.file_modified_time)}
-                      >
-                        {formatDateTime(session.file_modified_time, {
-                          style: "compact",
-                          showRelative: true,
-                        })}
-                      </span>
-                      <span aria-hidden="true">·</span>
-                      <span>{session.message_count} msg</span>
-                      {session.git_branch && (
-                        <>
-                          <span aria-hidden="true">·</span>
+                const group = sessionDateGroup(session.file_modified_time);
+                const prevGroup =
+                  index > 0
+                    ? sessionDateGroup(
+                        visibleSessions[index - 1].file_modified_time,
+                      )
+                    : null;
+                return (
+                  <React.Fragment key={session.session_id}>
+                    {group !== prevGroup && (
+                      <div className="session-group-header">{group}</div>
+                    )}
+                    <div
+                      className={`session-card ${selectedSession?.session_id === session.session_id ? "selected" : ""}`}
+                      onClick={() => loadSessionMessages(session)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          loadSessionMessages(session);
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Open session ${session.session_id.substring(0, 8)} with ${session.message_count} messages`}
+                    >
+                      <div className="session-card-title-row">
+                        <h4 className="session-preview-title">
+                          {session.latest_content_preview ??
+                            `Session ${session.session_id.substring(0, 8)}`}
+                        </h4>
+                        {session.is_processing && (
                           <span
-                            className="session-card-meta__branch"
-                            title={session.git_branch}
+                            className="session-status-badge status-processing"
+                            aria-label="Processing"
                           >
-                            {session.git_branch}
+                            処理中
                           </span>
-                        </>
-                      )}
-                      <span className="session-card-meta__id">
-                        {session.session_id.substring(0, 8)}
-                      </span>
+                        )}
+                      </div>
+                      <div className="session-card-meta">
+                        <span
+                          title={formatDateTooltip(session.file_modified_time)}
+                        >
+                          {formatDateTime(session.file_modified_time, {
+                            style: "compact",
+                            showRelative: true,
+                          })}
+                        </span>
+                        <span aria-hidden="true">·</span>
+                        <span>{session.message_count} msg</span>
+                        {session.git_branch && (
+                          <>
+                            <span aria-hidden="true">·</span>
+                            <span
+                              className="session-card-meta__branch"
+                              title={session.git_branch}
+                            >
+                              {session.git_branch}
+                            </span>
+                          </>
+                        )}
+                        <span className="session-card-meta__id">
+                          {session.session_id.substring(0, 8)}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  </React.Fragment>
+                );
+              })
             )}
           </div>
 
@@ -959,11 +1048,24 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
                         onClick={() =>
                           api.openSessionFile(selectedSession.session_id)
                         }
-                        title="Open JSONL file in Finder"
+                        title="JSONL ファイルを Finder で表示"
+                        aria-label="JSONL ファイルを Finder で表示"
                       >
                         📂
                       </button>
                     </div>
+                    {/* CWD はセッション内で不変なのでここに 1 回だけ表示する
+                        （全メッセージへの繰り返しをやめた分の代替） */}
+                    {(() => {
+                      const cwd = messages.find(
+                        (m) => m.message_type !== "summary" && m.cwd,
+                      );
+                      return cwd && cwd.message_type !== "summary" ? (
+                        <p className="messages-cwd" title={cwd.cwd}>
+                          CWD: {cwd.cwd}
+                        </p>
+                      ) : null;
+                    })()}
                   </div>
 
                   <div className="message-controls">
@@ -1028,47 +1130,88 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
                         message.message_type === "summary"
                           ? `summary-${index}`
                           : message.uuid;
+
+                      // 日付が変わる箇所にだけ区切りを入れ、各行は時刻のみにする
+                      // （同じ日付を全行に繰り返さない）
+                      const messageDate =
+                        message.message_type === "summary"
+                          ? null
+                          : new Date(message.timestamp).toDateString();
+                      const prev =
+                        index > 0 ? filteredMessages[index - 1] : null;
+                      const prevDate =
+                        prev && prev.message_type !== "summary"
+                          ? new Date(prev.timestamp).toDateString()
+                          : null;
+                      const showDateSeparator =
+                        messageDate !== null && messageDate !== prevDate;
+
+                      const roleLabel =
+                        message.message_type === "user"
+                          ? "あなた"
+                          : message.message_type === "assistant"
+                            ? "Claude"
+                            : "要約";
+                      const statusText =
+                        message.message_type !== "summary" &&
+                        message.processing_status !== "completed"
+                          ? message.processing_status === "processing"
+                            ? "処理中"
+                            : message.processing_status === "stopped"
+                              ? "停止"
+                              : "エラー"
+                          : null;
+
                       return (
-                        <div
-                          key={messageId}
-                          id={`message-${messageId}`}
-                          className={`message ${message.message_type.toLowerCase()}`}
-                        >
-                          <div className="message-header">
-                            <span className="message-type">
-                              {message.message_type}
-                              {message.message_type !== "summary" && (
-                                <span
-                                  className={`status-indicator status-${message.processing_status}`}
-                                  title={`Status: ${message.processing_status}${message.message_type === "assistant" && message.stop_reason ? ` (${message.stop_reason})` : ""}`}
-                                >
-                                  <span className="status-dot"></span>
-                                </span>
-                              )}
-                            </span>
-                            <span
-                              className="message-time"
-                              title={
-                                message.message_type !== "summary"
-                                  ? formatDateTooltip(message.timestamp)
-                                  : undefined
-                              }
-                            >
-                              {message.message_type === "summary"
-                                ? ""
-                                : formatDateTime(message.timestamp, {
-                                    style: "technical",
-                                  })}
-                            </span>
-                          </div>
-                          {renderMessageContent(message)}
-                          {message.message_type !== "summary" &&
-                            message.cwd && (
-                              <div className="message-meta">
-                                CWD: {message.cwd}
+                        <React.Fragment key={messageId}>
+                          {showDateSeparator &&
+                            message.message_type !== "summary" && (
+                              <div className="message-date-separator">
+                                {new Date(message.timestamp).toLocaleDateString(
+                                  "ja-JP",
+                                  {
+                                    year: "numeric",
+                                    month: "long",
+                                    day: "numeric",
+                                  },
+                                )}
                               </div>
                             )}
-                        </div>
+                          <div
+                            id={`message-${messageId}`}
+                            className={`message ${message.message_type.toLowerCase()}`}
+                          >
+                            <div className="message-header">
+                              <span className="message-type">
+                                {roleLabel}
+                                {statusText && (
+                                  <span
+                                    className={`message-status-text message-status-text--${message.message_type !== "summary" ? message.processing_status : ""}`}
+                                  >
+                                    {statusText}
+                                  </span>
+                                )}
+                              </span>
+                              <span
+                                className="message-time"
+                                title={
+                                  message.message_type !== "summary"
+                                    ? formatDateTooltip(message.timestamp)
+                                    : undefined
+                                }
+                              >
+                                {message.message_type === "summary"
+                                  ? ""
+                                  : new Date(
+                                      message.timestamp,
+                                    ).toLocaleTimeString("ja-JP", {
+                                      hour12: false,
+                                    })}
+                              </span>
+                            </div>
+                            {renderMessageContent(message)}
+                          </div>
+                        </React.Fragment>
                       );
                     })}
                   </div>
@@ -1180,10 +1323,13 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
                       <button
                         onClick={() => {
                           if (hasUnsavedChanges) {
-                            const confirmDiscard = window.confirm(
-                              "未保存の変更があります。破棄しますか？",
-                            );
-                            if (!confirmDiscard) return;
+                            setDiscardConfirm({
+                              action: () => {
+                                setIsEditingFile(false);
+                                setEditedContent(fileContent);
+                              },
+                            });
+                            return;
                           }
                           setIsEditingFile(false);
                           setEditedContent(fileContent);
@@ -1291,9 +1437,29 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
           <PromptRunner
             projectPath={normalizedPath}
             onRunFinished={reloadSessionsQuietly}
+            onOpenSession={(sessionId) => {
+              setActiveTab("sessions");
+              const target = sessions.find((s) => s.session_id === sessionId);
+              if (target) void loadSessionMessages(target);
+            }}
           />
         </div>
       )}
+
+      {/* 未保存変更の破棄確認 */}
+      <SafeConfirmDialog
+        isOpen={discardConfirm !== null}
+        title="未保存の変更があります"
+        message="このまま進むと編集中の内容は破棄されます。破棄してよろしいですか？"
+        confirmText="破棄する"
+        cancelText="編集に戻る"
+        variant="warning"
+        onConfirm={() => {
+          discardConfirm?.action();
+          setDiscardConfirm(null);
+        }}
+        onCancel={() => setDiscardConfirm(null)}
+      />
 
       {/* Toast notifications */}
       <ToastContainer toasts={toast.toasts} onDismiss={toast.dismissToast} />

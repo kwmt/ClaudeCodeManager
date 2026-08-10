@@ -4312,3 +4312,92 @@ button:hover:not(:disabled) {
   outline: 2px solid #0ea5e9;
   outline-offset: -2px;
 }
+
+/* --- フェーズ2: セッション検索・日付グループ・メッセージペイン --- */
+
+.session-list-search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0 0.75rem;
+}
+
+.session-list-search__input {
+  flex: 1;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  background: #ffffff;
+  color: #212529;
+}
+
+.session-list-search__input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.session-list-search__count {
+  flex-shrink: 0;
+  color: #495057;
+  font-size: 0.78rem;
+}
+
+.session-group-header {
+  margin: 0.75rem 0 0.25rem;
+  color: #495057;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.session-group-header:first-child {
+  margin-top: 0;
+}
+
+/* メッセージペイン: 可読行長・日付区切り・状態テキスト */
+.messages-cwd {
+  margin: 2px 0 0;
+  color: #495057;
+  font-family: "SF Mono", Monaco, Consolas, monospace;
+  font-size: 0.72rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.message-date-separator {
+  margin: 1rem 0 0.25rem;
+  color: #495057;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.messages-list .message {
+  max-width: 72ch;
+}
+
+.message-status-text {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.message-status-text--processing {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.message-status-text--stopped {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.message-status-text--error {
+  background: #fee2e2;
+  color: #b91c1c;
+}

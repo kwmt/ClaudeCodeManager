@@ -432,7 +432,14 @@ function hydrateFromStorage(): {
     for (const [projectPath, persisted] of Object.entries(
       state.conversations ?? {},
     )) {
-      const entries = [...(persisted.entries ?? [])];
+      // ID は復元時に振り直す。採番カウンタはモジュール変数でリロード時に
+      // 0 へ戻るため、保存済み ID をそのまま使うと新規エントリと衝突する
+      // （React の key 重複）。リロードをまたいだ ID の同一性は不要で、
+      // 一覧内の一意性だけが必要
+      const entries = (persisted.entries ?? []).map((entry) => ({
+        ...entry,
+        id: nextEntryId(),
+      }));
       if (interruptedProjects.has(projectPath)) {
         entries.push({
           id: nextEntryId(),
