@@ -282,8 +282,10 @@ describe("ProjectScreen - .claude Directory Tab", () => {
     const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: "modified content" } });
 
-    // Click Cancel button
+    // Click Cancel button — 未保存の変更があるため確認ダイアログが出る
     fireEvent.click(screen.getByText("Cancel"));
+    expect(screen.getByText("未保存の変更があります")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("破棄する"));
 
     // Should revert to view mode and show original content
     const preElement = document.querySelector("pre.file-viewer");

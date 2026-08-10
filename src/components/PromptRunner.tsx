@@ -346,11 +346,14 @@ StderrSection.displayName = "StderrSection";
 interface PromptRunnerProps {
   projectPath: string;
   onRunFinished?: () => void;
+  /** 継続中セッションを Sessions タブで開く（会話履歴の詳細を見る導線） */
+  onOpenSession?: (sessionId: string) => void;
 }
 
 export const PromptRunner: React.FC<PromptRunnerProps> = ({
   projectPath,
   onRunFinished,
+  onOpenSession,
 }) => {
   const [cliStatus, setCliStatus] = useState<ClaudeCliStatus | null>(null);
   const [promptText, setPromptText] = useState("");
@@ -567,6 +570,15 @@ export const PromptRunner: React.FC<PromptRunnerProps> = ({
             >
               新しい会話
             </button>
+            {onOpenSession && !isRunning && (
+              <button
+                type="button"
+                className="prompt-runner__link-button"
+                onClick={() => onOpenSession(sessionId)}
+              >
+                Sessions で開く
+              </button>
+            )}
           </div>
         )}
 

@@ -149,6 +149,40 @@ describe("PromptRuns persistence", () => {
     ).toBe(true);
   });
 
+  it("復元後の新規エントリ ID が復元済みエントリと衝突しない", async () => {
+    const first = mountProvider();
+
+    await act(async () => {
+      await store?.sendPrompt("/Users/john/projects/alpha", {
+        prompt: "1回目",
+        permissionMode: "plan",
+        model: null,
+      });
+    });
+    emit({ run_id: "run-1", kind: "exit", exit_code: 0, success: true });
+
+    // 再起動を模す
+    first.unmount();
+    store = null;
+    mountProvider();
+
+    // 復元後に新しいエントリを追加する
+    mockApi.startPromptRun.mockResolvedValue("run-2");
+    await act(async () => {
+      await getStore().sendPrompt("/Users/john/projects/alpha", {
+        prompt: "2回目",
+        permissionMode: "plan",
+        model: null,
+      });
+    });
+
+    const conversation = getStore().conversations.get(
+      "/Users/john/projects/alpha",
+    );
+    const ids = (conversation?.entries ?? []).map((e) => e.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
   it("壊れた保存データは無視して空から始める", () => {
     localStorage.setItem("ccm-prompt-runs-v1", "{broken json!!");
     mountProvider();
