@@ -100,6 +100,15 @@ export const EMPTY_CONVERSATION: PromptConversation = {
   activeRunId: null,
 };
 
+/** GitHub issue 対応キューの状態（プロジェクトごと） */
+export interface IssueQueueState {
+  /** 現在対応中の issue 番号（null は待機中） */
+  active: number | null;
+  /** これから対応する issue 番号 */
+  pending: number[];
+  permissionMode: PermissionMode;
+}
+
 interface PromptRunsContextValue {
   /** すべての実行（開始が新しい順） */
   runs: PromptRunInfo[];
@@ -108,6 +117,8 @@ interface PromptRunsContextValue {
   latestRunByProject: Map<string, PromptRunInfo>;
   /** プロジェクトごとの会話ログ */
   conversations: Map<string, PromptConversation>;
+  /** プロジェクトごとの issue 対応キュー */
+  issueQueues: Map<string, IssueQueueState>;
   registerRun: (runId: string, meta: RegisterRunMeta) => void;
   stopRun: (runId: string) => Promise<void>;
   /** プロンプトを送信する（会話へのエントリ追加〜実行登録まで担う） */
@@ -117,6 +128,17 @@ interface PromptRunsContextValue {
   ) => Promise<string | null>;
   /** 会話ログをクリアして新しい会話を始める */
   resetConversation: (projectPath: string) => void;
+  /**
+   * GitHub issue 番号のキューを登録し、順次 claude に対応させる。
+   * 各 issue は新しい会話（独立したセッション）で実行される。
+   */
+  startIssueRuns: (
+    projectPath: string,
+    issueNumbers: number[],
+    permissionMode: PermissionMode,
+  ) => void;
+  /** 未着手の issue キューを取り消す（実行中の issue は停止しない） */
+  cancelIssueQueue: (projectPath: string) => void;
 }
 
 const PromptRunsContext = createContext<PromptRunsContextValue | null>(null);
@@ -128,6 +150,24 @@ const PENDING_EVENT_LIMIT = 300;
 
 /** SIGTERM（停止ボタン）による終了コード */
 const SIGTERM_EXIT_CODE = 143;
+
+/**
+ * issue 対応の指示テンプレート。
+ * issue の取得は認証済みの gh CLI に任せるため、アプリ側に
+ * GitHub トークンは不要（プロジェクトの cwd で claude が実行する）。
+ */
+export function buildIssuePrompt(issueNumber: number): string {
+  return [
+    `GitHub issue #${issueNumber} に対応してください。`,
+    "",
+    `1. \`gh issue view ${issueNumber}\` で issue の内容と要求を確認する`,
+    "2. 現在のブランチが main / develop / staging の場合は、作業用ブランチを作成する",
+    "3. issue の内容を実装し、テスト・型チェックが通ることを確認する",
+    `4. コミットして push し、\`gh pr create\` で PR を作成する（本文に \`close #${issueNumber}\` を記載する）`,
+    "",
+    "不明点があり進められない場合は、判断に必要な情報と選択肢を整理して報告してください。",
+  ].join("\n");
+}
 
 function summarizeToolInput(input: Record<string, unknown>): string {
   const keys = ["file_path", "command", "pattern", "path", "prompt"] as const;
@@ -495,6 +535,13 @@ export const PromptRunsProvider: React.FC<{ children: React.ReactNode }> = ({
   const pendingRef = useRef<Map<string, PromptRunEvent[]>>(new Map());
   const pendingCountRef = useRef(0);
 
+  // GitHub issue 対応キュー（プロジェクトごと・順次実行）。
+  // 同一ワーキングツリーで複数の claude が同時に編集すると git が
+  // 衝突するため、プロジェクト内は 1 件ずつ処理する
+  const issueQueuesRef = useRef<Map<string, IssueQueueState>>(new Map());
+  // handleEvent（先に定義）から後続定義の advanceIssueQueue を呼ぶための ref
+  const advanceIssueQueueRef = useRef<(projectPath: string) => void>(() => {});
+
   const trimFinished = useCallback(() => {
     const runs = runsRef.current;
     const finished = [...runs.values()]
@@ -545,7 +592,22 @@ export const PromptRunsProvider: React.FC<{ children: React.ReactNode }> = ({
         info.projectPath,
         applyConversationEvent(conversation, event),
       );
-      if (event.kind === "exit") trimFinished();
+      if (event.kind === "exit") {
+        trimFinished();
+        // issue 対応キュー: 実行が終わったら次の issue へ進める
+        const queue = issueQueuesRef.current.get(info.projectPath);
+        if (queue) {
+          if (queue.pending.length === 0) {
+            issueQueuesRef.current.delete(info.projectPath);
+          } else {
+            issueQueuesRef.current.set(info.projectPath, {
+              ...queue,
+              active: null,
+            });
+            advanceIssueQueueRef.current(info.projectPath);
+          }
+        }
+      }
       bump();
     },
     [bump, trimFinished],
@@ -698,6 +760,91 @@ export const PromptRunsProvider: React.FC<{ children: React.ReactNode }> = ({
     [bump],
   );
 
+  /** キューの先頭の issue を（会話が空いていれば）実行に移す */
+  const advanceIssueQueue = useCallback(
+    (projectPath: string) => {
+      const queues = issueQueuesRef.current;
+      const queue = queues.get(projectPath);
+      if (!queue) return;
+
+      const conversation =
+        conversationsRef.current.get(projectPath) ?? EMPTY_CONVERSATION;
+      if (conversation.isRunning) return; // exit 時に再度呼ばれる
+
+      const next = queue.pending[0];
+      if (next === undefined) {
+        queues.delete(projectPath);
+        bump();
+        return;
+      }
+
+      queues.set(projectPath, {
+        ...queue,
+        active: next,
+        pending: queue.pending.slice(1),
+      });
+      // 各 issue は独立した会話（新しいセッション）で対応する
+      resetConversation(projectPath);
+      void sendPrompt(projectPath, {
+        prompt: buildIssuePrompt(next),
+        permissionMode: queue.permissionMode,
+        model: null,
+      }).then((failure) => {
+        if (failure) {
+          // 起動に失敗（CLI 不在等）: 以降も失敗するためキューを止める。
+          // エラー内容は会話にエラー行として表示済み
+          issueQueuesRef.current.delete(projectPath);
+          bump();
+        }
+      });
+      bump();
+    },
+    [bump, resetConversation, sendPrompt],
+  );
+
+  useEffect(() => {
+    advanceIssueQueueRef.current = advanceIssueQueue;
+  }, [advanceIssueQueue]);
+
+  const startIssueRuns = useCallback(
+    (
+      projectPath: string,
+      issueNumbers: number[],
+      permissionMode: PermissionMode,
+    ) => {
+      const unique = [...new Set(issueNumbers)].filter(
+        (n) => Number.isInteger(n) && n > 0,
+      );
+      if (unique.length === 0) return;
+      issueQueuesRef.current.set(projectPath, {
+        active: null,
+        pending: unique,
+        permissionMode,
+      });
+      bump();
+      advanceIssueQueue(projectPath);
+    },
+    [bump, advanceIssueQueue],
+  );
+
+  const cancelIssueQueue = useCallback(
+    (projectPath: string) => {
+      const queue = issueQueuesRef.current.get(projectPath);
+      if (!queue) return;
+      const conversation =
+        conversationsRef.current.get(projectPath) ?? EMPTY_CONVERSATION;
+      if (conversation.isRunning && queue.active !== null) {
+        // 実行中の issue はそのまま（停止はユーザーが明示的に行う）。
+        // 未着手分だけ取り消す
+        issueQueuesRef.current.set(projectPath, { ...queue, pending: [] });
+      } else {
+        issueQueuesRef.current.delete(projectPath);
+      }
+      bump();
+    },
+    [bump],
+  );
+
   useEffect(() => {
     let disposed = false;
     let unlisten: (() => void) | undefined;
@@ -737,12 +884,23 @@ export const PromptRunsProvider: React.FC<{ children: React.ReactNode }> = ({
       runningCount: runs.filter((r) => r.status === "running").length,
       latestRunByProject,
       conversations: new Map(conversationsRef.current),
+      issueQueues: new Map(issueQueuesRef.current),
       registerRun,
       stopRun,
       sendPrompt,
       resetConversation,
+      startIssueRuns,
+      cancelIssueQueue,
     };
-  }, [version, registerRun, stopRun, sendPrompt, resetConversation]);
+  }, [
+    version,
+    registerRun,
+    stopRun,
+    sendPrompt,
+    resetConversation,
+    startIssueRuns,
+    cancelIssueQueue,
+  ]);
 
   return (
     <PromptRunsContext.Provider value={value}>

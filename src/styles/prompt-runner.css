@@ -478,3 +478,81 @@
   outline: 2px solid var(--color-primary-500);
   outline-offset: 2px;
 }
+
+/* ---- GitHub issue 対応キュー（issue #12） ---- */
+
+.issue-runner {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+}
+
+.issue-runner--active {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-primary-50);
+  border: 1px solid var(--color-primary-200);
+  color: var(--color-primary-700);
+  font-size: var(--font-size-sm);
+}
+
+.issue-runner--form {
+  background: var(--color-secondary-100);
+}
+
+.issue-runner__controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.issue-runner__input {
+  flex: 1;
+  padding: 6px 10px;
+  background: #fff;
+  border: 1px solid var(--color-gray-300);
+  border-radius: var(--radius-sm);
+  color: var(--color-gray-800);
+  font-size: var(--font-size-sm);
+}
+
+.issue-runner__input:focus {
+  outline: none;
+  border-color: var(--color-primary-500);
+}
+
+.issue-runner__controls select {
+  padding: 5px 8px;
+  background: #fff;
+  border: 1px solid var(--color-gray-300);
+  border-radius: var(--radius-sm);
+  color: var(--color-gray-800);
+  font-size: var(--font-size-xs);
+}
+
+.issue-runner__hint {
+  margin: 6px 0 0;
+  color: var(--color-secondary-500);
+  font-size: var(--font-size-xs);
+}
+
+.issue-runner__toggle {
+  padding: 6px 12px;
+  background: none;
+  border: 1px dashed var(--color-gray-300);
+  border-radius: var(--radius-sm);
+  color: var(--color-primary-600);
+  font-size: var(--font-size-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.issue-runner__toggle:hover:not(:disabled) {
+  background: var(--color-primary-50);
+  border-color: var(--color-primary-300);
+}
+
+.issue-runner__toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}

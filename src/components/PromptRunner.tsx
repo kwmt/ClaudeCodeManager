@@ -362,9 +362,40 @@ export const PromptRunner: React.FC<PromptRunnerProps> = ({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [stopError, setStopError] = useState<string | null>(null);
 
+  // GitHub issue 対応キューの入力 UI
+  const [issueInputOpen, setIssueInputOpen] = useState(false);
+  const [issueNumbersText, setIssueNumbersText] = useState("");
+  const [issueMode, setIssueMode] =
+    useState<PermissionMode>("bypassPermissions");
+  const [issueConfirmOpen, setIssueConfirmOpen] = useState(false);
+
+  const parsedIssueNumbers = useMemo(
+    () =>
+      issueNumbersText
+        .split(/[,\s#]+/)
+        .map((token) => Number.parseInt(token, 10))
+        .filter((n) => Number.isInteger(n) && n > 0),
+    [issueNumbersText],
+  );
+
   // 会話ログ・実行状態はストアがプロジェクト単位で保持している
-  const { conversations, sendPrompt, resetConversation, stopRun } =
-    usePromptRuns();
+  const {
+    conversations,
+    issueQueues,
+    sendPrompt,
+    resetConversation,
+    stopRun,
+    startIssueRuns,
+    cancelIssueQueue,
+  } = usePromptRuns();
+  const issueQueue = issueQueues.get(projectPath) ?? null;
+
+  const handleStartIssueRuns = useCallback(() => {
+    if (parsedIssueNumbers.length === 0) return;
+    startIssueRuns(projectPath, parsedIssueNumbers, issueMode);
+    setIssueNumbersText("");
+    setIssueInputOpen(false);
+  }, [parsedIssueNumbers, startIssueRuns, projectPath, issueMode]);
   const conversation = conversations.get(projectPath) ?? EMPTY_CONVERSATION;
   const { entries, stderrLines, sessionId, isRunning, activeRunId } =
     conversation;
@@ -525,6 +556,94 @@ export const PromptRunner: React.FC<PromptRunnerProps> = ({
         </div>
       )}
 
+      {/* GitHub issue 対応キュー（issue #12）。
+          issue の取得は認証済みの gh CLI に任せるためトークンは不要。
+          同一ワーキングツリーでの競合を避けるため 1 件ずつ順次対応する */}
+      {issueQueue ? (
+        <div className="issue-runner issue-runner--active">
+          <span
+            className="run-status-dot run-status-dot--running"
+            aria-hidden="true"
+          />
+          <span className="issue-runner__status">
+            Issue 対応中:{" "}
+            {issueQueue.active !== null ? `#${issueQueue.active}` : "待機中"}
+            {issueQueue.pending.length > 0 &&
+              `（残り ${issueQueue.pending.length} 件: ${issueQueue.pending
+                .map((n) => `#${n}`)
+                .join(", ")}）`}
+          </span>
+          {issueQueue.pending.length > 0 && (
+            <button
+              type="button"
+              className="prompt-runner__link-button"
+              onClick={() => cancelIssueQueue(projectPath)}
+            >
+              残りをキャンセル
+            </button>
+          )}
+        </div>
+      ) : issueInputOpen ? (
+        <div className="issue-runner issue-runner--form">
+          <div className="issue-runner__controls">
+            <input
+              type="text"
+              className="issue-runner__input"
+              value={issueNumbersText}
+              onChange={(e) => setIssueNumbersText(e.target.value)}
+              placeholder="対応する issue 番号（例: 12, 34）"
+              aria-label="Issue 番号"
+            />
+            <select
+              aria-label="Issue 対応の権限モード"
+              value={issueMode}
+              onChange={(e) => setIssueMode(e.target.value as PermissionMode)}
+            >
+              {PERMISSION_MODE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="prompt-runner__button prompt-runner__button--primary"
+              disabled={parsedIssueNumbers.length === 0 || isRunning}
+              onClick={() => {
+                if (issueMode === "bypassPermissions") {
+                  setIssueConfirmOpen(true);
+                } else {
+                  handleStartIssueRuns();
+                }
+              }}
+            >
+              開始
+            </button>
+            <button
+              type="button"
+              className="prompt-runner__button"
+              onClick={() => setIssueInputOpen(false)}
+            >
+              閉じる
+            </button>
+          </div>
+          <p className="issue-runner__hint">
+            各 issue を gh CLI で確認し、実装 → テスト → PR
+            作成まで順に自動で行います。PR 作成（git/gh
+            の実行）まで任せるには「全許可」が必要です。
+          </p>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="issue-runner__toggle"
+          onClick={() => setIssueInputOpen(true)}
+          disabled={!cliAvailable}
+        >
+          ▷ GitHub Issue をまとめて対応…
+        </button>
+      )}
+
       {/* 会話エリア */}
       <div
         className="prompt-runner__log"
@@ -652,6 +771,20 @@ export const PromptRunner: React.FC<PromptRunnerProps> = ({
           </div>
         </div>
       </div>
+
+      <SafeConfirmDialog
+        isOpen={issueConfirmOpen}
+        title="全許可モードで issue 対応を開始しますか？"
+        message="issue の実装から PR 作成までを確認なしで実行します。ファイル変更・コミット・push・PR 作成が自動で行われます。開始してよろしいですか？"
+        confirmText="開始する"
+        cancelText="キャンセル"
+        variant="danger"
+        onConfirm={() => {
+          setIssueConfirmOpen(false);
+          handleStartIssueRuns();
+        }}
+        onCancel={() => setIssueConfirmOpen(false)}
+      />
 
       <SafeConfirmDialog
         isOpen={confirmOpen}
