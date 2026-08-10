@@ -31,6 +31,9 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
   promptTabRequest,
 }) => {
   const [sessions, setSessions] = useState<ClaudeSession[]>([]);
+  // loadProjectData（再読込・プロジェクト切替）から最新の選択状態を
+  // stale closure なしで参照するための ref
+  const selectedSessionRef = useRef<ClaudeSession | null>(null);
   const [selectedSession, setSelectedSession] = useState<ClaudeSession | null>(
     null,
   );
@@ -260,6 +263,22 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
         (p) => p.project_path === projectPath,
       );
       setProjectSummary(summary || null);
+
+      // 未選択（またはプロジェクト切替で旧選択が無効）なら最新セッションを
+      // 自動で開く。利用の大半は「最新のやり取りを見る」なので 1 クリック省く。
+      // 再読込時に有効な選択があれば維持する（refreshProjectData が再選択する）
+      const current = selectedSessionRef.current;
+      const currentIsValid =
+        current !== null &&
+        projectSessions.some((s) => s.session_id === current.session_id);
+      if (!currentIsValid && projectSessions.length > 0) {
+        const latest = [...projectSessions].sort(
+          (a, b) =>
+            new Date(b.file_modified_time).getTime() -
+            new Date(a.file_modified_time).getTime(),
+        )[0];
+        void loadSessionMessages(latest);
+      }
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to load project data",
@@ -504,6 +523,7 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
     try {
       setLoadingMessages(true);
       setSelectedSession(session);
+      selectedSessionRef.current = session;
       const data = await api.getSessionMessages(session.session_id);
       setMessages(data);
       setFilteredMessages(data);
@@ -783,66 +803,44 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
               </div>
             )}
           </div>
+          {/*
+            統計は 1 行のインラインメタに圧縮する。
+            旧: カード 3 枚（約 100px + hover 演出のみでクリック不可の
+            偽アフォーダンス）。ヘッダーを薄くしてコンテンツ領域を広げる。
+          */}
           {projectSummary && (
-            <div className="project-stats-horizontal">
-              <div className="stat-card stat-card--sessions">
-                <div className="stat-icon">💬</div>
-                <div className="stat-content">
-                  <div className="stat-value">
-                    {projectSummary.session_count}
-                  </div>
-                  <div className="stat-label">Sessions</div>
-                </div>
-              </div>
-              <div className="stat-card stat-card--messages">
-                <div className="stat-icon">📝</div>
-                <div className="stat-content">
-                  <div className="stat-value">
-                    {projectSummary.total_messages}
-                  </div>
-                  <div className="stat-label">Messages</div>
-                </div>
-              </div>
-              <div
-                className={`stat-card stat-card--todos ${projectSummary.active_todos > 0 ? "stat-card--warning" : ""}`}
-              >
-                <div className="stat-icon">
-                  {projectSummary.active_todos > 0 ? "⚠️" : "✅"}
-                </div>
-                <div className="stat-content">
-                  <div className="stat-value">
-                    {projectSummary.active_todos}
-                  </div>
-                  <div className="stat-label">TODOs</div>
-                </div>
-              </div>
+            <div className="project-meta-line">
+              <span>{projectSummary.session_count} sessions</span>
+              <span aria-hidden="true">·</span>
+              <span>{projectSummary.total_messages} messages</span>
+              {projectSummary.active_todos > 0 && (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span className="project-meta-line__todos">
+                    {projectSummary.active_todos} TODO
+                  </span>
+                </>
+              )}
             </div>
           )}
         </div>
       </div>
 
+      {/* タブは 1 行に。サブタイトル（ヘッダー統計と食い違う件数表示）は出さない */}
       <div className="project-tabs">
         <button
           className={`tab-button ${activeTab === "sessions" ? "active" : ""}`}
           onClick={() => setActiveTab("sessions")}
           aria-label={`View sessions (${sessions.length} sessions)`}
         >
-          <div className="tab-icon">💬</div>
-          <div className="tab-content">
-            <div className="tab-title">Sessions</div>
-            <div className="tab-subtitle">{sessions.length} conversations</div>
-          </div>
+          Sessions
         </button>
         <button
           className={`tab-button ${activeTab === "directory" ? "active" : ""}`}
           onClick={() => setActiveTab("directory")}
           aria-label="View .claude directory files"
         >
-          <div className="tab-icon">📁</div>
-          <div className="tab-content">
-            <div className="tab-title">.claude Directory</div>
-            <div className="tab-subtitle">Project configuration</div>
-          </div>
+          .claude Directory
         </button>
         <button
           className={`tab-button ${activeTab === "prompt" ? "active" : ""}`}
@@ -852,11 +850,7 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
           }}
           aria-label="Run a prompt against this project"
         >
-          <div className="tab-icon">✨</div>
-          <div className="tab-content">
-            <div className="tab-title">Prompt</div>
-            <div className="tab-subtitle">Claude に指示を出す</div>
-          </div>
+          Prompt
         </button>
       </div>
 
@@ -865,7 +859,17 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
           <div className="project-sessions-list">
             {sessions.length === 0 ? (
               <div className="no-sessions">
-                No sessions found for this project
+                <p>このプロジェクトにはまだセッションがありません。</p>
+                <button
+                  type="button"
+                  className="no-sessions__cta"
+                  onClick={() => {
+                    setPromptTabVisited(true);
+                    setActiveTab("prompt");
+                  }}
+                >
+                  Prompt タブで Claude に指示を出す →
+                </button>
               </div>
             ) : (
               sessions
@@ -875,73 +879,65 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
                     new Date(a.file_modified_time).getTime(),
                 )
                 .map((session) => (
+                  /*
+                    カードの主見出しは会話内容のプレビュー（人は ID では
+                    セッションを思い出せない — 記憶より認識）。ID は
+                    メタ行の末尾に等幅で置く。バッジは処理中のみ表示
+                    （正常状態にバッジは不要）。
+                  */
                   <div
                     key={session.session_id}
                     className={`session-card ${selectedSession?.session_id === session.session_id ? "selected" : ""}`}
                     onClick={() => loadSessionMessages(session)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        loadSessionMessages(session);
+                      }
+                    }}
                     role="button"
                     tabIndex={0}
                     aria-label={`Open session ${session.session_id.substring(0, 8)} with ${session.message_count} messages`}
                   >
-                    <div className="session-card-header">
-                      <div className="session-id-section">
-                        <h4 className="session-title">
-                          Session {session.session_id.substring(0, 8)}...
-                        </h4>
+                    <div className="session-card-title-row">
+                      <h4 className="session-preview-title">
+                        {session.latest_content_preview ??
+                          `Session ${session.session_id.substring(0, 8)}`}
+                      </h4>
+                      {session.is_processing && (
                         <span
-                          className={`session-status-badge ${session.is_processing ? "status-processing" : "status-completed"}`}
-                          title={
-                            session.is_processing
-                              ? "Session has sequences still processing"
-                              : "Session completed"
-                          }
-                          aria-label={
-                            session.is_processing ? "Processing" : "Completed"
-                          }
+                          className="session-status-badge status-processing"
+                          aria-label="Processing"
                         >
-                          <span className="status-icon">
-                            {session.is_processing ? "⏳" : "✅"}
-                          </span>
-                          {session.is_processing ? "Processing" : "Complete"}
+                          処理中
                         </span>
-                      </div>
+                      )}
                     </div>
-                    {session.latest_content_preview && (
-                      <div className="session-preview">
-                        <p className="preview-text">
-                          {session.latest_content_preview}
-                        </p>
-                      </div>
-                    )}
                     <div className="session-card-meta">
-                      <div className="meta-item">
-                        <span className="meta-icon">💬</span>
-                        <span className="meta-value">
-                          {session.message_count}
-                        </span>
-                        <span className="meta-label">messages</span>
-                      </div>
+                      <span
+                        title={formatDateTooltip(session.file_modified_time)}
+                      >
+                        {formatDateTime(session.file_modified_time, {
+                          style: "compact",
+                          showRelative: true,
+                        })}
+                      </span>
+                      <span aria-hidden="true">·</span>
+                      <span>{session.message_count} msg</span>
                       {session.git_branch && (
-                        <div className="meta-item">
-                          <span className="meta-icon">🌿</span>
-                          <span className="meta-value">
+                        <>
+                          <span aria-hidden="true">·</span>
+                          <span
+                            className="session-card-meta__branch"
+                            title={session.git_branch}
+                          >
                             {session.git_branch}
                           </span>
-                          <span className="meta-label">branch</span>
-                        </div>
+                        </>
                       )}
-                      <div className="meta-item">
-                        <span
-                          className="meta-value"
-                          title={formatDateTooltip(session.file_modified_time)}
-                        >
-                          {formatDateTime(session.file_modified_time, {
-                            style: "compact",
-                            showRelative: true,
-                          })}
-                        </span>
-                        <span className="meta-label">updated</span>
-                      </div>
+                      <span className="session-card-meta__id">
+                        {session.session_id.substring(0, 8)}
+                      </span>
                     </div>
                   </div>
                 ))
@@ -1110,6 +1106,14 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
                       key={file.path}
                       className={`file-item ${selectedFile?.path === file.path ? "selected" : ""}`}
                       onClick={() => loadFileContent(file)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          loadFileContent(file);
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
                     >
                       <div className="file-info">
                         <span className="file-name">{file.name}</span>
