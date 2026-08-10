@@ -101,6 +101,8 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
   const [filteredMessages, setFilteredMessages] = useState<ClaudeMessage[]>([]);
   const [renderAsMarkdown, setRenderAsMarkdown] = useState(false);
   const messageListRef = useRef<HTMLDivElement>(null);
+  // プレビュー位置への自動スクロール用タイマー（アンマウント時にクリア）
+  const scrollToPreviewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Toast notifications
@@ -178,6 +180,15 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
   useEffect(() => {
     loadProjectData();
   }, [projectPath]);
+
+  // アンマウント時に自動スクロールのタイマーを破棄する
+  useEffect(() => {
+    return () => {
+      if (scrollToPreviewTimeoutRef.current) {
+        clearTimeout(scrollToPreviewTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Dashboard / Prompts 一覧からの「Prompt タブで開く」リクエストに応える
   const promptTabRequestNonce = promptTabRequest?.nonce ?? 0;
@@ -587,7 +598,16 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
       setFilteredMessages(data);
 
       if (data.length > 0 && session.latest_content_preview) {
-        setTimeout(() => {
+        // タイマーは ref に保持し、アンマウント時にクリアする。
+        // 破棄後に発火すると document 参照で未処理例外になる
+        // （テスト環境の jsdom 破棄後の発火で CI が落ちた実レース）
+        if (scrollToPreviewTimeoutRef.current) {
+          clearTimeout(scrollToPreviewTimeoutRef.current);
+        }
+        scrollToPreviewTimeoutRef.current = setTimeout(() => {
+          scrollToPreviewTimeoutRef.current = null;
+          // アンマウント済みなら何もしない
+          if (!messageListRef.current) return;
           let targetMessage = null;
           let targetIndex = -1;
 
