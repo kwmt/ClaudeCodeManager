@@ -7,12 +7,6 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/test-setup.ts',
-    // Node.js 25+ enables the built-in Web Storage by default, which shadows jsdom's localStorage
-    poolOptions: {
-      forks: {
-        execArgv: ['--no-experimental-webstorage'],
-      },
-    },
     environmentOptions: {
       jsdom: {
         html: '<!DOCTYPE html><html><head></head><body><div id="root"></div></body></html>',
