@@ -21,10 +21,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        # For non-main branches, only test on macOS with Node.js 20 to reduce CI time
+        # For non-main branches, only test on macOS with Node.js 26 to reduce CI time
         # For main branch, test on all OS/Node.js combinations for comprehensive coverage
         os: ${{ github.ref == 'refs/heads/main' && fromJSON('["windows-latest", "macos-latest"]') || fromJSON('["macos-latest"]') }}
-        node-version: ${{ github.ref == 'refs/heads/main' && fromJSON('[18, 20]') || fromJSON('[20]') }}
+        node-version: ${{ github.ref == 'refs/heads/main' && fromJSON('[24, 26]') || fromJSON('[26]') }}
 
     steps:
     - name: Checkout repository
@@ -103,7 +103,7 @@ jobs:
         cargo fmt -- --check
 
     - name: Upload coverage reports
-      if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20'
+      if: matrix.os == 'ubuntu-latest' && matrix.node-version == '26'
       uses: codecov/codecov-action@v3
       with:
         file: coverage/coverage-final.json
@@ -126,7 +126,7 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        node-version: '26'
         cache: 'npm'
         cache-dependency-path: package-lock.json
 
@@ -200,7 +200,7 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        node-version: '26'
         cache: 'npm'
         cache-dependency-path: package-lock.json
 
@@ -273,7 +273,7 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        node-version: '26'
         cache: 'npm'
         cache-dependency-path: package-lock.json
 
